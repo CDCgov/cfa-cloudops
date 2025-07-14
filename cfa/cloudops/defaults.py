@@ -91,7 +91,6 @@ default_vm_size = "standard_d4s_v3"  # 4 core D-series VM
 default_autoscale_evaluation_interval = "PT5M"
 
 default_autoscale_formula = remaining_task_autoscale_formula(
-    evaluation_interval=default_autoscale_evaluation_interval,
     task_sample_interval_minutes=15,
     max_number_vms=10,
 )
