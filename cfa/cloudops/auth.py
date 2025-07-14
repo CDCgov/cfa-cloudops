@@ -16,12 +16,11 @@ from azure.identity import (
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.resource import SubscriptionClient
-from azuretools.config import get_config_val
-from azuretools.util import ensure_listlike
-from azuretools.validate import is_valid_acr_endpoint
 from dotenv import load_dotenv
 
 import cfa.cloudops.defaults as d
+from cfa.cloudops.config import get_config_val
+from cfa.cloudops.util import ensure_listlike, is_valid_acr_endpoint
 
 
 @dataclass
