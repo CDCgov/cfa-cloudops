@@ -6,7 +6,6 @@ import os
 from dataclasses import dataclass
 from functools import cached_property, partial
 
-import azuretools.endpoint as endpoint
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.identity import (
@@ -20,7 +19,13 @@ from dotenv import load_dotenv
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops.config import get_config_val
-from cfa.cloudops.util import ensure_listlike, is_valid_acr_endpoint
+from cfa.cloudops.util import (
+    construct_azure_container_registry_endpoint,
+    construct_batch_endpoint,
+    construct_blob_account_endpoint,
+    ensure_listlike,
+    is_valid_acr_endpoint,
+)
 
 
 @dataclass
@@ -117,7 +122,7 @@ class CredentialHandler:
             ],
             goal="Azure batch endpoint URL",
         )
-        return endpoint.construct_batch_endpoint(
+        return construct_batch_endpoint(
             self.azure_batch_account,
             self.azure_batch_location,
             self.azure_batch_endpoint_subdomain,
@@ -142,7 +147,7 @@ class CredentialHandler:
             ],
             goal="Azure blob storage endpoint URL",
         )
-        return endpoint.construct_blob_account_endpoint(
+        return construct_blob_account_endpoint(
             self.azure_blob_storage_account,
             self.azure_blob_storage_endpoint_subdomain,
         )
@@ -166,7 +171,7 @@ class CredentialHandler:
             ],
             goal="Azure container registry endpoint URL",
         )
-        return endpoint.construct_azure_container_registry_endpoint(
+        return construct_azure_container_registry_endpoint(
             self.azure_container_registry_account,
             self.azure_container_registry_domain,
         )
