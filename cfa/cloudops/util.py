@@ -7,7 +7,11 @@ import subprocess
 from collections.abc import MutableSequence
 from urllib.parse import quote, urljoin, urlparse, urlunparse
 
-import cfa.cloudops.defaults as d
+from .defaults import (
+    default_azure_batch_endpoint_subdomain,
+    default_azure_blob_storage_endpoint_subdomain,
+    default_azure_container_registry_domain,
+)
 
 
 def lookup_service_principal(display_name: str) -> list:
@@ -166,7 +170,7 @@ def _construct_https_url(netloc: str, path: str = "") -> str:
 def construct_batch_endpoint(
     batch_account: str,
     batch_location: str,
-    batch_endpoint_subdomain: str = d.default_azure_batch_endpoint_subdomain,
+    batch_endpoint_subdomain: str = default_azure_batch_endpoint_subdomain,
 ) -> str:
     """
     Construct an Azure Batch endpoint URL from
@@ -198,7 +202,7 @@ def construct_batch_endpoint(
 
 def construct_azure_container_registry_endpoint(
     azure_container_registry_account: str,
-    azure_container_registry_domain: str = d.default_azure_container_registry_domain,
+    azure_container_registry_domain: str = default_azure_container_registry_domain,
 ) -> str:
     """
     Construct an Azure container registry endpoint URL
@@ -225,7 +229,7 @@ def construct_azure_container_registry_endpoint(
 
 def construct_blob_account_endpoint(
     blob_account: str,
-    blob_endpoint_subdomain: str = d.default_azure_blob_storage_endpoint_subdomain,
+    blob_endpoint_subdomain: str = default_azure_blob_storage_endpoint_subdomain,
 ) -> str:
     """
     Construct an Azure blob storage account endpoint URL.
@@ -251,7 +255,7 @@ def construct_blob_account_endpoint(
 def construct_blob_container_endpoint(
     blob_container: str,
     blob_account: str,
-    blob_endpoint_subdomain: str = d.default_azure_blob_storage_endpoint_subdomain,
+    blob_endpoint_subdomain: str = default_azure_blob_storage_endpoint_subdomain,
 ) -> str:
     """
     Construct an endpoint URL for a blob storage container

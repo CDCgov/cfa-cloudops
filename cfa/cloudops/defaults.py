@@ -4,7 +4,7 @@ Default configurations for Azure resources.
 
 from azure.mgmt.batch import models
 
-from cfa.cloudops.util import remaining_task_autoscale_formula
+from .util import remaining_task_autoscale_formula
 
 # image defaults
 default_image_publisher = "microsoft-dsvm"
