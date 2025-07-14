@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from functools import cached_property, partial
 
 import azuretools.endpoint as endpoint
-import cloudops.defaults as d
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.identity import (
@@ -21,6 +20,8 @@ from azuretools.config import get_config_val
 from azuretools.util import ensure_listlike
 from azuretools.validate import is_valid_acr_endpoint
 from dotenv import load_dotenv
+
+import cfa.cloudops.defaults as d
 
 
 @dataclass
