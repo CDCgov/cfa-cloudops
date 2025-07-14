@@ -355,6 +355,14 @@ def load_env_vars(dotenv_path=None):
     os.environ["AZURE_SUBSCRIPTION_ID"] = account_info.subscription_id
     os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
     os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
+    # save default values
+    os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"] = "batch.azure.com/"
+    os.environ["AZURE_BATCH_RESOURCE_URL"] = "https://batch.core.windows.net/"
+    os.environ["AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN"] = "vault.azure.net"
+    os.environ["AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN"] = (
+        "blob.core.windows.net/"
+    )
+    os.environ["AZURE_CONTAINER_REGISTRY"] = "azurecr.io"
     # create new variables as a function of env vars
     os.environ["AZURE_BATCH_ENDPOINT"] = (
         f"https://{os.getenv('AZURE_BATCH_ACCOUNT')}.{os.getenv('AZURE_BATCH_LOCATION')}.{d.default_azure_batch_endpoint_subdomain}"
