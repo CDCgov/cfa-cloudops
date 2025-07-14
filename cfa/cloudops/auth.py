@@ -362,7 +362,7 @@ def load_env_vars(dotenv_path=None):
     os.environ["AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN"] = (
         "blob.core.windows.net/"
     )
-    os.environ["AZURE_CONTAINER_REGISTRY"] = "azurecr.io"
+    os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"] = "azurecr.io"
     # create new variables as a function of env vars
     os.environ["AZURE_BATCH_ENDPOINT"] = (
         f"https://{os.getenv('AZURE_BATCH_ACCOUNT')}.{os.getenv('AZURE_BATCH_LOCATION')}.{d.default_azure_batch_endpoint_subdomain}"
