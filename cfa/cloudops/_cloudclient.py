@@ -1,3 +1,3 @@
 class CloudClient:
-    def __init__(name):
+    def __init__(self, name):
         print("hello", name)
