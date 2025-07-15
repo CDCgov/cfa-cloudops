@@ -23,9 +23,9 @@ from cfa.cloudops.endpoints import (
     construct_azure_container_registry_endpoint,
     construct_batch_endpoint,
     construct_blob_account_endpoint,
-    ensure_listlike,
     is_valid_acr_endpoint,
 )
+from cfa.cloudops.util import ensure_listlike
 
 
 @dataclass
