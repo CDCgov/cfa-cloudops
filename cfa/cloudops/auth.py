@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops.config import get_config_val
-from cfa.cloudops.util import (
+from cfa.cloudops.endpoints import (
     construct_azure_container_registry_endpoint,
     construct_batch_endpoint,
     construct_blob_account_endpoint,

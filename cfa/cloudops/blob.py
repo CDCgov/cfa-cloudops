@@ -6,8 +6,9 @@ import os
 
 from azure.batch import models
 from azure.storage.blob import BlobServiceClient
-from azuretools.client import get_blob_service_client
-from azuretools.util import ensure_listlike
+
+from .client import get_blob_service_client
+from .util import ensure_listlike
 
 
 def create_storage_container_if_not_exists(
