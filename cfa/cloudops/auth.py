@@ -61,6 +61,7 @@ class CredentialHandler:
     azure_container_registry_domain: str = (
         d.default_azure_container_registry_domain
     )
+    method = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
         """
@@ -347,7 +348,7 @@ class EnvCredentialHandler(CredentialHandler):
 
 def load_env_vars(dotenv_path=None):
     load_dotenv(dotenv_path=dotenv_path, override=True)
-    # get ManaedIdentityCredential to pull SubscriptionClient
+    # get ManagedIdentityCredential to pull SubscriptionClient
     mid_cred = ManagedIdentityCredential()
     sub_c = SubscriptionClient(mid_cred)
     # pull in account info and save to environment vars
@@ -356,26 +357,114 @@ def load_env_vars(dotenv_path=None):
     os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
     os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
     # save default values
-    os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"] = "batch.azure.com/"
-    os.environ["AZURE_BATCH_RESOURCE_URL"] = "https://batch.core.windows.net/"
-    os.environ["AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN"] = "vault.azure.net"
-    os.environ["AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN"] = (
-        "blob.core.windows.net/"
-    )
-    os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"] = "azurecr.io"
-    # create new variables as a function of env vars
-    os.environ["AZURE_BATCH_ENDPOINT"] = (
-        f"https://{os.getenv('AZURE_BATCH_ACCOUNT')}.{os.getenv('AZURE_BATCH_LOCATION')}.{d.default_azure_batch_endpoint_subdomain}"
-    )
-    os.environ["AZURE_KEYVAULT_ENDPOINT"] = (
-        f"https://{os.getenv('AZURE_KEYVAULT_NAME')}.{d.default_azure_keyvault_endpoint_subdomain}"
-    )
-    os.environ["AZURE_BLOB_STORAGE_ENDPOINT"] = (
-        f"https://{os.getenv('AZURE_BLOB_STORAGE_ACCOUNT')}.{d.default_azure_blob_storage_endpoint_subdomain}"
-    )
-    os.environ["ACR_TAG_PREFIX"] = (
-        f"{os.getenv('AZURE_CONTAINER_REGISTRY_ACCOUNT')}.{d.default_azure_container_registry_domain}/"
-    )
+    d.set_env_vars()
+
+
+class SPCredentialHandler(CredentialHandler):
+    def __init__(
+        self,
+        azure_tenant_id: str = None,
+        azure_subscription_id: str = None,
+        azure_sp_client_id: str = None,
+        azure_client_secret: str = None,
+        dotenv_path: str = None,
+    ):
+        """Initialize a Service Principal Credential Handler.
+
+        Creates a credential handler that uses Azure Service Principal authentication
+        for accessing Azure resources. Credentials can be provided directly as parameters
+        or loaded from environment variables. If not provided directly, the handler will
+        attempt to load credentials from environment variables or a .env file.
+
+        Args:
+            azure_tenant_id: Azure Active Directory tenant ID. If None, will attempt
+                to load from AZURE_TENANT_ID environment variable.
+            azure_subscription_id: Azure subscription ID. If None, will attempt
+                to load from AZURE_SUBSCRIPTION_ID environment variable.
+            azure_sp_client_id: Azure Service Principal client ID (application ID).
+                If None, will attempt to load from AZURE_CLIENT_ID environment variable.
+            azure_client_secret: Azure Service Principal client secret. If None, will
+                attempt to load from AZURE_CLIENT_SECRET environment variable.
+            dotenv_path: Path to .env file to load environment variables from.
+                If None, uses default .env file discovery.
+
+        Raises:
+            ValueError: If AZURE_TENANT_ID is not found in environment variables
+                and not provided as parameter.
+            ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables
+                and not provided as parameter.
+            ValueError: If AZURE_CLIENT_ID is not found in environment variables
+                and not provided as parameter.
+            ValueError: If AZURE_CLIENT_SECRET is not found in environment variables
+                and not provided as parameter.
+
+        Example:
+            >>> # Using direct parameters
+            >>> handler = SPCredentialHandler(
+            ...     azure_tenant_id="12345678-1234-1234-1234-123456789012",
+            ...     azure_subscription_id="87654321-4321-4321-4321-210987654321",
+            ...     azure_sp_client_id="abcdef12-3456-7890-abcd-ef1234567890",
+            ...     azure_client_secret="your-secret-here" #pragma: allowlist secret
+            ... )
+
+            >>> # Using environment variables
+            >>> handler = SPCredentialHandler()  # Loads from env vars
+
+            >>> # Using custom .env file
+            >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
+        """
+        self.method = "sp"
+        # load env vars, including client secret if available
+        if (
+            not azure_tenant_id
+            or not azure_subscription_id
+            or not azure_sp_client_id
+            or not azure_client_secret
+        ):
+            load_dotenv(dotenv_path=dotenv_path, override=True)
+
+        self.azure_tenant_id = (
+            azure_tenant_id
+            if azure_tenant_id is not None
+            else os.environ["AZURE_TENANT_ID"]
+        )
+        self.azure_subscription_id = (
+            azure_subscription_id
+            if azure_subscription_id is not None
+            else os.environ["AZURE_SUBSCRIPTION_ID"]
+        )
+        self.azure_sp_client_id = (
+            azure_sp_client_id
+            if azure_sp_client_id is not None
+            else os.environ["AZURE_CLIENT_ID"]
+        )
+        self.azure_service_principal_secret = (
+            azure_client_secret
+            if azure_client_secret is not None
+            else os.environ["AZURE_CLIENT_SECRET"]
+        )
+
+        # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
+        if "AZURE_TENANT_ID" not in os.environ and not azure_tenant_id:
+            raise ValueError(
+                "AZURE_TENANT_ID not found in env variables and not provided."
+            )
+        if (
+            "AZURE_SUBSCRIPTION_ID" not in os.environ
+            and not azure_subscription_id
+        ):
+            raise ValueError(
+                "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
+            )
+        if "AZURE_CLIENT_ID" not in os.environ and not azure_sp_client_id:
+            raise ValueError(
+                "AZURE_CLIENT_ID not found in env variables and not provided."
+            )
+        if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
+            raise ValueError(
+                "AZURE_CLIENT_SECRET not found in env variables and not provided."
+            )
+        d.set_env_vars()
 
 
 def get_sp_secret(

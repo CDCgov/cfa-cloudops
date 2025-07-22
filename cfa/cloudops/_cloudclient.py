@@ -1,9 +1,11 @@
 from azure.batch import models as batch_models
+
+# from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
 
 import cfa.cloudops.defaults as d
 
-from .auth import EnvCredentialHandler
+from .auth import EnvCredentialHandler, SPCredentialHandler
 from .blob import get_node_mount_config
 from .client import (
     get_batch_management_client,
@@ -13,12 +15,18 @@ from .client import (
 )
 from .job import create_job
 
+# from .task import get_task_config
+
 
 class CloudClient:
-    def __init__(self, dotenv_path: str = None):
+    def __init__(self, dotenv_path: str = None, use_sp=False):
         # authenticate to get credentials
-        self.cred = EnvCredentialHandler(dotenv_path=dotenv_path)
+        if not use_sp:
+            self.cred = EnvCredentialHandler(dotenv_path=dotenv_path)
+        else:
+            self.cred = SPCredentialHandler()
         # get clients
+
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.compute_mgmt_client = get_compute_management_client(self.cred)
         self.batch_service_client = get_batch_service_client(self.cred)
@@ -401,3 +409,8 @@ class CloudClient:
         print(az_mount_dir, user_identity)
 
         # pull mounts from associated pool
+
+        # get task config for task
+        # task_config = get_task_config()
+        # add task
+        self.batch_service_client.task.add()

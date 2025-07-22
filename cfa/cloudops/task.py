@@ -21,7 +21,8 @@ from azure.batch.models import (
 
 from .auth import get_compute_node_identity_reference
 from .defaults import default_azure_blob_storage_endpoint_subdomain
-from .util import construct_blob_container_endpoint, ensure_listlike
+from .endpoints import construct_blob_container_endpoint
+from .util import ensure_listlike
 
 
 def create_bind_mount_string(

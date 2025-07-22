@@ -45,12 +45,18 @@ def get_batch_management_client(
     ch = credential_handler
     if ch is None:
         ch = EnvCredentialHandler()
-
-    return BatchManagementClient(
-        credential=ch.client_secret_sp_credential,
-        subscription_id=ch.azure_subscription_id,
-        **kwargs,
-    )
+    if ch.method == "sp":
+        return BatchManagementClient(
+            credential=ch.client_secret_sp_credential,
+            subscription_id=ch.azure_subscription_id,
+            **kwargs,
+        )
+    else:
+        return BatchManagementClient(
+            credential=ch.user_credential,
+            subscription_id=ch.azure_subscription_id,
+            **kwargs,
+        )
 
 
 def get_compute_management_client(
@@ -87,12 +93,18 @@ def get_compute_management_client(
     ch = credential_handler
     if ch is None:
         ch = EnvCredentialHandler()
-
-    return ComputeManagementClient(
-        credential=ch.client_secret_sp_credential,
-        subscription_id=ch.azure_subscription_id,
-        **kwargs,
-    )
+    if ch.method == "sp":
+        return ComputeManagementClient(
+            credential=ch.client_secret_sp_credential,
+            subscription_id=ch.azure_subscription_id,
+            **kwargs,
+        )
+    else:
+        return ComputeManagementClient(
+            credential=ch.user_credential,
+            subscription_id=ch.azure_subscription_id,
+            **kwargs,
+        )
 
 
 def get_batch_service_client(
@@ -129,12 +141,18 @@ def get_batch_service_client(
     ch = credential_handler
     if ch is None:
         ch = EnvCredentialHandler()
-
-    return BatchServiceClient(
-        credentials=ch.batch_service_principal_credentials,
-        batch_url=ch.azure_batch_endpoint,
-        **kwargs,
-    )
+    if ch.method == "sp":
+        return BatchServiceClient(
+            credentials=ch.client_secret_sp_credential,
+            batch_url=ch.azure_batch_endpoint,
+            **kwargs,
+        )
+    else:
+        return BatchServiceClient(
+            credentials=ch.user_credentials,
+            batch_url=ch.azure_batch_endpoint,
+            **kwargs,
+        )
 
 
 def get_blob_service_client(
@@ -171,9 +189,15 @@ def get_blob_service_client(
     ch = credential_handler
     if ch is None:
         ch = EnvCredentialHandler()
-
-    return BlobServiceClient(
-        account_url=ch.azure_blob_storage_endpoint,
-        credential=ch.client_secret_sp_credential,
-        **kwargs,
-    )
+    if ch.method == "sp":
+        return BatchServiceClient(
+            credentials=ch.client_secret_sp_credential,
+            batch_url=ch.azure_batch_endpoint,
+            **kwargs,
+        )
+    else:
+        return BlobServiceClient(
+            account_url=ch.azure_blob_storage_endpoint,
+            credential=ch.user_credential,
+            **kwargs,
+        )
