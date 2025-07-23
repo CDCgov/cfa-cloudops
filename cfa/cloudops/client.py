@@ -47,7 +47,7 @@ def get_batch_management_client(
         ch = EnvCredentialHandler()
     if ch.method == "sp":
         return BatchManagementClient(
-            credential=ch.client_secret_sp_credential,
+            credential=ch.client_secret_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -95,7 +95,7 @@ def get_compute_management_client(
         ch = EnvCredentialHandler()
     if ch.method == "sp":
         return ComputeManagementClient(
-            credential=ch.client_secret_sp_credential,
+            credential=ch.client_secret_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -143,7 +143,7 @@ def get_batch_service_client(
         ch = EnvCredentialHandler()
     if ch.method == "sp":
         return BatchServiceClient(
-            credentials=ch.client_secret_sp_credential,
+            credentials=ch.client_secret_credential,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
@@ -191,7 +191,7 @@ def get_blob_service_client(
         ch = EnvCredentialHandler()
     if ch.method == "sp":
         return BatchServiceClient(
-            credentials=ch.client_secret_sp_credential,
+            credentials=ch.client_secret_credential,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
