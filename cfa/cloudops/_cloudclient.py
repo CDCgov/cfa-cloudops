@@ -19,12 +19,12 @@ from .job import create_job
 
 
 class CloudClient:
-    def __init__(self, dotenv_path: str = None, use_sp=False):
+    def __init__(self, dotenv_path: str = None, use_sp=False, **kwargs):
         # authenticate to get credentials
         if not use_sp:
-            self.cred = EnvCredentialHandler(dotenv_path=dotenv_path)
+            self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
         else:
-            self.cred = SPCredentialHandler(dotenv_path=dotenv_path)
+            self.cred = SPCredentialHandler(dotenv_path=dotenv_path, **kwargs)
         # get clients
 
         self.batch_mgmt_client = get_batch_management_client(self.cred)
