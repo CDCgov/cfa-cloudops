@@ -438,7 +438,7 @@ class SPCredentialHandler(CredentialHandler):
             if azure_sp_client_id is not None
             else os.environ["AZURE_CLIENT_ID"]
         )
-        self.service_principal_secret = (
+        self.azure_service_principal_secret = (
             azure_client_secret
             if azure_client_secret is not None
             else os.environ["AZURE_CLIENT_SECRET"]
@@ -465,6 +465,30 @@ class SPCredentialHandler(CredentialHandler):
                 "AZURE_CLIENT_SECRET not found in env variables and not provided."
             )
         d.set_env_vars()
+
+        @cached_property
+        def client_secret_sp_credential(self):
+            """
+            A client secret credential created using
+            :obj:`self.azure_service_principal_secret`.
+
+            Returns
+            -------
+            ClientSecretCredential
+                The credential.
+            """
+            self.require_attr(
+                [
+                    "azure_tenant_id",
+                    "azure_sp_client_id",
+                    "azure_service_principal_secret",
+                ]
+            )
+            return ClientSecretCredential(
+                tenant_id=self.azure_tenant_id,
+                client_secret=self.azure_service_principal_secret,
+                client_id=self.azure_sp_client_id,
+            )
 
 
 def get_sp_secret(
