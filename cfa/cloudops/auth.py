@@ -255,6 +255,30 @@ class CredentialHandler:
         )
 
     @cached_property
+    def client_secret_credential(self):
+        """
+        A client secret credential created using
+        :obj:`self.service_principal_secret`.
+
+        Returns
+        -------
+        ClientSecretCredential
+            The credential.
+        """
+        self.require_attr(
+            [
+                "azure_tenant_id",
+                "azure_sp_client_id",
+                "azure_service_principal_secret",
+            ]
+        )
+        return ClientSecretCredential(
+            tenant_id=self.azure_tenant_id,
+            client_secret=self.azure_service_principal_secret,
+            client_id=self.azure_sp_client_id,
+        )
+
+    @cached_property
     def compute_node_identity_reference(self):
         """
         An object defining a compute node identity reference.
@@ -465,30 +489,6 @@ class SPCredentialHandler(CredentialHandler):
                 "AZURE_CLIENT_SECRET not found in env variables and not provided."
             )
         d.set_env_vars()
-
-    @cached_property
-    def client_secret_credential(self):
-        """
-        A client secret credential created using
-        :obj:`self.azure_service_principal_secret`.
-
-        Returns
-        -------
-        ClientSecretCredential
-            The credential.
-        """
-        self.require_attr(
-            [
-                "azure_tenant_id",
-                "azure_sp_client_id",
-                "azure_service_principal_secret",
-            ]
-        )
-        return ClientSecretCredential(
-            tenant_id=self.azure_tenant_id,
-            client_secret=self.azure_service_principal_secret,
-            client_id=self.azure_sp_client_id,
-        )
 
 
 def get_sp_secret(
