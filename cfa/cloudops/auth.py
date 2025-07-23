@@ -392,6 +392,7 @@ class SPCredentialHandler(CredentialHandler):
         azure_sp_client_id: str = None,
         azure_client_secret: str = None,
         dotenv_path: str = None,
+        **kwargs,
     ):
         """Initialize a Service Principal Credential Handler.
 
@@ -439,13 +440,7 @@ class SPCredentialHandler(CredentialHandler):
         """
         self.method = "sp"
         # load env vars, including client secret if available
-        if (
-            not azure_tenant_id
-            or not azure_subscription_id
-            or not azure_sp_client_id
-            or not azure_client_secret
-        ):
-            load_dotenv(dotenv_path=dotenv_path, override=True)
+        load_dotenv(dotenv_path=dotenv_path, override=True)
 
         self.azure_tenant_id = (
             azure_tenant_id
@@ -489,6 +484,11 @@ class SPCredentialHandler(CredentialHandler):
                 "AZURE_CLIENT_SECRET not found in env variables and not provided."
             )
         d.set_env_vars()
+
+        get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
+
+        for key in self.__dataclass_fields__.keys():
+            self.__setattr__(key, get_conf(key))
 
 
 def get_sp_secret(
