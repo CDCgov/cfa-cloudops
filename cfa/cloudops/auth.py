@@ -407,7 +407,7 @@ class SPCredentialHandler(CredentialHandler):
             azure_subscription_id: Azure subscription ID. If None, will attempt
                 to load from AZURE_SUBSCRIPTION_ID environment variable.
             azure_sp_client_id: Azure Service Principal client ID (application ID).
-                If None, will attempt to load from AZURE_CLIENT_ID environment variable.
+                If None, will attempt to load from AZURE_SP_CLIENT_ID environment variable.
             azure_client_secret: Azure Service Principal client secret. If None, will
                 attempt to load from AZURE_CLIENT_SECRET environment variable.
             dotenv_path: Path to .env file to load environment variables from.
@@ -418,7 +418,7 @@ class SPCredentialHandler(CredentialHandler):
                 and not provided as parameter.
             ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables
                 and not provided as parameter.
-            ValueError: If AZURE_CLIENT_ID is not found in environment variables
+            ValueError: If AZURE_SP_CLIENT_ID is not found in environment variables
                 and not provided as parameter.
             ValueError: If AZURE_CLIENT_SECRET is not found in environment variables
                 and not provided as parameter.
@@ -455,7 +455,7 @@ class SPCredentialHandler(CredentialHandler):
         self.azure_sp_client_id = (
             azure_sp_client_id
             if azure_sp_client_id is not None
-            else os.environ["AZURE_CLIENT_ID"]
+            else os.environ["AZURE_SP_CLIENT_ID"]
         )
         self.azure_client_secret = (
             azure_client_secret
@@ -475,9 +475,9 @@ class SPCredentialHandler(CredentialHandler):
             raise ValueError(
                 "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
             )
-        if "AZURE_CLIENT_ID" not in os.environ and not azure_sp_client_id:
+        if "AZURE_SP_CLIENT_ID" not in os.environ and not azure_sp_client_id:
             raise ValueError(
-                "AZURE_CLIENT_ID not found in env variables and not provided."
+                "AZURE_SP_CLIENT_ID not found in env variables and not provided."
             )
         if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
             raise ValueError(
