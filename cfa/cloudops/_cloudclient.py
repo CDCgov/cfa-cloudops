@@ -24,7 +24,7 @@ class CloudClient:
         if not use_sp:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path)
         else:
-            self.cred = SPCredentialHandler()
+            self.cred = SPCredentialHandler(dotenv_path=dotenv_path)
         # get clients
 
         self.batch_mgmt_client = get_batch_management_client(self.cred)

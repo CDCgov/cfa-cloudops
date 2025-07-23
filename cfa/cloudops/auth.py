@@ -438,7 +438,7 @@ class SPCredentialHandler(CredentialHandler):
             if azure_sp_client_id is not None
             else os.environ["AZURE_CLIENT_ID"]
         )
-        self.azure_service_principal_secret = (
+        self.service_principal_secret = (
             azure_client_secret
             if azure_client_secret is not None
             else os.environ["AZURE_CLIENT_SECRET"]
