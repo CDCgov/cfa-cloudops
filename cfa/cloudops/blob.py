@@ -202,6 +202,7 @@ def get_node_mount_config(
     shared_relative_mount_path: str = "",
     mount_names: list[str] = None,
     blobfuse_options: str | list[str] = None,
+    cache_blobfuse: bool = False,
     **kwargs,
 ) -> models.MountConfiguration:
     """
@@ -245,6 +246,9 @@ def get_node_mount_config(
     blobfuse_options
         Additional options passed to blobfuse. Default
         ``None``.
+
+    cache_blobfuse
+        Whether to cache Blob storage. Default is False.
 
     **kwargs
         Additional keyword arguments passed to the
@@ -320,6 +324,10 @@ def get_node_mount_config(
         os.path.join(shared_relative_mount_path, mount_name)
         for mount_name in mount_names
     ]
+    if cache_blobfuse:
+        blob_str = ""
+    else:
+        blob_str = " -o direct_io"
 
     return [
         models.MountConfiguration(
@@ -328,7 +336,7 @@ def get_node_mount_config(
                     account_name=account_name,
                     container_name=container_name,
                     relative_mount_path=relative_mount_path,
-                    blobfuse_options=blobfuse_options,
+                    blobfuse_options=blobfuse_options + blob_str,
                     identity_reference=identity_reference,
                     **kwargs,
                 )

@@ -132,6 +132,11 @@ class CloudClient:
                 cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
             )
 
+        # validate pool name
+        pool_name = pool_name.replace(" ", "_")
+
+        # validate vm size
+
         # Get base pool configuration
         pool_config = d.get_default_pool_config(
             pool_name=pool_name,
@@ -214,6 +219,7 @@ class CloudClient:
                 parameters=pool_config,
             )
             self.pool_name = pool_name
+            print(f"created pool: {pool_name}")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
             raise RuntimeError(error_msg)
