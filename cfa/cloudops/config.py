@@ -11,38 +11,31 @@ def try_get_val_from_dict(
     config_dict: dict,
     value_name: str = None,
 ) -> tuple[str, str]:
-    """
-    Attempt to get a configuration value from
-    a configuration dictionary. Return ``None`` along
-    with an informative failure message if this is
-    not possible.
+    """Attempt to get a configuration value from a configuration dictionary.
 
-    Parameters
-    ----------
-    key
-        Key under which to look up the value
-        in the ``config_dict``.
+    Return None along with an informative failure message if this is not possible.
 
-    config_dict
-        Dictionary of configuration keys and values
-        in which to look up the value.
+    Args:
+        key: Key under which to look up the value in the ``config_dict``.
+        config_dict: Dictionary of configuration keys and values in which to look up the value.
+        value_name: Descriptive name for the configuration value, to allow more readable
+            failure messages when the ``key`` cannot be found in ``config_dict``.
+            If None, use the value of ``key``.
 
-    value_name
-        Descriptive name for the configuration value,
-        to allow more readable failure messages
-        when the ``key`` cannot be found in ``config_dict``.
-        If ``None``, use the value of ``key``.
-        Default ``None``.
+    Returns:
+        tuple[str, str]: A tuple where the first entry is the value if it was successfully
+            retrieved and otherwise None. The second entry is None on success and otherwise
+            a description of the failure, as a string.
 
-    Returns
-    -------
-    tuple[str, str]
-        A tuple. Its first entry is the value
-        if it was successfully retrieved and
-        otherwise ``None``. Its second entry
-        is ``None`` on success and otherwise
-        a description of the failure, as a
-        string.
+    Example:
+        >>> config = {"database_url": "localhost:5432", "debug": "true"}
+        >>> value, error = try_get_val_from_dict("database_url", config)
+        >>> print(value)  # "localhost:5432"
+        >>> print(error)  # None
+
+        >>> value, error = try_get_val_from_dict("missing_key", config)
+        >>> print(value)  # None
+        >>> print(error)  # "Could not find a configuration value..."
     """
     if value_name is None:
         value_name = key
@@ -65,32 +58,31 @@ def try_get_val_from_dict(
 def try_get_val_from_env(
     env_variable_name: str, value_name: str = None
 ) -> tuple[str, str]:
-    """
-    Attempt to get a configuration value from
-    local environment variables. Return ``None`` along
-    with an informative failure message if this
-    is not possible.
+    """Attempt to get a configuration value from local environment variables.
 
-    Parameters
-    ----------
-    env_variable_name
-        Name of the environment variable to attempt to
-        retrieve.
+    Return None along with an informative failure message if this is not possible.
 
-    value_name
-        Descriptive name for the value, for more
-        readable failure messages when the
-        ``env_variable_name`` cannot be
-        located. If ``None``, use the value of
-        ``env_variable_name``. Default ``None``.
+    Args:
+        env_variable_name: Name of the environment variable to attempt to retrieve.
+        value_name: Descriptive name for the value, for more readable failure messages
+            when the ``env_variable_name`` cannot be located. If None, use the value
+            of ``env_variable_name``.
 
-    Returns
-    -------
-    tuple[str, str]
-        A tuple. Its first entry is the value of the variable
-        if it was successfully retrieved and otherwise ``None``.
-        Its second entry is ``None`` on success and otherwise
-        a description of the failure, as a string.
+    Returns:
+        tuple[str, str]: A tuple where the first entry is the value of the variable
+            if it was successfully retrieved and otherwise None. The second entry is
+            None on success and otherwise a description of the failure, as a string.
+
+    Example:
+        >>> import os
+        >>> os.environ["TEST_VAR"] = "test_value"
+        >>> value, error = try_get_val_from_env("TEST_VAR")
+        >>> print(value)  # "test_value"
+        >>> print(error)  # None
+
+        >>> value, error = try_get_val_from_env("MISSING_VAR")
+        >>> print(value)  # None
+        >>> print(error)  # "Could not find a valid configuration value..."
     """
     if value_name is None:
         value_name = env_variable_name
@@ -119,68 +111,49 @@ def get_config_val(
     env_variable_name: str = None,
     value_name: str = None,
 ) -> str:
-    """
-    Get a configuration variable from
-    a configuration dictionary and/or
-    from local environment variables.
+    """Get a configuration variable from a configuration dictionary and/or from local environment variables.
 
-    First consult a configuration dictionary,
-    if one has been provided. Then consult
-    environment variables if directed to do so.
-    If no valid value can be found, raise a
-    ``ValueError``.
+    First consult a configuration dictionary, if one has been provided. Then consult
+    environment variables if directed to do so. If no valid value can be found, raise a ValueError.
 
-    Parameters
-    ----------
-    key
-        Key under which to look up the value
-        in the ``config_dict``, if one is provided,
-        and variable name to check in the
-        environment variables, if a distinct
-        ``env_variable_name`` is not provided.
+    Args:
+        key: Key under which to look up the value in the ``config_dict``, if one is provided,
+            and variable name to check in the environment variables, if a distinct
+            ``env_variable_name`` is not provided.
+        config_dict: Dictionary of configuration keys and values in which to look up the value.
+            If None, only look in environment variables, provided ``try_env`` is True.
+        try_env: Look for the value in the environment variables if it cannot be found in the
+            ``config_dict``? If True, will look for an environment variable corresponding to
+            ``key``, but with that string converted to uppercase (i.e. the output of ``key.upper()``),
+            unless a custom name is provided via the ``env_variable_name`` argument.
+        env_variable_name: Environmental variable name to check for the variable, if it cannot
+            be found in the config. If None and ``try_env`` is True, use the value of ``key.upper()``.
+        value_name: Descriptive name for the configuration value, to produce more informative
+            error messages when a valid value cannot be found. If None, use the value of ``key``.
 
-    config_dict
-        Dictionary of configuration keys and values
-        in which to look up the value. If ``None``,
-        only look in environment variables, provided
-        ``try_env`` is ``True``.
+    Returns:
+        str: The configuration value.
 
-    try_env
-        Look for the value in the environment
-        variables if it cannot be found in the
-        ``config_dict``? Default ``True``. If
-        ``True``, with look for an environment
-        variable corresponding to ``key``,
-        but with that string converted to uppercase,
-        (i.e. the output of ``key.upper()``),
-        unless a custom name is provided via the
-        ``env_variable_name`` argument.
+    Raises:
+        ValueError: If the value cannot be found either in the configuration dictionary or in
+            an environment variable, or if ``config_dict`` is None and ``try_env`` is False.
 
-    env_variable_name
-        Environmental variable name to check
-        for the variable, if it cannot be found
-        in the config. If ``None`` and ``try_env``
-        is ``True``, use the value of
-        ``key.upper()``.
-
-    value_name
-        Descriptive name for the configuration value,
-        to produce more informative error messages
-        when a valid value cannot be found. If ``None``,
-        use the value of ``key``. Default ``None``.
-
-    Returns
-    -------
-    str
-        The configuration value.
-
-    Raises
-    ------
-    ValueError
-        If the value cannot be found either
-        in the configuration dictionary or in
-        an environment variable, or if ``config_dict``
-        is ``None`` and ``try_env`` is ``False``
+    Example:
+        >>> import os
+        >>> os.environ["DATABASE_URL"] = "localhost:5432"
+        >>>
+        >>> # Get from environment variable
+        >>> value = get_config_val("database_url")  # Looks for DATABASE_URL
+        >>> print(value)  # "localhost:5432"
+        >>>
+        >>> # Get from config dict with fallback to env
+        >>> config = {"api_key": "secret123"} #pragma: allowlist secret
+        >>> value = get_config_val("api_key", config_dict=config)
+        >>> print(value)  # "secret123"
+        >>>
+        >>> # Custom environment variable name
+        >>> value = get_config_val("db", env_variable_name="DATABASE_URL")
+        >>> print(value)  # "localhost:5432"
     """
 
     if value_name is None:

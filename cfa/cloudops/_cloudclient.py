@@ -19,6 +19,51 @@ from .job import create_job
 
 
 class CloudClient:
+    """High-level client for managing Azure Batch resources and operations.
+
+    CloudClient provides a simplified interface for creating and managing Azure Batch
+    pools, jobs, and tasks. It handles authentication, client initialization, and
+    provides convenient methods for common batch operations.
+
+    Args:
+        dotenv_path (str, optional): Path to .env file containing environment variables.
+            If None, uses default .env file discovery. Default is None.
+        use_sp (bool, optional): Whether to use Service Principal authentication (True)
+            or environment-based authentication (False). Default is False.
+        **kwargs: Additional keyword arguments passed to the credential handler.
+
+    Attributes:
+        cred: Credential handler (EnvCredentialHandler or SPCredentialHandler)
+        batch_mgmt_client: Azure Batch management client
+        compute_mgmt_client: Azure Compute management client
+        batch_service_client: Azure Batch service client
+        blob_service_client: Azure Blob storage client
+        pool_name (str): Name of the most recently created or used pool
+        save_logs_to_blob (str): Blob container name for saving task logs
+        logs_folder (str): Folder path within blob container for logs
+        task_id_ints (bool): Whether to use integer task IDs
+        task_id_max (int): Maximum task ID when using integer IDs
+
+    Example:
+        Create a client with environment-based authentication:
+
+            client = CloudClient()
+
+        Create a client with Service Principal authentication:
+
+            client = CloudClient(
+                use_sp=True,
+                dotenv_path="/path/to/.env"
+            )
+
+        Create a client with custom configuration:
+
+            client = CloudClient(
+                azure_tenant_id="custom-tenant-id",
+                azure_subscription_id="custom-sub-id"
+            )
+    """
+
     def __init__(self, dotenv_path: str = None, use_sp=False, **kwargs):
         # authenticate to get credentials
         if not use_sp:
@@ -387,20 +432,84 @@ class CloudClient:
         container_image_version: str = "latest",
         timeout: int | None = None,
     ):
-        """adds task to existing job.
+        """Add a task to an existing Azure Batch job.
+
+        Creates and adds a new task to the specified job. Tasks can have dependencies
+        on other tasks, run in containers, and have configurable timeouts and retry policies.
 
         Args:
-            job_id (str): job id
-            docker_cmd (list[str]): docker command to run
-            name_suffix (str): suffix to add to task name for task identification. Default is an empty string.
-            depends_on (list[str]): a list of tasks this task depends on. Default is None.
-            depends_on_range (tuple): range of dependent tasks when task IDs are integers, given as (start_int, end_int). Optional.
-            run_dependent_tasks_on_fail (bool): whether to run the dependent tasks if parent task fails. Default is False.
-            container (str): name of ACR container in form "registry_name/repo_name:tag_name". Default is None to use container attached to client.
-            timeout (int): timeout in minutes for task before forcing termination. Default None (infinity).
+            job_id (str): ID of the job to add the task to. The job must already exist.
+            base_call (list[str] | str): Command to execute for the task. Can be provided
+                as a list of strings (which will be joined with spaces) or as a single
+                command string.
+            task_id (str, optional): Unique identifier for the task within the job.
+                If None, a task ID will be auto-generated. Must be unique within the job.
+            depends_on (list[str], optional): List of task IDs that this task depends on.
+                The task will not start until all dependency tasks have completed successfully.
+                Only works if the job was created with uses_deps=True.
+            depends_on_range (tuple, optional): Range of dependent tasks when task IDs are
+                integers, specified as (start_int, end_int). Alternative to depends_on for
+                jobs using integer task IDs.
+            run_dependent_tasks_on_fail (bool, optional): Whether dependent tasks should
+                run even if this task fails. Default is False (dependent tasks only run
+                on success).
+            container_image_name (str, optional): Docker container image to use for the task.
+                Should be in format "registry/image" or "image" for Docker Hub. If None,
+                uses the container configured at the pool level.
+            container_image_version (str, optional): Version/tag of the container image.
+                Default is "latest".
+            timeout (int, optional): Maximum time in minutes the task can run before being
+                terminated. If None, no timeout is applied (task can run indefinitely).
 
         Returns:
-            str: task ID created
+            str: The task ID that was created or assigned.
+
+        Raises:
+            RuntimeError: If the task creation fails due to Azure Batch service errors,
+                authentication issues, or invalid parameters.
+            ValueError: If the job_id does not exist, task_id conflicts with existing task,
+                or if dependency configuration is invalid.
+
+        Example:
+            Add a simple task:
+
+                task_id = client.add_task(
+                    job_id="my-job",
+                    base_call=["python", "script.py", "--input", "data.txt"]
+                )
+
+            Add a task with dependencies:
+
+                task_id = client.add_task(
+                    job_id="pipeline-job",
+                    base_call="python preprocess.py",
+                    task_id="preprocess-task",
+                    timeout=30
+                )
+
+                dependent_task_id = client.add_task(
+                    job_id="pipeline-job",
+                    base_call="python analyze.py",
+                    task_id="analysis-task",
+                    depends_on=["preprocess-task"],
+                    container_image_name="myregistry/analytics",
+                    container_image_version="v2.1"
+                )
+
+            Add task with integer ID dependencies:
+
+                task_id = client.add_task(
+                    job_id="bulk-job",
+                    base_call="python process_chunk.py",
+                    depends_on_range=(1, 10),  # Depends on tasks 1-10
+                    timeout=60
+                )
+
+        Note:
+            - Task dependencies only work if the job was created with uses_deps=True
+            - Container images must be accessible from the compute nodes
+            - Task IDs must be unique within the job
+            - Command execution occurs in the task's working directory on the compute node
         """
         if isinstance(base_call, list):
             base_call = " ".join(base_call)

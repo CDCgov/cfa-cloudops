@@ -12,24 +12,28 @@ def remaining_task_autoscale_formula(
     task_sample_interval_minutes: int = 15,
     max_number_vms: int = 10,
 ):
-    """
-    Get an autoscaling formula that rescales pools based on the remaining task count.
+    """Get an autoscaling formula that rescales pools based on the remaining task count.
 
-    Parameters
-    ----------
-    task_sample_interval_minutes
-        Task sampling interval, in minutes, as an integer.
-        Default 15.
+    Args:
+        task_sample_interval_minutes: Task sampling interval, in minutes, as an integer.
+            Defaults to 15.
+        max_number_vms: Maximum number of virtual machines to spin up, regardless of
+            the number of remaining tasks. Defaults to 10.
 
-    max_number_vms
-        Maximum number of virtual machines to spin
-        up, regardless of the number of remaining
-        tasks. Default 10.
+    Returns:
+        str: The autoscale formula, as a string.
 
-    Returns
-    -------
-    str
-        The autoscale formula, as a string.
+    Example:
+        >>> # Default settings (15 min interval, max 10 VMs)
+        >>> formula = remaining_task_autoscale_formula()
+        >>> print(type(formula))  # <class 'str'>
+
+        >>> # Custom settings
+        >>> formula = remaining_task_autoscale_formula(
+        ...     task_sample_interval_minutes=30,
+        ...     max_number_vms=20
+        ... )
+        >>> print("cappedPoolSize = 20" in formula)  # True
     """
     autoscale_formula_template = """// In this example, the pool size
     // is adjusted based on the number of tasks in the queue.
@@ -120,6 +124,19 @@ default_pool_config_dict = dict(
 
 
 def set_env_vars():
+    """Set default Azure environment variables.
+
+    Sets default values for Azure service endpoints and creates new variables
+    as a function of existing environment variables.
+
+    Example:
+        >>> import os
+        >>> set_env_vars()
+        >>> print(os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"])
+        'batch.azure.com/'
+        >>> print(os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"])
+        'azurecr.io'
+    """
     # save default values
     os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"] = "batch.azure.com/"
     os.environ["AZURE_BATCH_RESOURCE_URL"] = "https://batch.core.windows.net/"
@@ -146,23 +163,24 @@ def set_env_vars():
 def get_default_pool_identity(
     user_assigned_identity: str,
 ) -> models.BatchPoolIdentity:
-    """
-    Get the default :class:`models.BatchPoolIdentity`
-    instance for azuretools (which associates a blank
-    `class:`models.UserAssignedIdentities` instance
-    to the provided ``user_assigned_identity``
-    string.
+    """Get the default BatchPoolIdentity instance for azuretools.
 
-    Parameters
-    ----------
-    user_assigned_identity
-        User-assigned identity, as a string.
+    Associates a blank UserAssignedIdentities instance to the provided
+    user_assigned_identity string.
 
-    Returns
-    -------
-    models.BatchPoolIdentity
-        Instantiated :class:`BatchPoolIdentity`` instance
-        using the provided user-assigned identity.
+    Args:
+        user_assigned_identity: User-assigned identity, as a string.
+
+    Returns:
+        models.BatchPoolIdentity: Instantiated BatchPoolIdentity instance
+            using the provided user-assigned identity.
+
+    Example:
+        >>> identity = get_default_pool_identity(
+        ...     "/subscriptions/.../resourceGroups/.../providers/..."
+        ... )
+        >>> print(identity.type)
+        <PoolIdentityType.user_assigned: 'UserAssigned'>
     """
     return models.BatchPoolIdentity(
         type=models.PoolIdentityType.user_assigned,
@@ -175,38 +193,36 @@ def get_default_pool_identity(
 def get_default_pool_config(
     pool_name: str, subnet_id: str, user_assigned_identity: str, **kwargs
 ) -> models.Pool:
-    """
-    Instantiate a :class:`azure.mgmt.batch.models.Pool`
-    instance with the given pool name and subnet id,
-    the default pool identity given by
-    :func:`get_default_pool_identity`, and other defaults
-    specified in :obj:`default_pool_config_dict` and
-    :obj:`default_network_config_dict`.
+    """Instantiate a Pool instance with default configuration.
 
-    Parameters
-    ----------
-    pool_name
-        Name for the pool. Passed as the ``display_name``
-        argument to the :class:`models.Pool` constructor.
+    Creates a Pool with the given pool name and subnet id, the default pool identity
+    given by get_default_pool_identity, and other defaults specified in
+    default_pool_config_dict and default_network_config_dict.
 
-    subnet_id
-        Subnet id for the pool, as a string. Should typically
-        be obtained from a configuration file or an environment
-        variable, often via a :class:`CredentialHandler` instance.
+    Args:
+        pool_name: Name for the pool. Passed as the ``display_name`` argument
+            to the Pool constructor.
+        subnet_id: Subnet id for the pool, as a string. Should typically be obtained
+            from a configuration file or an environment variable, often via a
+            CredentialHandler instance.
+        user_assigned_identity: User-assigned identity for the pool, as a string.
+            Passed to get_default_pool_identity.
+        **kwargs: Additional keyword arguments passed to the Pool constructor,
+            potentially overriding settings from default_pool_config_dict.
 
-    user_assigned_identity
-        User-assigned identity for the pool, as a string.
-        Passed to :func:`get_default_pool_identity`.
+    Returns:
+        models.Pool: The instantiated Pool object.
 
-    **kwargs
-        Additional keyword arguments passed to the
-        :class:`models.Pool` constructor, potentially
-        overriding settings from :obj:`default_pool_config_dict`.
-
-    Returns
-    -------
-    models.Pool
-       The instantiated :class:`models.Pool` object.
+    Example:
+        >>> pool = get_default_pool_config(
+        ...     pool_name="my-batch-pool",
+        ...     subnet_id="/subscriptions/.../subnets/default",
+        ...     user_assigned_identity="/subscriptions/.../resourceGroups/..."
+        ... )
+        >>> print(pool.display_name)
+        'my-batch-pool'
+        >>> print(pool.vm_size)
+        'standard_d4s_v3'
     """
     return models.Pool(
         identity=get_default_pool_identity(user_assigned_identity),
@@ -221,23 +237,23 @@ def get_default_pool_config(
 def assign_container_config(
     pool_config: models.Pool, container_config: models.ContainerConfiguration
 ) -> models.Pool:
-    """
-    Assign a container configuration to a models.Pool object
-    (in place).
+    """Assign a container configuration to a Pool object (in place).
 
-    Parameters
-    ----------
-    pool_config
-        :class:`models.Pool` configuration object to modify.
+    Args:
+        pool_config: Pool configuration object to modify.
+        container_config: ContainerConfiguration object to add to the Pool
+            configuration object.
 
-    container_config
-        :class:`models.ContainerConfiguration` object to
-        add to the :class:`models.Pool` configuration object.
+    Returns:
+        models.Pool: The modified Pool object.
 
-    Returns
-    -------
-    models.Pool
-        The modified :class:`models.Pool` object.
+    Example:
+        >>> from azure.mgmt.batch import models
+        >>> pool = get_default_pool_config("test", "subnet", "identity")
+        >>> container_config = models.ContainerConfiguration(type="dockerCompatible")
+        >>> modified_pool = assign_container_config(pool, container_config)
+        >>> # Pool is modified in place and returned
+        >>> assert modified_pool is pool
     """
     (
         pool_config.deployment_configuration.virtual_machine_configuration.container_configuration

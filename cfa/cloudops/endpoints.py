@@ -8,24 +8,23 @@ import cfa.cloudops.defaults as d
 
 
 def _construct_https_url(netloc: str, path: str = "") -> str:
-    """
-    Construct a simple https URL via
-    :func:`urllib.parse.urlunparse`.
+    """Construct a simple https URL via urllib.parse.urlunparse.
 
-    Parameters
-    ----------
-    netloc
-        ``netloc`` value for :func:`~urllib.parse.urlunparse`
-        (subdomains and domain).
+    Args:
+        netloc: netloc value for urlunparse (subdomains and domain).
+        path: path value for urlunparse (path after the domain).
 
-    path
-        ``path`` value for :func:`~urllib.parse.urlunparse`
-        (path after the domain).
+    Returns:
+        str: The URL, as a string.
 
-    Returns
-    -------
-    str
-        The URL, as a string.
+    Example:
+        >>> url = _construct_https_url("example.com", "/api/v1")
+        >>> print(url)
+        'https://example.com/api/v1'
+
+        >>> url = _construct_https_url("subdomain.example.com")
+        >>> print(url)
+        'https://subdomain.example.com'
     """
     return urlunparse(
         [
@@ -44,28 +43,25 @@ def construct_batch_endpoint(
     batch_location: str,
     batch_endpoint_subdomain: str = d.default_azure_batch_endpoint_subdomain,
 ) -> str:
-    """
-    Construct an Azure Batch endpoint URL from
-    the account name, location, and subdomain.
+    """Construct an Azure Batch endpoint URL from the account name, location, and subdomain.
 
-    Parameters
-    ----------
-    batch_account
-        Name of the Azure batch account.
+    Args:
+        batch_account: Name of the Azure batch account.
+        batch_location: Location of the Azure batch servers, e.g. "eastus".
+        batch_endpoint_subdomain: Azure batch endpoint subdomains and domains
+            that follow the account and location, e.g. "batch.azure.com/", the default.
 
-    batch_location
-        Location of the Azure batch servers,
-        e.g. ``"eastus"``.
+    Returns:
+        str: The endpoint URL.
 
-    batch_endpoint_subdomain
-        Azure batch endpoint subdomains and domains
-        that follow the account and location, e.g.
-        ``"batch.azure.com/"``, the default.
+    Example:
+        >>> url = construct_batch_endpoint("mybatch", "eastus")
+        >>> print(url)
+        'https://mybatch.eastus.batch.azure.com/'
 
-    Returns
-    -------
-    str
-        The endpoint URL.
+        >>> url = construct_batch_endpoint("mybatch", "westus", "custom.domain.com/")
+        >>> print(url)
+        'https://mybatch.westus.custom.domain.com/'
     """
     return _construct_https_url(
         f"{batch_account}.{batch_location}.{batch_endpoint_subdomain}"
@@ -76,23 +72,24 @@ def construct_azure_container_registry_endpoint(
     azure_container_registry_account: str,
     azure_container_registry_domain: str = d.default_azure_container_registry_domain,
 ) -> str:
-    """
-    Construct an Azure container registry endpoint URL
-    from the account name, location, and subdomain.
+    """Construct an Azure container registry endpoint URL from the account name and domain.
 
-    Parameters
-    ----------
-    azure_container_registry_account
-        Name of the Azure container registry account.
+    Args:
+        azure_container_registry_account: Name of the Azure container registry account.
+        azure_container_registry_domain: Domain for the Azure container registry.
+            Typically "azurecr.io", the default.
 
-    azure_container_registry_domain
-        Domain for the Azure container registry. Typically
-        ``"azurecr.io"``, the default.
+    Returns:
+        str: The registry endpoint URL.
 
-    Returns
-    -------
-    str
-        The registry endpoint URL.
+    Example:
+        >>> url = construct_azure_container_registry_endpoint("myregistry")
+        >>> print(url)
+        'https://myregistry.azurecr.io'
+
+        >>> url = construct_azure_container_registry_endpoint("myregistry", "custom.domain.io")
+        >>> print(url)
+        'https://myregistry.custom.domain.io'
     """
     return _construct_https_url(
         f"{azure_container_registry_account}.{azure_container_registry_domain}"
@@ -103,23 +100,24 @@ def construct_blob_account_endpoint(
     blob_account: str,
     blob_endpoint_subdomain: str = d.default_azure_blob_storage_endpoint_subdomain,
 ) -> str:
-    """
-    Construct an Azure blob storage account endpoint URL.
+    """Construct an Azure blob storage account endpoint URL.
 
-    Parameters
-    ----------
-    blob_account
-        Name of the Azure blob storage account.
+    Args:
+        blob_account: Name of the Azure blob storage account.
+        blob_endpoint_subdomain: Azure blob endpoint subdomains and domains
+            that follow the account, e.g. "blob.core.windows.net/", the default.
 
-    blob_endpoint_subdomain
-        Azure batch endpoint subdomains and domains
-        that follow the account, e.g.
-        ``"blob.core.windows.net/"``, the default.
+    Returns:
+        str: The endpoint URL.
 
-    Returns
-    -------
-    str
-       The endpoint URL.
+    Example:
+        >>> url = construct_blob_account_endpoint("mystorageaccount")
+        >>> print(url)
+        'https://mystorageaccount.blob.core.windows.net/'
+
+        >>> url = construct_blob_account_endpoint("mystorageaccount", "custom.blob.domain/")
+        >>> print(url)
+        'https://mystorageaccount.custom.blob.domain/'
     """
     return _construct_https_url(f"{blob_account}.{blob_endpoint_subdomain}")
 
@@ -129,27 +127,27 @@ def construct_blob_container_endpoint(
     blob_account: str,
     blob_endpoint_subdomain: str = d.default_azure_blob_storage_endpoint_subdomain,
 ) -> str:
-    """
-    Construct an endpoint URL for a blob storage container
-    from the container name, account name, and endpoint subdomain.
+    """Construct an endpoint URL for a blob storage container.
 
-    Parameters
-    ----------
-    blob_container
-        Name of the blob storage container.
+    Constructs the URL from the container name, account name, and endpoint subdomain.
 
-    blob_account
-        Name of the Azure blob storage account.
+    Args:
+        blob_container: Name of the blob storage container.
+        blob_account: Name of the Azure blob storage account.
+        blob_endpoint_subdomain: Azure Blob endpoint subdomains and domains
+            that follow the account name, e.g. "blob.core.windows.net/", the default.
 
-    blob_endpoint_subdomain
-        Azure Blob endpoint subdomains and domains
-        that follow the account name, e.g.
-        ``"blob.core.windows.net/"``, the default.
+    Returns:
+        str: The endpoint URL.
 
-    Returns
-    -------
-    str
-       The endpoint URL.
+    Example:
+        >>> url = construct_blob_container_endpoint("mycontainer", "mystorageaccount")
+        >>> print(url)
+        'https://mystorageaccount.blob.core.windows.net/mycontainer'
+
+        >>> url = construct_blob_container_endpoint("data", "storage", "custom.blob.domain/")
+        >>> print(url)
+        'https://storage.custom.blob.domain/data'
     """
     return urljoin(
         construct_blob_account_endpoint(blob_account, blob_endpoint_subdomain),
@@ -158,22 +156,28 @@ def construct_blob_container_endpoint(
 
 
 def is_valid_acr_endpoint(endpoint: str) -> tuple[bool, str]:
-    """
-    Check whether an Azure container
-    registry endpoint is valid given
-    CFA ACR configurations.
+    """Check whether an Azure container registry endpoint is valid given CFA ACR configurations.
 
-    Parameters
-    ----------
-    endpoint
-        Azure Container Registry endpoint to validate.
+    Args:
+        endpoint: Azure Container Registry endpoint to validate.
 
-    Returns
-    -------
-    tuple[bool, str]
-        First entry: ``True`` if validation passes, else ``False``.
-        Second entry: ``None`` if validation passes, else
-        a string indicating what failed validation.
+    Returns:
+        tuple[bool, str]: First entry: True if validation passes, else False.
+            Second entry: None if validation passes, else a string indicating
+            what failed validation.
+
+    Example:
+        >>> valid, error = is_valid_acr_endpoint("https://myregistry.azurecr.io")
+        >>> print(valid)  # True
+        >>> print(error)  # None
+
+        >>> valid, error = is_valid_acr_endpoint("https://myregistry.azurecr.io/")
+        >>> print(valid)  # False
+        >>> print("trailing slash" in error)  # True
+
+        >>> valid, error = is_valid_acr_endpoint("https://azurecr.io")
+        >>> print(valid)  # False
+        >>> print("subdomain" in error)  # True
     """
     if endpoint.endswith("/"):
         return (

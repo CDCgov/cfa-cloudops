@@ -13,33 +13,28 @@ from .auth import CredentialHandler, EnvCredentialHandler
 def get_batch_management_client(
     credential_handler: CredentialHandler = None, **kwargs
 ) -> BatchManagementClient:
-    """
-    Get an Azure Batch management client using
-    credentials obtained via a :class:`CredentialHandler`,
-    either a user-provided one or a default based on
-    environment variables.
+    """Get an Azure Batch management client using credentials from a CredentialHandler.
 
-    Parameters
-    ----------
-    credential_handler
-       Credential handler for connecting and
-       authenticating to Azure resources.
-       If ``None``, create a blank
-       :class:`EnvCredentialHandler`, which
-       attempts to obtain needed credentials
-       using information available in local
-       environment variables (see its documentation
-       for details).
+    Uses credentials obtained via a CredentialHandler: either a user-provided one
+    or a default based on environment variables.
 
-    **kwargs
-       Additional keyword arguments passed to
-       the :class:`BatchManagementClient` constructor.
+    Args:
+        credential_handler: Credential handler for connecting and authenticating to
+            Azure resources. If None, create a blank EnvCredentialHandler, which
+            attempts to obtain needed credentials using information available in
+            local environment variables (see its documentation for details).
+        **kwargs: Additional keyword arguments passed to the BatchManagementClient constructor.
 
-    Returns
-    -------
-    BatchManagementClient
-        A client instaniated according to
-        the specified configuration.
+    Returns:
+        BatchManagementClient: A client instantiated according to the specified configuration.
+
+    Example:
+        >>> # Using default environment-based credentials
+        >>> client = get_batch_management_client()
+
+        >>> # Using custom credential handler
+        >>> handler = CredentialHandler()
+        >>> client = get_batch_management_client(credential_handler=handler)
     """
 
     ch = credential_handler
@@ -62,33 +57,28 @@ def get_batch_management_client(
 def get_compute_management_client(
     credential_handler: CredentialHandler = None, **kwargs
 ) -> ComputeManagementClient:
-    """
-    Get an Azure compute management client using
-    credentials obtained via a :class:`CredentialHandler`,
-    either a user-provided one or a default based on
-    environment variables.
+    """Get an Azure compute management client using credentials from a CredentialHandler.
 
-    Parameters
-    ----------
-    credential_handler
-       Credential handler for connecting and
-       authenticating to Azure resources.
-       If ``None``, create a blank
-       :class:`EnvCredentialHandler`, which
-       attempts to obtain needed credentials
-       using information available in local
-       environment variables (see its documentation
-       for details).
+    Uses credentials obtained via a CredentialHandler: either a user-provided one
+    or a default based on environment variables.
 
-    **kwargs
-       Additional keyword arguments passed to
-       the :class:`ComputeManagementClient` constructor.
+    Args:
+        credential_handler: Credential handler for connecting and authenticating to
+            Azure resources. If None, create a blank EnvCredentialHandler, which
+            attempts to obtain needed credentials using information available in
+            local environment variables (see its documentation for details).
+        **kwargs: Additional keyword arguments passed to the ComputeManagementClient constructor.
 
-    Returns
-    -------
-    ComputeManagementClient
-        A client instaniated according to
-        the specified configuration.
+    Returns:
+        ComputeManagementClient: A client instantiated according to the specified configuration.
+
+    Example:
+        >>> # Using default environment-based credentials
+        >>> client = get_compute_management_client()
+
+        >>> # Using custom credential handler
+        >>> handler = CredentialHandler()
+        >>> client = get_compute_management_client(credential_handler=handler)
     """
     ch = credential_handler
     if ch is None:
@@ -110,33 +100,28 @@ def get_compute_management_client(
 def get_batch_service_client(
     credential_handler: CredentialHandler = None, **kwargs
 ) -> BatchServiceClient:
-    """
-    Get an Azure batch service client using
-    credentials obtained via a :class:`CredentialHandler`,
-    either a user-provided one or a default based on
-    environment variables.
+    """Get an Azure batch service client using credentials from a CredentialHandler.
 
-    Parameters
-    ----------
-    credential_handler
-       Credential handler for connecting and
-       authenticating to Azure resources.
-       If ``None``, create a blank
-       :class:`EnvCredentialHandler`, which
-       attempts to obtain needed credentials
-       using information available in local
-       environment variables (see its documentation
-       for details).
+    Uses credentials obtained via a CredentialHandler: either a user-provided one
+    or a default based on environment variables.
 
-    **kwargs
-       Additional keyword arguments passed to
-       the :class:`BatchServiceClient` constructor.
+    Args:
+        credential_handler: Credential handler for connecting and authenticating to
+            Azure resources. If None, create a blank EnvCredentialHandler, which
+            attempts to obtain needed credentials using information available in
+            local environment variables (see its documentation for details).
+        **kwargs: Additional keyword arguments passed to the BatchServiceClient constructor.
 
-    Returns
-    -------
-    BatchServiceClient
-        A client instaniated according to
-        the specified configuration.
+    Returns:
+        BatchServiceClient: A client instantiated according to the specified configuration.
+
+    Example:
+        >>> # Using default environment-based credentials
+        >>> client = get_batch_service_client()
+
+        >>> # Using custom credential handler
+        >>> handler = CredentialHandler()
+        >>> client = get_batch_service_client(credential_handler=handler)
     """
     ch = credential_handler
     if ch is None:
@@ -158,33 +143,28 @@ def get_batch_service_client(
 def get_blob_service_client(
     credential_handler: CredentialHandler = None, **kwargs
 ) -> BlobServiceClient:
-    """
-    Get an Azure blob service client using
-    credentials obtained via a :class:`CredentialHandler`,
-    either a user-provided one or a default based on
-    environment variables.
+    """Get an Azure blob service client using credentials from a CredentialHandler.
 
-    Parameters
-    ----------
-    credential_handler
-       Credential handler for connecting and
-       authenticating to Azure resources.
-       If ``None``, create a blank
-       :class:`EnvCredentialHandler`, which
-       attempts to obtain needed credentials
-       using information available in local
-       environment variables (see its documentation
-       for details).
+    Uses credentials obtained via a CredentialHandler: either a user-provided one
+    or a default based on environment variables.
 
-    **kwargs
-       Additional keyword arguments passed to
-       the :class:`BlobServiceClient` constructor.
+    Args:
+        credential_handler: Credential handler for connecting and authenticating to
+            Azure resources. If None, create a blank EnvCredentialHandler, which
+            attempts to obtain needed credentials using information available in
+            local environment variables (see its documentation for details).
+        **kwargs: Additional keyword arguments passed to the BlobServiceClient constructor.
 
-    Returns
-    -------
-    BlobServiceClient
-        A client instaniated according to
-        the specified configuration.
+    Returns:
+        BlobServiceClient: A client instantiated according to the specified configuration.
+
+    Example:
+        >>> # Using default environment-based credentials
+        >>> client = get_blob_service_client()
+
+        >>> # Using custom credential handler
+        >>> handler = CredentialHandler()
+        >>> client = get_blob_service_client(credential_handler=handler)
     """
     ch = credential_handler
     if ch is None:

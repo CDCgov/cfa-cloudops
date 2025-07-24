@@ -30,10 +30,9 @@ from cfa.cloudops.util import ensure_listlike
 
 @dataclass
 class CredentialHandler:
-    """
-    Data structure for Azure credentials.
-    Lazy and cached: credentials are retrieved
-    from a keyvault only when needed
+    """Data structure for Azure credentials.
+
+    Lazy and cached: credentials are retrieved from a keyvault only when needed
     and are cached thereafter.
     """
 
@@ -64,31 +63,22 @@ class CredentialHandler:
     method = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
-        """
-        Check that attributes required for a given operation are defined.
+        """Check that attributes required for a given operation are defined.
+
         Raises an informative error message if the required attribute is not defined.
 
-        Parameters
-        ----------
-        attributes
-            String of list of strings naming the required
-            attribute(s).
+        Args:
+            attributes: String or list of strings naming the required attribute(s).
+            goal: String naming the value that the attributes are required for obtaining,
+                to make error messages more informative. If None, use a more generic message.
 
-        goal
-            String naming the value that the attributes
-            are required for obtaining, to make error
-            messages more informative. If ``None``,
-            use a more generic message. Default ``None``.
+        Raises:
+            AttributeError: If any required ``attributes`` are None.
 
-        Returns
-        -------
-        None
-            ``None`` on success.
-
-        Raises
-        ------
-        AttributeError
-            If any required ``attributes`` are ``None``.
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.require_attr(["azure_tenant_id"], "authentication")
+            AttributeError: A non-None value for attribute azure_tenant_id is required...
         """
         attributes = ensure_listlike(attributes)
         for attr in attributes:
@@ -105,15 +95,20 @@ class CredentialHandler:
 
     @property
     def azure_batch_endpoint(self) -> str:
-        """
-        Azure batch endpoint URL.
-        Constructed programmatically from account
-        name, location, and subdomain.
+        """Azure batch endpoint URL.
 
-        Returns
-        -------
-        str
-           The endpoint URL.
+        Constructed programmatically from account name, location, and subdomain.
+
+        Returns:
+            str: The endpoint URL.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.azure_batch_account = "mybatchaccount"
+            >>> handler.azure_batch_location = "eastus"
+            >>> handler.azure_batch_endpoint_subdomain = "batch.azure.com"
+            >>> handler.azure_batch_endpoint
+            'https://mybatchaccount.eastus.batch.azure.com'
         """
         self.require_attr(
             [
@@ -131,15 +126,19 @@ class CredentialHandler:
 
     @property
     def azure_blob_storage_endpoint(self) -> str:
-        """
-        Azure blob storage endpoint URL.
-        Constructed programmatically from the
-        account name and endpoint subdomain.
+        """Azure blob storage endpoint URL.
 
-        Returns
-        -------
-        str
-           The endpoint URL.
+        Constructed programmatically from the account name and endpoint subdomain.
+
+        Returns:
+            str: The endpoint URL.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.azure_blob_storage_account = "mystorageaccount"
+            >>> handler.azure_blob_storage_endpoint_subdomain = "blob.core.windows.net"
+            >>> handler.azure_blob_storage_endpoint
+            'https://mystorageaccount.blob.core.windows.net'
         """
         self.require_attr(
             [
@@ -155,15 +154,19 @@ class CredentialHandler:
 
     @property
     def azure_container_registry_endpoint(self) -> str:
-        """
-        Azure container registry endpoint URL.
-        Constructed programmatically from the account name
-        and registry domain.
+        """Azure container registry endpoint URL.
 
-        Returns
-        -------
-        str
-           The endpoint URL.
+        Constructed programmatically from the account name and registry domain.
+
+        Returns:
+            str: The endpoint URL.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.azure_container_registry_account = "myregistry"
+            >>> handler.azure_container_registry_domain = "azurecr.io"
+            >>> handler.azure_container_registry_endpoint
+            'myregistry.azurecr.io'
         """
         self.require_attr(
             [
@@ -179,26 +182,31 @@ class CredentialHandler:
 
     @cached_property
     def user_credential(self) -> ChainedTokenCredential:
-        """
-        Azure user credential.
+        """Azure user credential.
 
-        Returns
-        -------
-        ChainedTokenCredential
-            The Azure user credential.
+        Returns:
+            ChainedTokenCredential: The Azure user credential using ManagedIdentityCredential.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> credential = handler.user_credential
+            >>> # Use credential with Azure SDK clients
         """
         credential_order = (ManagedIdentityCredential(),)
         return ChainedTokenCredential(*credential_order)
 
     @cached_property
     def service_principal_secret(self):
-        """
-        A service principal secret.
+        """A service principal secret retrieved from Azure Key Vault.
 
-        Returns
-        -------
-        str
-            The secret.
+        Returns:
+            str: The secret value.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.azure_keyvault_endpoint = "https://myvault.vault.azure.net/"
+            >>> handler.azure_keyvault_sp_secret_id = "my-secret"
+            >>> secret = handler.service_principal_secret
         """
         self.require_attr(
             ["azure_keyvault_endpoint", "azure_keyvault_sp_secret_id"],
@@ -213,13 +221,16 @@ class CredentialHandler:
 
     @cached_property
     def batch_service_principal_credentials(self):
-        """
-        Service Principal credentials for authenticating to Azure Batch.
+        """Service Principal credentials for authenticating to Azure Batch.
 
-        Returns
-        -------
-        ServicePrincipalCredentials
-            The credentials.
+        Returns:
+            ServicePrincipalCredentials: The credentials configured for Azure Batch access.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> # Set required attributes...
+            >>> credentials = handler.batch_service_principal_credentials
+            >>> # Use with Azure Batch client
         """
         self.require_attr(
             [
@@ -238,14 +249,16 @@ class CredentialHandler:
 
     @cached_property
     def client_secret_sp_credential(self):
-        """
-        A client secret credential created using
-        :obj:`self.service_principal_secret`.
+        """A client secret credential created using the service principal secret.
 
-        Returns
-        -------
-        ClientSecretCredential
-            The credential.
+        Returns:
+            ClientSecretCredential: The credential configured with service principal details.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> # Set required attributes...
+            >>> credential = handler.client_secret_sp_credential
+            >>> # Use with Azure SDK clients
         """
         self.require_attr(["azure_tenant_id", "azure_sp_client_id"])
         return ClientSecretCredential(
@@ -256,14 +269,17 @@ class CredentialHandler:
 
     @cached_property
     def client_secret_credential(self):
-        """
-        A client secret credential created using
-        :obj:`self.service_principal_secret`.
+        """A client secret credential created using the azure_client_secret attribute.
 
-        Returns
-        -------
-        ClientSecretCredential
-            The credential.
+        Returns:
+            ClientSecretCredential: The credential configured with client secret details.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.azure_tenant_id = "tenant-id"
+            >>> handler.azure_sp_client_id = "client-id"
+            >>> handler.azure_client_secret = "client-secret" #pragma: allowlist secret
+            >>> credential = handler.client_secret_credential
         """
         self.require_attr(
             [
@@ -280,17 +296,18 @@ class CredentialHandler:
 
     @cached_property
     def compute_node_identity_reference(self):
-        """
-        An object defining a compute node identity reference.
+        """An object defining a compute node identity reference.
 
-        Specifically, a :class:`models.ComputeNodeIdentityReference`
-        object associated to the :class:`CredentialHandler`'s
-        user-assigned identity.
+        Specifically, a ComputeNodeIdentityReference object associated to the
+        CredentialHandler's user-assigned identity.
 
-        Returns
-        -------
-        models.ComputeNodeIdentityReference
-            The identity reference.
+        Returns:
+            models.ComputeNodeIdentityReference: The identity reference.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> handler.azure_user_assigned_identity = "/subscriptions/.../resourceGroups/..."
+            >>> identity_ref = handler.compute_node_identity_reference
         """
         self.require_attr(
             ["azure_user_assigned_identity"],
@@ -302,21 +319,23 @@ class CredentialHandler:
 
     @cached_property
     def azure_container_registry(self):
-        """
-        An object pointing to an Azure Container Registry.
+        """An object pointing to an Azure Container Registry.
 
-        Specifically, a :class:`models.ContainerRegistry` instance
-        corresponding to the particular Azure Container
-        Registry account specified in the
-        :class:`CredentialHandler`, if any, with authentication
-        via the ``compute_node_identity_reference`` defined by
-        :class:`CredentialHandler`, if any.
+        Specifically, a ContainerRegistry instance corresponding to the particular
+        Azure Container Registry account specified in the CredentialHandler, if any,
+        with authentication via the compute_node_identity_reference defined by
+        CredentialHandler, if any.
 
-        Returns
-        -------
-        models.ContainerRegistry
-            A properly instantiated :class:`models.ContainerRegistry`
-            object.
+        Returns:
+            models.ContainerRegistry: A properly instantiated ContainerRegistry object.
+
+        Raises:
+            ValueError: If the container registry endpoint is invalid.
+
+        Example:
+            >>> handler = CredentialHandler()
+            >>> # Set required attributes...
+            >>> registry = handler.azure_container_registry
         """
         self.require_attr(
             [
@@ -341,27 +360,29 @@ class CredentialHandler:
 
 
 class EnvCredentialHandler(CredentialHandler):
-    """
-    Azure Credentials populated from available environment variables.
+    """Azure Credentials populated from available environment variables.
 
-    Subclass of :class:`CredentialHandler` that populates attributes
-    from environment variables at instantiation, with the opportunity
-    to override those values via keyword arguments passed to the
-    constructor.
+    Subclass of CredentialHandler that populates attributes from environment
+    variables at instantiation, with the opportunity to override those values
+    via keyword arguments passed to the constructor.
 
-    Parameters
-    ----------
-    **kwargs
-        Keyword arguments defining additional attributes
-        or overriding those set in the environment variables.
-        Passed as the ``config_dict`` argument to
-        :func:`config.get_config_val`.
+    Args:
+        **kwargs: Keyword arguments defining additional attributes or overriding
+            those set in the environment variables. Passed as the ``config_dict``
+            argument to ``config.get_config_val``.
+
+    Example:
+        >>> # Load from environment variables
+        >>> handler = EnvCredentialHandler()
+
+        >>> # Override specific values
+        >>> handler = EnvCredentialHandler(azure_tenant_id="custom-tenant-id")
     """
 
     def __init__(self, **kwargs) -> None:
-        # numpydoc ignor e=PR01
-        """
-        Default constructor.
+        """Initialize the EnvCredentialHandler.
+
+        Loads environment variables and populates credential attributes from them.
         """
         load_env_vars(dotenv_path=None)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
@@ -371,6 +392,18 @@ class EnvCredentialHandler(CredentialHandler):
 
 
 def load_env_vars(dotenv_path=None):
+    """Load environment variables and Azure subscription information.
+
+    Loads variables from a .env file (if specified), retrieves Azure subscription
+    information using ManagedIdentityCredential, and sets default environment variables.
+
+    Args:
+        dotenv_path: Path to .env file to load. If None, uses default .env file discovery.
+
+    Example:
+        >>> load_env_vars()  # Load from default .env
+        >>> load_env_vars("/path/to/.env")  # Load from specific file
+    """
     load_dotenv(dotenv_path=dotenv_path, override=True)
     # get ManagedIdentityCredential to pull SubscriptionClient
     mid_cred = ManagedIdentityCredential()
@@ -496,29 +529,25 @@ def get_sp_secret(
     vault_sp_secret_id: str,
     user_credential: ChainedTokenCredential = None,
 ) -> str:
-    """
-    Get a service principal secret from an Azure keyvault.
+    """Get a service principal secret from an Azure keyvault.
 
-    Parameters
-    ----------
-    vault_url
-       URL for the Azure keyvault to access.
-    vault_sp_secret_id
-       Service principal secret ID within the keyvault.
-    user_credential
-       User credential for the Azure user, as an
-       azure-identity :class:`UserCredential` class instance.
-       If `None`, attempt to use a :class:`ChainedTokenCredential`
-       instantiated at runtime that prefers, in order,
-       a newly instantiated :class:`AzureCliCredential` (get
-       credentials associated to the user logged in via
-       the Azure CLI (i.e. ``az login`` at the command line).
-       Default ``None``.
+    Args:
+        vault_url: URL for the Azure keyvault to access.
+        vault_sp_secret_id: Service principal secret ID within the keyvault.
+        user_credential: User credential for the Azure user, as an azure-identity
+            UserCredential class instance. If None, attempt to use a ChainedTokenCredential
+            instantiated at runtime that prefers, in order, a newly instantiated
+            AzureCliCredential (get credentials associated to the user logged in via
+            the Azure CLI (i.e. ``az login`` at the command line).
 
-    Returns
-    -------
-    str
-        The retrieved value of the service principal secret.
+    Returns:
+        str: The retrieved value of the service principal secret.
+
+    Example:
+        >>> secret = get_sp_secret(
+        ...     "https://myvault.vault.azure.net/",
+        ...     "my-secret-id"
+        ... )
     """
     if user_credential is None:
         credential_order = (ManagedIdentityCredential(),)
@@ -539,32 +568,28 @@ def get_client_secret_sp_credential(
     application_id: str,
     user_credential: ChainedTokenCredential = None,
 ) -> ClientSecretCredential:
-    """
-    Get a ClientSecretCredential for a given Azure service principal.
+    """Get a ClientSecretCredential for a given Azure service principal.
 
-    Parameters
-    ----------
-    vault_url
-       URL for the Azure keyvault to access.
-    vault_sp_secret_id
-       Service principal secret ID within the keyvault.
-    tenant_id
-       Tenant ID for the service principal credential.
-    application_id
-       Application ID for the service principal credential.
-    user_credential
-       User credential for the Azure user, as an
-       azure-identity UserCredential class instance.
-       Passed to :func:`get_sp_secret`.
-       If ``None`` (default), :func:`get_sp_secret` will attempt
-       to use a :class:`ChainedTokenCredential` instantiated at
-       runtime. See its documentation for more.
+    Args:
+        vault_url: URL for the Azure keyvault to access.
+        vault_sp_secret_id: Service principal secret ID within the keyvault.
+        tenant_id: Tenant ID for the service principal credential.
+        application_id: Application ID for the service principal credential.
+        user_credential: User credential for the Azure user, as an azure-identity
+            UserCredential class instance. Passed to ``get_sp_secret``. If None,
+            ``get_sp_secret`` will attempt to use a ChainedTokenCredential instantiated
+            at runtime. See its documentation for more.
 
-    Returns
-    -------
-    ClientSecretCredential
-        A :class:`ClientSecretCredential`
-        for the given service principal.
+    Returns:
+        ClientSecretCredential: A ClientSecretCredential for the given service principal.
+
+    Example:
+        >>> credential = get_client_secret_sp_credential(
+        ...     "https://myvault.vault.azure.net/",
+        ...     "my-secret-id",
+        ...     "tenant-id",
+        ...     "application-id"
+        ... )
     """
     sp_secret = get_sp_secret(
         vault_url, vault_sp_secret_id, user_credential=user_credential
@@ -586,36 +611,31 @@ def get_service_principal_credentials(
     resource_url: str = d.default_azure_batch_resource_url,
     user_credential: ChainedTokenCredential = None,
 ) -> ServicePrincipalCredentials:
-    """
-    Get a :class:`ServicePrincipalCredentials` object for a given Azure service principal.
+    """Get a ServicePrincipalCredentials object for a given Azure service principal.
 
-    Parameters
-    ----------
-    vault_url
-       URL for the Azure keyvault to access.
-    vault_sp_secret_id : str
-       Service principal secret ID within the keyvault.
-    tenant_id
-       Tenant ID for the service principal credential.
-    application_id
-       Application ID for the service principal credential.
-    resource_url
-       URL of the Azure resource. Defaults to the value of
-       :obj:`~defaults.default_azure_batch_resource_url`.
-    user_credential
-       User credential for the Azure user, as an
-       azure-identity UserCredential class instance.
-       Passed to :func:`get_sp_secret`.
-       If ``None``, :func:`get_sp_secret` will attempt to use a
-       :class:`ChainedTokenCredential` instantiated at runtime.
-       See the :func:`get_sp_secret` documentation for details.
-       Default ``None``.
+    Args:
+        vault_url: URL for the Azure keyvault to access.
+        vault_sp_secret_id: Service principal secret ID within the keyvault.
+        tenant_id: Tenant ID for the service principal credential.
+        application_id: Application ID for the service principal credential.
+        resource_url: URL of the Azure resource. Defaults to the value of
+            ``defaults.default_azure_batch_resource_url``.
+        user_credential: User credential for the Azure user, as an azure-identity
+            UserCredential class instance. Passed to ``get_sp_secret``. If None,
+            ``get_sp_secret`` will attempt to use a ChainedTokenCredential instantiated
+            at runtime. See the ``get_sp_secret`` documentation for details.
 
-    Returns
-    -------
-    ServicePrincipalCredentials
-        A :class:`ServicePrincipalCredentials`
-        object for the service principal.
+    Returns:
+        ServicePrincipalCredentials: A ServicePrincipalCredentials object for the
+            service principal.
+
+    Example:
+        >>> credentials = get_service_principal_credentials(
+        ...     "https://myvault.vault.azure.net/",
+        ...     "my-secret-id",
+        ...     "tenant-id",
+        ...     "application-id"
+        ... )
     """
     sp_secret = get_sp_secret(
         vault_url, vault_sp_secret_id, user_credential=user_credential
@@ -633,29 +653,28 @@ def get_service_principal_credentials(
 def get_compute_node_identity_reference(
     credential_handler: CredentialHandler = None,
 ) -> models.ComputeNodeIdentityReference:
-    """
-    Get a valid :class:`models.ComputeNodeIdentityReference` using
-    credentials obtained via a :class:`CredentialHandler`:
-    either a user-provided one or a default based on
-    environment variables.
+    """Get a valid ComputeNodeIdentityReference using credentials from a CredentialHandler.
 
-    Parameters
-    ----------
-    credential_handler
-       Credential handler for connecting and
-       authenticating to Azure resources.
-       If ``None``, create a blank
-       :class:`EnvCredentialHandler`, which
-       attempts to obtain needed credentials
-       using information available in local
-       environment variables (see its documentation
-       for details).
+    Uses credentials obtained via a CredentialHandler: either a user-provided one
+    or a default based on environment variables.
 
-    Returns
-    -------
-    models.ComputeNodeIdentityReference
-        A :class:`models.ComputeNodeIdentityReference`
-        created according to the specified configuration.
+    Args:
+        credential_handler: Credential handler for connecting and authenticating to
+            Azure resources. If None, create a blank EnvCredentialHandler, which
+            attempts to obtain needed credentials using information available in
+            local environment variables (see its documentation for details).
+
+    Returns:
+        models.ComputeNodeIdentityReference: A ComputeNodeIdentityReference created
+            according to the specified configuration.
+
+    Example:
+        >>> # Using default environment-based handler
+        >>> identity_ref = get_compute_node_identity_reference()
+
+        >>> # Using custom handler
+        >>> handler = CredentialHandler()
+        >>> identity_ref = get_compute_node_identity_reference(handler)
     """
     ch = credential_handler
     if ch is None:
