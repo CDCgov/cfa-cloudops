@@ -6,7 +6,7 @@ from azure.batch import models as batch_models
 from azure.mgmt.batch import models
 
 import cfa.cloudops.defaults as d
-from cfa.cloudops import batch_helpers, blob
+from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
 
 from .auth import EnvCredentialHandler, SPCredentialHandler
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
@@ -537,6 +537,31 @@ class CloudClient:
         self.batch_service_client.task.add()
 
     def create_blob_container(self, name: str) -> None:
+        """Create a blob storage container if it doesn't already exist.
+
+        Creates a new Azure Blob Storage container with the specified name. If the
+        container already exists, this operation completes successfully without error.
+
+        Args:
+            name (str): Name of the blob storage container to create. Must follow Azure
+                naming conventions: lowercase letters, numbers, and hyphens only, must
+                start and end with letter or number, 3-63 characters long.
+
+        Example:
+            Create a container for storing input data:
+
+                client = CloudClient()
+                client.create_blob_container("input-data")
+
+            Create a container for job outputs:
+
+                client.create_blob_container("job-results-2024")
+
+        Note:
+            Container names must be globally unique within the storage account and
+            follow Azure naming rules. The operation is idempotent - calling it
+            multiple times with the same name is safe.
+        """
         # create_container and save the container client
         create_storage_container_if_not_exists(name, self.blob_service_client)
         logger.debug(f"Created container client for container {name}.")
@@ -548,6 +573,44 @@ class CloudClient:
         local_root_dir: str = ".",
         location_in_blob: str = ".",
     ) -> None:
+        """Upload files to an Azure Blob Storage container.
+
+        Uploads one or more files from the local filesystem to a blob storage container.
+        The files maintain their relative directory structure within the container.
+
+        Args:
+            files (str | list[str]): Path(s) to file(s) to upload. Can be a single file
+                path as a string or a list of file paths. Paths can be relative or absolute.
+            container_name (str): Name of the blob storage container to upload to. The
+                container must already exist.
+            local_root_dir (str, optional): Local directory to use as the base path for
+                relative file paths. Files will be uploaded relative to this directory.
+                Default is "." (current directory).
+            location_in_blob (str, optional): Remote directory path within the blob container
+                where files should be uploaded. Default is "." (container root).
+
+        Example:
+            Upload a single file:
+
+                client = CloudClient()
+                client.upload_files(
+                    files="data/input.csv",
+                    container_name="job-data"
+                )
+
+            Upload multiple files with custom paths:
+
+                client.upload_files(
+                    files=["config.json", "scripts/process.py", "data/input.txt"],
+                    container_name="job-data",
+                    local_root_dir="/home/user/project",
+                    location_in_blob="job-123"
+                )
+
+        Note:
+            The blob container must exist before uploading files. Use create_blob_container()
+            to create it if needed. Files are uploaded with their directory structure preserved.
+        """
         blob.upload_to_storage_container(
             file_paths=files,
             blob_storage_container_name=container_name,
@@ -566,6 +629,60 @@ class CloudClient:
         location_in_blob: str = ".",
         force_upload: bool = False,
     ) -> list[str]:
+        """Upload entire folders to an Azure Blob Storage container with filtering options.
+
+        Recursively uploads all files from specified folders to a blob storage container.
+        Supports filtering by file extensions and patterns to control which files are uploaded.
+
+        Args:
+            folder_names (list[str]): List of local folder paths to upload. Each folder
+                will be recursively uploaded with its directory structure preserved.
+            container_name (str): Name of the blob storage container to upload to. The
+                container must already exist.
+            include_extensions (str | list, optional): File extensions to include in the
+                upload. Can be a single extension string (e.g., ".py") or list of extensions
+                (e.g., [".py", ".txt"]). If None, all extensions are included.
+            exclude_extensions (str | list, optional): File extensions to exclude from
+                the upload. Can be a single extension string or list. Takes precedence
+                over include_extensions if a file matches both.
+            exclude_patterns (str | list, optional): Filename patterns to exclude using
+                glob-style matching (e.g., "*.tmp", "__pycache__"). Can be a single pattern
+                string or list of patterns.
+            location_in_blob (str, optional): Remote directory path within the blob container
+                where folders should be uploaded. Default is "." (container root).
+            force_upload (bool, optional): Whether to force upload files even if they
+                already exist in the container with the same size. Default is False
+                (skip existing files with same size).
+
+        Returns:
+            list[str]: List of file paths that were successfully uploaded to the container.
+
+        Example:
+            Upload Python source folders:
+
+                client = CloudClient()
+                uploaded_files = client.upload_folders(
+                    folder_names=["src", "tests"],
+                    container_name="code-repo",
+                    include_extensions=[".py", ".yaml"],
+                    exclude_patterns=["__pycache__", "*.pyc"]
+                )
+
+            Upload data folders with custom location:
+
+                uploaded_files = client.upload_folders(
+                    folder_names=["data/input", "data/config"],
+                    container_name="job-data",
+                    location_in_blob="run-001",
+                    exclude_extensions=[".tmp", ".log"],
+                    force_upload=True
+                )
+
+        Note:
+            The blob container must exist before uploading. Directory structure is
+            preserved in the container. Use filtering options to avoid uploading
+            unnecessary files like temporary files or build artifacts.
+        """
         _files = []
         for _folder in folder_names:
             logger.debug(f"Trying to upload folder {_folder}.")
@@ -590,12 +707,40 @@ class CloudClient:
         timeout: str | None = None,
         download_job_stats: bool = False,
     ) -> None:
-        """monitor the tasks running in a job
+        """Monitor the execution of tasks in an Azure Batch job.
+
+        Continuously monitors the progress of all tasks in a job until they complete
+        or a timeout is reached. Provides real-time status updates and optionally
+        downloads job statistics when complete.
 
         Args:
-            job_name (str): job id
-            timeout (str): timeout for monitoring job. If omitted, will use None.
-            download_job_stats (bool): whether to download job statistics when job completes. Default is False.
+            job_name (str): ID of the job to monitor. The job must exist and be in
+                an active state.
+            timeout (str, optional): Maximum time to monitor the job before giving up.
+                Should be specified as a string in a format like "30m", "2h", or "1d".
+                If None, monitoring continues indefinitely until all tasks complete.
+            download_job_stats (bool, optional): Whether to download comprehensive job
+                statistics when the job completes. Statistics include task execution
+                times, resource usage, and success/failure rates. Default is False.
+
+        Example:
+            Monitor a job with default settings:
+
+                client = CloudClient()
+                client.monitor_job("data-processing-job")
+
+            Monitor with timeout and statistics download:
+
+                client.monitor_job(
+                    job_name="long-running-job",
+                    timeout="2h",
+                    download_job_stats=True
+                )
+
+        Note:
+            This method blocks until the job completes or times out. For non-blocking
+            job status checks, use check_job_status() instead. Job statistics are
+            saved to the current working directory when downloaded.
         """
         # monitor the tasks
         logger.debug(f"starting to monitor job {job_name}.")
@@ -613,13 +758,31 @@ class CloudClient:
         logger.info("Job complete.")
 
     def check_job_status(self, job_name: str) -> None:
-        """checks various components of a job
-        - whether job exists
-        - prints number of completed tasks
-        - prints the state of a job: completed, activate, etc.
+        """Check the current status and progress of an Azure Batch job.
+
+        Performs a comprehensive status check of a job including existence verification,
+        task completion counts, and overall job state. Provides detailed logging of
+        the job's current status without blocking execution.
 
         Args:
-            job_name (str): name of job
+            job_name (str): Name/ID of the job to check. The job may or may not exist.
+
+        Example:
+            Check status of a running job:
+
+                client = CloudClient()
+                client.check_job_status("data-processing-job")
+
+            Check multiple jobs in a loop:
+
+                job_names = ["job-1", "job-2", "job-3"]
+                for job_name in job_names:
+                    client.check_job_status(job_name)
+
+        Note:
+            This method is non-blocking and provides a point-in-time status check.
+            For continuous monitoring, use monitor_job() instead. Status information
+            is logged at info level and printed to the console.
         """
         # whether job exists
         logger.debug("Checking job exists.")
@@ -641,3 +804,478 @@ class CloudClient:
                 logger.info(f"Job in {j_state} state")
         else:
             logger.info(f"Job {job_name} does not exist.")
+
+    def delete_job(self, job_name: str) -> None:
+        """Delete an Azure Batch job and all its associated tasks.
+
+        Permanently removes a job from the Batch account. This operation also deletes
+        all tasks associated with the job and any stored task execution data.
+
+        Args:
+            job_name (str): Name/ID of the job to delete. The job must exist.
+
+        Raises:
+            RuntimeError: If the job deletion fails due to Azure Batch service errors
+                or if the job does not exist.
+
+        Example:
+            Delete a completed job:
+
+                client = CloudClient()
+                client.delete_job("completed-job")
+
+            Clean up multiple jobs:
+
+                job_names = ["old-job-1", "old-job-2", "failed-job"]
+                for job_name in job_names:
+                    try:
+                        client.delete_job(job_name)
+                        print(f"Deleted {job_name}")
+                    except RuntimeError as e:
+                        print(f"Failed to delete {job_name}: {e}")
+
+        Warning:
+            This operation is irreversible. All task data, logs, and job metadata
+            will be permanently lost. Ensure you have downloaded any needed outputs
+            or logs before deleting the job.
+        """
+        logger.debug(f"Attempting to delete {job_name}.")
+        self.batch_service_client.job.delete(job_name)
+        logger.info(f"Job {job_name} deleted.")
+
+    def package_and_upload_dockerfile(
+        self,
+        registry_name: str,
+        repo_name: str,
+        tag: str,
+        path_to_dockerfile: str = "./Dockerfile",
+        use_device_code: bool = False,
+    ) -> str:
+        """Build a Docker image from a Dockerfile and upload it to Azure Container Registry.
+
+        Takes a Dockerfile, builds it into a Docker image, and uploads the resulting
+        image to the specified Azure Container Registry. This is useful for creating
+        custom container images for Azure Batch tasks.
+
+        Args:
+            registry_name (str): Name of the Azure Container Registry (without .azurecr.io).
+                The registry must already exist and be accessible.
+            repo_name (str): Name of the repository within the container registry where
+                the image will be stored.
+            tag (str): Tag to assign to the uploaded Docker image (e.g., "latest", "v1.0").
+            path_to_dockerfile (str, optional): Path to the Dockerfile to build. Can be
+                relative or absolute. Default is "./Dockerfile" (Dockerfile in current directory).
+            use_device_code (bool, optional): Whether to use device code authentication
+                for Azure CLI login during the upload process. Useful for environments
+                without a web browser. Default is False.
+
+        Returns:
+            str: Full container image name that was uploaded, in the format
+                "registry.azurecr.io/repo:tag".
+
+        Example:
+            Build and upload from default Dockerfile:
+
+                client = CloudClient()
+                image_name = client.package_and_upload_dockerfile(
+                    registry_name="myregistry",
+                    repo_name="batch-app",
+                    tag="v1.0"
+                )
+                print(f"Uploaded: {image_name}")
+
+            Build from custom Dockerfile location:
+
+                image_name = client.package_and_upload_dockerfile(
+                    registry_name="myregistry",
+                    repo_name="data-processor",
+                    tag="latest",
+                    path_to_dockerfile="./docker/worker/Dockerfile",
+                    use_device_code=True
+                )
+
+        Note:
+            This method requires Docker to be installed and the Azure CLI to be
+            available and authenticated. The resulting image name is stored in
+            self.full_container_name for later use.
+        """
+        self.full_container_name = helpers.package_and_upload_dockerfile(
+            registry_name, repo_name, tag, path_to_dockerfile, use_device_code
+        )
+        logger.debug("Completed package_and_upload_dockerfile() function.")
+        self.container_registry_server = f"{registry_name}.azurecr.io"
+        self.registry_url = f"https://{self.container_registry_server}"
+        self.container_image_name = f"https://{self.full_container_name}"
+        return self.full_container_name
+
+    def upload_docker_image(
+        self,
+        image_name: str,
+        registry_name: str,
+        repo_name: str,
+        tag: str,
+        use_device_code: bool = False,
+    ) -> str:
+        """Upload an existing Docker image to Azure Container Registry.
+
+        Takes a Docker image that already exists locally and uploads it to the specified
+        Azure Container Registry. This is useful when you have pre-built images that
+        you want to use for Azure Batch tasks.
+
+        Args:
+            image_name (str): Name of the local Docker image to upload. Should be the
+                full image name as it appears in "docker images" output.
+            registry_name (str): Name of the Azure Container Registry (without .azurecr.io).
+                The registry must already exist and be accessible.
+            repo_name (str): Name of the repository within the container registry where
+                the image will be stored.
+            tag (str): Tag to assign to the uploaded Docker image (e.g., "latest", "v1.0").
+            use_device_code (bool, optional): Whether to use device code authentication
+                for Azure CLI login during the upload process. Useful for environments
+                without a web browser. Default is False.
+
+        Returns:
+            str: Full container image name that was uploaded, in the format
+                "registry.azurecr.io/repo:tag".
+
+        Example:
+            Upload a locally built image:
+
+                client = CloudClient()
+                image_name = client.upload_docker_image(
+                    image_name="my-local-app:latest",
+                    registry_name="myregistry",
+                    repo_name="batch-app",
+                    tag="v1.0"
+                )
+
+            Upload with device code authentication:
+
+                image_name = client.upload_docker_image(
+                    image_name="data-processor:dev",
+                    registry_name="myregistry",
+                    repo_name="processors",
+                    tag="development",
+                    use_device_code=True
+                )
+
+        Note:
+            This method requires Docker to be installed and the Azure CLI to be
+            available and authenticated. The local image must exist before calling
+            this method. The resulting image name is stored in self.full_container_name.
+        """
+        self.full_container_name = helpers.upload_docker_image(
+            image_name, registry_name, repo_name, tag, use_device_code
+        )
+        logger.debug("Completed package_and_upload_docker_image() function.")
+        self.container_registry_server = f"{registry_name}.azurecr.io"
+        self.registry_url = f"https://{self.container_registry_server}"
+        self.container_image_name = f"https://{self.full_container_name}"
+        return self.full_container_name
+
+    def download_file(
+        self,
+        src_path: str,
+        dest_path: str,
+        container_name: str = None,
+        do_check: bool = True,
+        check_size: bool = True,
+    ) -> None:
+        """Download a single file from Azure Blob Storage to the local filesystem.
+
+        Downloads a file from a blob storage container to a local destination path.
+        Supports verification of the download to ensure data integrity.
+
+        Args:
+            src_path (str): Path of the file within the blob container to download.
+                Should be the full blob path including any directory structure.
+            dest_path (str): Local filesystem path where the file should be saved.
+                Can be relative or absolute. Parent directories will be created if needed.
+            container_name (str, optional): Name of the blob storage container containing
+                the file. If None, uses the default container associated with the client.
+            do_check (bool, optional): Whether to perform verification checks after
+                download. Default is True.
+            check_size (bool, optional): Whether to verify that the downloaded file
+                size matches the source file size. Only used if do_check is True.
+                Default is True.
+
+        Example:
+            Download a file with default settings:
+
+                client = CloudClient()
+                client.download_file(
+                    src_path="data/results.csv",
+                    dest_path="./local_results.csv",
+                    container_name="job-outputs"
+                )
+
+            Download without verification:
+
+                client.download_file(
+                    src_path="logs/job.log",
+                    dest_path="/tmp/job.log",
+                    container_name="job-logs",
+                    do_check=False
+                )
+
+        Note:
+            If the destination directory doesn't exist, it will be created automatically.
+            The download will overwrite any existing file at the destination path.
+        """
+        # use the output container client by default for downloading files
+        logger.debug(f"Creating container client for {container_name}.")
+        c_client = self.blob_service_client.get_container_client(
+            container=container_name
+        )
+
+        logger.debug("Attempting to download file.")
+        blob_helpers.download_file(
+            c_client, src_path, dest_path, do_check, check_size
+        )
+
+    def download_directory(
+        self,
+        src_path: str,
+        dest_path: str,
+        container_name: str,
+        include_extensions: str | list | None = None,
+        exclude_extensions: str | list | None = None,
+        verbose=True,
+        check_size=True,
+    ) -> None:
+        """Download an entire directory from Azure Blob Storage to the local filesystem.
+
+        Recursively downloads all files from a directory in a blob storage container,
+        preserving the directory structure. Supports filtering by file extensions.
+
+        Args:
+            src_path (str): Path of the directory within the blob container to download.
+                Should be the directory path within the container (e.g., "data/outputs").
+            dest_path (str): Local filesystem path where the directory should be saved.
+                The directory structure will be recreated under this path.
+            container_name (str): Name of the blob storage container containing the directory.
+            include_extensions (str | list, optional): File extensions to include in the
+                download. Can be a single extension string (e.g., ".csv") or list of
+                extensions (e.g., [".csv", ".json"]). If None, all files are included.
+            exclude_extensions (str | list, optional): File extensions to exclude from
+                the download. Can be a single extension string or list. Takes precedence
+                over include_extensions if a file matches both.
+            verbose (bool, optional): Whether to print progress information during
+                download. Default is True.
+            check_size (bool, optional): Whether to verify that downloaded file sizes
+                match the source file sizes. Default is True.
+
+        Example:
+            Download entire results directory:
+
+                client = CloudClient()
+                client.download_directory(
+                    src_path="job-123/outputs",
+                    dest_path="./results",
+                    container_name="job-outputs"
+                )
+
+            Download only specific file types:
+
+                client.download_directory(
+                    src_path="logs",
+                    dest_path="./local_logs",
+                    container_name="job-logs",
+                    include_extensions=[".log", ".txt"],
+                    exclude_extensions=[".tmp"],
+                    verbose=False
+                )
+
+        Note:
+            The destination directory will be created if it doesn't exist. The source
+            directory structure is preserved in the destination. Large downloads may
+            take considerable time depending on file sizes and network speed.
+        """
+        logger.debug("Attempting to download directory.")
+        blob_helpers.download_directory(
+            container_name,
+            src_path,
+            dest_path,
+            self.blob_service_client,
+            include_extensions,
+            exclude_extensions,
+            verbose,
+            check_size,
+        )
+        logger.debug("finished call to download")
+
+    def delete_pool(self, pool_name: str) -> None:
+        """Delete an Azure Batch pool and all its compute nodes.
+
+        Permanently removes a pool from the Batch account. This operation stops all
+        running tasks on the pool's nodes and deallocates all compute resources.
+
+        Args:
+            pool_name (str): Name of the pool to delete. The pool must exist.
+
+        Raises:
+            RuntimeError: If the pool deletion fails due to Azure Batch service errors
+                or if the pool does not exist.
+
+        Example:
+            Delete a completed pool:
+
+                client = CloudClient()
+                client.delete_pool("old-compute-pool")
+
+            Clean up test pools:
+
+                test_pools = ["test-pool-1", "test-pool-2"]
+                for pool_name in test_pools:
+                    try:
+                        client.delete_pool(pool_name)
+                        print(f"Deleted pool: {pool_name}")
+                    except RuntimeError as e:
+                        print(f"Failed to delete {pool_name}: {e}")
+
+        Warning:
+            This operation is irreversible and will terminate any running tasks.
+            Ensure all important work is complete before deleting the pool.
+            Pool deletion may take several minutes to complete.
+        """
+        batch_helpers.delete_pool(
+            resource_group_name=self.resource_group_name,
+            account_name=self.account_name,
+            pool_name=pool_name,
+            batch_mgmt_client=self.batch_mgmt_client,
+        )
+
+    def list_blob_files(self, blob_container: str = None):
+        """List all files in blob storage containers associated with the client.
+
+        Retrieves a list of all blob files from either a specified container or from
+        all containers associated with the client's mounts. This is useful for
+        discovering available data files before processing.
+
+        Args:
+            blob_container (str, optional): Name of a specific blob storage container
+                to list files from. If None, will list files from all containers
+                in the client's mounts. Default is None.
+
+        Returns:
+            list[str] | None: List of blob file paths found in the container(s).
+                Returns None if no container is specified and no mounts are configured.
+
+        Example:
+            List files from a specific container:
+
+                client = CloudClient()
+                files = client.list_blob_files("input-data")
+                print(f"Found {len(files)} files: {files}")
+
+            List files from all mounted containers:
+
+                files = client.list_blob_files()
+                if files:
+                    print(f"Total files across all mounts: {len(files)}")
+
+        Note:
+            Either blob_container must be specified or the client must have mounts
+            configured. If neither condition is met, a warning is logged and None
+            is returned.
+        """
+        if not self.mounts and blob_container is None:
+            logger.warning(
+                "Please specify a blob container or have mounts associated with the client."
+            )
+            return None
+        if blob_container:
+            logger.debug(f"Listing blobs in {blob_container}")
+            filenames = blob_helpers.list_blobs_flat(
+                container_name=blob_container,
+                blob_service_client=self.blob_service_client,
+                verbose=False,
+            )
+        elif self.mounts:
+            logger.debug("Looping through mounts.")
+            filenames = []
+            for mount in self.mounts:
+                _files = blob_helpers.list_blobs_flat(
+                    container_name=mount[0],
+                    blob_service_client=self.blob_service_client,
+                    verbose=False,
+                )
+                filenames += _files
+        return filenames
+
+    def delete_blob_file(self, blob_name: str, container_name: str):
+        """Delete a specific file from Azure Blob Storage.
+
+        Permanently removes a file and all its snapshots from the specified blob
+        storage container. This operation cannot be undone.
+
+        Args:
+            blob_name (str): Name/path of the blob file to delete within the container.
+                Should include any directory structure (e.g., "data/file.txt").
+            container_name (str): Name of the blob storage container containing the file.
+
+        Example:
+            Delete a specific output file:
+
+                client = CloudClient()
+                client.delete_blob_file(
+                    blob_name="results/output.csv",
+                    container_name="job-outputs"
+                )
+
+            Delete a log file:
+
+                client.delete_blob_file(
+                    blob_name="logs/job-123.log",
+                    container_name="system-logs"
+                )
+
+        Warning:
+            This operation permanently deletes the file and all its snapshots.
+            Ensure you have backed up any important data before deletion.
+        """
+        logger.debug(f"Deleting blob {blob_name} from {container_name}.")
+        blob_helpers.delete_blob_snapshots(
+            blob_name, container_name, self.blob_service_client
+        )
+        logger.debug(f"Deleted {blob_name}.")
+
+    def delete_blob_folder(self, folder_path: str, container_name: str):
+        """Delete an entire folder and all its contents from Azure Blob Storage.
+
+        Recursively removes all files within the specified folder path from the blob
+        storage container. This operation deletes all files that have the folder path
+        as a prefix in their blob names.
+
+        Args:
+            folder_path (str): Path of the folder to delete within the container.
+                Should be the folder prefix (e.g., "data/temp" will delete all blobs
+                starting with "data/temp/").
+            container_name (str): Name of the blob storage container containing the folder.
+
+        Example:
+            Delete a temporary data folder:
+
+                client = CloudClient()
+                client.delete_blob_folder(
+                    folder_path="temp/job-123",
+                    container_name="workspace"
+                )
+
+            Delete all log files from a specific run:
+
+                client.delete_blob_folder(
+                    folder_path="logs/2024-01-15",
+                    container_name="system-logs"
+                )
+
+        Warning:
+            This operation permanently deletes all files within the specified folder.
+            There is no way to recover deleted files. Ensure you have backed up any
+            important data before deletion.
+        """
+        logger.debug(f"Deleting files in {folder_path} folder.")
+        helpers.delete_blob_folder(
+            folder_path, container_name, self.blob_service_client
+        )
+        logger.debug(f"Deleted folder {folder_path}.")
