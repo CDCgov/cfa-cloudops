@@ -2,8 +2,11 @@ import csv
 import datetime
 import logging
 import time
+import uuid
 
 import azure.batch.models as batch_models
+import griddler
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -480,3 +483,182 @@ def delete_pool(
     )
     logger.info(f"Pool {pool_name} deleted.")
     return poller
+
+
+def get_args_from_yaml(file_path: str) -> list[str]:
+    """Parse a YAML file and generate command-line argument strings for each parameter set.
+
+    Reads a YAML file describing parameter sets (e.g., for grid search or batch jobs),
+    parses it using griddler, and returns a list of command-line argument strings for
+    each parameter set. Handles both regular arguments and flag arguments.
+
+    Args:
+        file_path (str): Path to the YAML file describing the parameter grid or sets.
+
+    Returns:
+        list[str]: List of command-line argument strings, one for each parameter set.
+
+    Example:
+        Given a YAML file with parameter sets:
+
+            learning_rate: [0.01, 0.1]
+            batch_size: [32, 64]
+            use_dropout(flag): ["", "--use-dropout"]
+
+        The function will return a list of strings like:
+            [" --learning_rate 0.01 --batch_size 32", ...]
+
+        Usage:
+
+            arg_list = get_args_from_yaml("params.yaml")
+            for args in arg_list:
+                print(f"python train.py {args}")
+
+    Note:
+        Flag arguments are handled by appending the flag only if the value is not empty.
+        This function is typically used to generate task commands for batch jobs.
+    """
+    with open(file_path) as f:
+        raw_griddle = yaml.safe_load(f)
+    griddle = griddler.parse(raw_griddle)
+    parameter_sets = griddle.to_dicts()
+    output = []
+    for i in parameter_sets:
+        full_cmd = ""
+        for key, value in i.items():
+            if key.endswith("(flag)"):
+                if value != "":
+                    full_cmd += f""" --{key.split("(flag)")[0]}"""
+            else:
+                full_cmd += f" --{key} {value}"
+        output.append(full_cmd)
+    return output
+
+
+def get_tasks_from_yaml(base_cmd: str, file_path: str) -> list[str]:
+    """Generate full task command strings from a base command and a YAML parameter file.
+
+    Combines a base command (e.g., "python train.py") with each set of arguments parsed
+    from a YAML file to produce a list of full command strings for batch tasks.
+
+    Args:
+        base_cmd (str): The base command to prepend to each argument set (e.g., "python train.py").
+        file_path (str): Path to the YAML file describing the parameter grid or sets.
+
+    Returns:
+        list[str]: List of full command strings, one for each parameter set.
+
+    Example:
+        Given a base command and YAML file:
+
+            base_cmd = "python train.py"
+            file_path = "params.yaml"
+
+        The function will return a list like:
+            ["python train.py --learning_rate 0.01 --batch_size 32", ...]
+
+        Usage:
+
+            cmds = get_tasks_from_yaml("python train.py", "params.yaml")
+            for cmd in cmds:
+                print(cmd)
+
+    Note:
+        This function is useful for generating Azure Batch task commands from a grid
+        search or parameter sweep defined in YAML.
+    """
+    cmds = []
+    arg_list = get_args_from_yaml(file_path)
+    for s in arg_list:
+        cmds.append(f"{base_cmd} {s}")
+    return cmds
+
+
+class Task:
+    def __init__(
+        self, cmd: str, id: str | None = None, dep: str | list | None = None
+    ):
+        """
+        Args:
+            cmd (str): command to be used with Azure Batch task
+            id (str, optional): optional id to identity tasks. Defaults to None.
+            dep (str | list[str], optional): Task object(s) this task depends on. Defaults to None.
+        """
+        self.cmd = cmd
+        if id is None:
+            self.id = str(uuid.uuid4())
+        else:
+            self.id = id
+        if isinstance(dep, list):
+            self.deps = dep
+        elif dep is None:
+            self.deps = []
+        else:
+            self.deps = [dep]
+
+    def __repr__(self):
+        return self.id
+
+    def before(self, other):
+        """
+        Set that this task needs to occur before another task.
+
+        Example:
+            t1 = Task("some command")
+            t2 = Task("another command")
+            t1.before(t2) sets t1 must occure before t2.
+
+        Args:
+            other (Task): batch.Task object
+        """
+        if not isinstance(other, list):
+            other = [other]
+        for task in other:
+            if self not in task.deps:
+                task.deps.append(self)
+
+    def after(self, other):
+        """
+        Set that this task needs to occur after another task.
+
+        Example:
+            t1 = Task("some command")
+            t2 = Task("another command")
+            t1.after(t2) sets t1 must occur after t2.
+
+        Args:
+            other (Task): batch.Task object
+        """
+        if not isinstance(other, list):
+            other = [other]
+        for task in other:
+            if task not in self.deps:
+                self.deps.append(task)
+
+    def set_downstream(self, other):
+        """
+        Sets the downstream task from the current task.
+
+        Example:
+            t1 = Task("some command")
+            t2 = Task("another command")
+            t1.set_downstream(t2) sets t2 as the downstream task from t1, like t1 >> t2
+
+        Args:
+            other (Task): batch.Task object
+        """
+        self.before(other)
+
+    def set_upstream(self, other):
+        """
+        Sets the upstream task from the current task.
+
+        Example:
+            t1 = Task("some command")
+            t2 = Task("another command")
+            t1.set_upstream(t2) sets t2 as the upstream task from t1, like t1 << t2
+
+        Args:
+            other (Task): batch.Task object
+        """
+        self.after(other)

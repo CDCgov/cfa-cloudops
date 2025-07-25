@@ -1,5 +1,8 @@
 import logging
+import os
+from graphlib import CycleError, TopologicalSorter
 
+import pandas as pd
 from azure.batch import models as batch_models
 
 # from azure.batch.models import TaskAddParameter
@@ -1279,3 +1282,198 @@ class CloudClient:
             folder_path, container_name, self.blob_service_client
         )
         logger.debug(f"Deleted folder {folder_path}.")
+
+    def download_job_stats(self, job_id: str, file_name: str | None = None):
+        """Download job statistics for a completed Azure Batch job.
+
+        Downloads detailed statistics for all tasks in the specified job and saves them
+        to a CSV file. The statistics include task execution times, exit codes, and node info.
+
+        Args:
+            job_id (str): ID of the job to download statistics for. The job must exist.
+            file_name (str, optional): Name of the output CSV file (without extension).
+                If None, defaults to "{job_id}-stats.csv".
+
+        Example:
+            Download stats for a job:
+
+                client = CloudClient()
+                client.download_job_stats(job_id="my-job")
+
+            Download with custom filename:
+
+                client.download_job_stats(job_id="my-job", file_name="run42_stats")
+
+        Note:
+            The CSV file will be created in the current working directory. The job must
+            be completed before statistics are available for all tasks.
+        """
+        batch_helpers.download_job_stats(
+            job_id=job_id,
+            batch_service_client=self.batch_client,
+            file_name=file_name,
+        )
+
+    def add_tasks_from_yaml(
+        self, job_id: str, base_cmd: str, file_path: str, **kwargs
+    ) -> list[str]:
+        """Add multiple tasks to a job from a YAML file.
+
+        Reads a YAML file describing tasks, constructs the corresponding commands, and
+        submits each as a task to the specified job. Returns the list of created task IDs.
+
+        Args:
+            job_id (str): ID of the job to add tasks to. The job must exist.
+            base_cmd (str): Base command to prepend to each task command from the YAML file.
+            file_path (str): Path to the YAML file describing the tasks.
+            **kwargs: Additional keyword arguments passed to add_task().
+
+        Returns:
+            list[str]: List of task IDs created from the YAML file.
+
+        Example:
+            Add tasks from a YAML file:
+
+                client = CloudClient()
+                task_ids = client.add_tasks_from_yaml(
+                    job_id="my-job",
+                    base_cmd="python run.py",
+                    file_path="tasks.yaml"
+                )
+                print(f"Added {len(task_ids)} tasks from YAML.")
+
+        Note:
+            The YAML file should define the commands or parameters for each task. The
+            base_cmd is prepended to each command from the YAML file.
+        """
+        # get tasks from yaml
+        task_strs = batch_helpers.get_tasks_from_yaml(
+            base_cmd=base_cmd, file_path=file_path
+        )
+        # submit tasks
+        task_list = []
+        for task_str in task_strs:
+            tid = self.add_task(job_id=job_id, docker_cmd=task_str, **kwargs)
+            task_list.append(tid)
+        return task_list
+
+    def download_after_job(
+        self,
+        job_name: str,
+        blob_paths: list[str],
+        target: str,
+        container_name: str,
+        **kwargs,
+    ):
+        """Download files or directories from blob storage after a job completes.
+
+        Waits for the specified job to complete, then downloads the specified files or
+        directories from blob storage to a local target directory. Handles both single
+        files and directories.
+
+        Args:
+            job_name (str): Name/ID of the job to monitor for completion.
+            blob_paths (list[str]): List of blob paths (files or directories) to download.
+            target (str): Local directory where files/directories will be downloaded.
+            container_name (str): Name of the blob storage container containing the files.
+            **kwargs: Additional keyword arguments passed to download_directory().
+
+        Example:
+            Download results after job completion:
+
+                client = CloudClient()
+                client.download_after_job(
+                    job_name="my-job",
+                    blob_paths=["results/output.csv", "logs/"],
+                    target="./outputs",
+                    container_name="job-outputs"
+                )
+
+        Note:
+            This method blocks until the job completes. Files are downloaded to the
+            specified target directory, preserving directory structure for folders.
+        """
+        # check job for completion
+        batch_helpers.monitor_tasks(
+            job_name=job_name,
+            timeout=None,
+            batch_client=self.batch_service_client,
+        )
+
+        # loop through blob_paths:
+        os.makedirs(target, exist_ok=True)
+
+        for path in blob_paths:
+            if "." in path:
+                self.download_file(
+                    src_path=path,
+                    dest_path=os.path.join(target, path),
+                    container_name=container_name,
+                )
+            else:
+                self.download_directory(
+                    src_path=path,
+                    dest_path=os.path.join(target),
+                    container_name=container_name,
+                    **kwargs,
+                )
+
+    def run_dag(self, *args: batch_helpers.Task, job_id: str, **kwargs):
+        """Run a set of tasks as a directed acyclic graph (DAG) in the correct order.
+
+        Accepts multiple Task objects, determines their execution order using topological
+        sorting, and submits them to Azure Batch as a dependency graph. Raises an error
+        if the tasks do not form a valid DAG.
+
+        Args:
+            *args: batch_helpers.Task objects representing tasks and their dependencies.
+            job_id (str): Name/ID of the job to add tasks to.
+            **kwargs: Additional keyword arguments passed to add_task().
+
+        Raises:
+            CycleError: If the submitted tasks do not form a valid DAG (contain cycles).
+
+        Example:
+            Run a DAG of tasks:
+
+                client = CloudClient()
+                t1 = Task(id="A", cmd="python step1.py", deps=[])
+                t2 = Task(id="B", cmd="python step2.py", deps=["A"])
+                t3 = Task(id="C", cmd="python step3.py", deps=["A"])
+                t4 = Task(id="D", cmd="python step4.py", deps=["B", "C"])
+                client.run_dag(t1, t2, t3, t4, job_id="my-job")
+
+        Note:
+            The tasks must form a valid DAG (no cycles). Task dependencies are resolved
+            automatically and tasks are submitted in the correct order. Task IDs and
+            dependencies are updated as tasks are submitted.
+        """
+        # get topologicalsorter opject
+        ts = TopologicalSorter()
+        tasks = args
+        for task in tasks:
+            ts.add(task, *task.deps)
+        try:
+            task_order = [*ts.static_order()]
+        except CycleError as ce:
+            logger.warn("Submitted tasks do not form a DAG.")
+            raise ce
+        task_df = pd.DataFrame(columns=["id", "cmd", "deps"])
+        # initialize df for task execution
+        for i, task in enumerate(task_order):
+            task_df.loc[i] = [task.id, task.cmd, task.deps]
+        for task in task_order:
+            tid = self.add_task(
+                job_id=job_id,
+                docker_cmd=task.cmd,
+                depends_on=task_df[task_df["id"] == task.id]["deps"].values[0],
+                **kwargs,
+            )
+            for i, dep in enumerate(task_df["deps"]):
+                dlist = []
+                for dp in dep:
+                    if str(dp) == str(task.id):
+                        dlist.append(tid)
+                    else:
+                        dlist.append(str(dp))
+                task_df.at[i, "deps"] = dlist
