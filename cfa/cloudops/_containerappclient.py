@@ -20,17 +20,17 @@ class ContainerAppClient:
         job_name=None,
     ):
         if resource_group is None:
-            resource_group = os.getenv("RESOURCE_GROUP")
+            resource_group = os.getenv("AZURE_RESOURCE_GROUP_NAME")
             if resource_group is None:
                 raise ValueError(
                     "No resource_group provided and no RESOURCE_GROUP env var found."
                 )
         self.resource_group = resource_group
         if subscription_id is None:
-            subscription_id = os.getenv("SUBSCRIPTION_ID")
+            subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
             if subscription_id is None:
                 raise ValueError(
-                    "No subscription_id provided and no SUBSCRIPTION_ID env var found."
+                    "No subscription_id provided and no AZURE_SUBSCRIPTION_ID env var found."
                 )
         self.subscription_id = subscription_id
         self.job_name = job_name
