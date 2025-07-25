@@ -1,12 +1,16 @@
+import logging
+
 from azure.batch import models as batch_models
 
 # from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
 
 import cfa.cloudops.defaults as d
+from cfa.cloudops import batch_helpers, blob
 
 from .auth import EnvCredentialHandler, SPCredentialHandler
-from .blob import get_node_mount_config
+from .blob import create_storage_container_if_not_exists, get_node_mount_config
+from .blob_helpers import upload_files_in_folder
 from .client import (
     get_batch_management_client,
     get_batch_service_client,
@@ -15,7 +19,7 @@ from .client import (
 )
 from .job import create_job
 
-# from .task import get_task_config
+logger = logging.getLogger(__name__)
 
 
 class CloudClient:
@@ -87,7 +91,7 @@ class CloudClient:
         autoscale_formula="default",
         dedicated_nodes=5,
         low_priority_nodes=5,
-        max_autoscale_nodes=10,
+        max_autoscale_nodes=3,
         task_slots_per_node=1,
         availability_zones="regional",
         cache_blobfuse=True,
@@ -181,6 +185,8 @@ class CloudClient:
         pool_name = pool_name.replace(" ", "_")
 
         # validate vm size
+        print("Verify the size of the VM is appropriate for the use case.")
+        print("**Please use smaller VMs for dev/testing.**")
 
         # Get base pool configuration
         pool_config = d.get_default_pool_config(
@@ -422,7 +428,7 @@ class CloudClient:
 
     def add_task(
         self,
-        job_id: str,
+        job_name: str,
         base_call: list[str],
         task_id: str = None,
         depends_on: list[str] | None = None,
@@ -438,7 +444,7 @@ class CloudClient:
         on other tasks, run in containers, and have configurable timeouts and retry policies.
 
         Args:
-            job_id (str): ID of the job to add the task to. The job must already exist.
+            job_name (str): ID of the job to add the task to. The job must already exist.
             base_call (list[str] | str): Command to execute for the task. Can be provided
                 as a list of strings (which will be joined with spaces) or as a single
                 command string.
@@ -467,28 +473,28 @@ class CloudClient:
         Raises:
             RuntimeError: If the task creation fails due to Azure Batch service errors,
                 authentication issues, or invalid parameters.
-            ValueError: If the job_id does not exist, task_id conflicts with existing task,
+            ValueError: If the job_name does not exist, task_id conflicts with existing task,
                 or if dependency configuration is invalid.
 
         Example:
             Add a simple task:
 
                 task_id = client.add_task(
-                    job_id="my-job",
+                    job_name="my-job",
                     base_call=["python", "script.py", "--input", "data.txt"]
                 )
 
             Add a task with dependencies:
 
                 task_id = client.add_task(
-                    job_id="pipeline-job",
+                    job_name="pipeline-job",
                     base_call="python preprocess.py",
                     task_id="preprocess-task",
                     timeout=30
                 )
 
                 dependent_task_id = client.add_task(
-                    job_id="pipeline-job",
+                    job_name="pipeline-job",
                     base_call="python analyze.py",
                     task_id="analysis-task",
                     depends_on=["preprocess-task"],
@@ -499,7 +505,7 @@ class CloudClient:
             Add task with integer ID dependencies:
 
                 task_id = client.add_task(
-                    job_id="bulk-job",
+                    job_name="bulk-job",
                     base_call="python process_chunk.py",
                     depends_on_range=(1, 10),  # Depends on tasks 1-10
                     timeout=60
@@ -529,3 +535,109 @@ class CloudClient:
         # task_config = get_task_config()
         # add task
         self.batch_service_client.task.add()
+
+    def create_blob_container(self, name: str) -> None:
+        # create_container and save the container client
+        create_storage_container_if_not_exists(name, self.blob_service_client)
+        logger.debug(f"Created container client for container {name}.")
+
+    def upload_files(
+        self,
+        files: str | list[str],
+        container_name: str,
+        local_root_dir: str = ".",
+        location_in_blob: str = ".",
+    ) -> None:
+        blob.upload_to_storage_container(
+            file_paths=files,
+            blob_storage_container_name=container_name,
+            blob_service_client=self.blob_service_client,
+            local_root_dir=local_root_dir,
+            remote_root_dir=location_in_blob,
+        )
+
+    def upload_folders(
+        self,
+        folder_names: list[str],
+        container_name: str,
+        include_extensions: str | list | None = None,
+        exclude_extensions: str | list | None = None,
+        exclude_patterns: str | list | None = None,
+        location_in_blob: str = ".",
+        force_upload: bool = False,
+    ) -> list[str]:
+        _files = []
+        for _folder in folder_names:
+            logger.debug(f"Trying to upload folder {_folder}.")
+            _uploaded_files = upload_files_in_folder(
+                folder=_folder,
+                container_name=container_name,
+                include_extensions=include_extensions,
+                exclude_extensions=exclude_extensions,
+                exclude_patterns=exclude_patterns,
+                location_in_blob=location_in_blob,
+                blob_service_client=self.blob_service_client,
+                force_upload=force_upload,
+            )
+            _files += _uploaded_files
+        logger.debug(f"uploaded {_files}")
+        self.files += _files
+        return _files
+
+    def monitor_job(
+        self,
+        job_name: str,
+        timeout: str | None = None,
+        download_job_stats: bool = False,
+    ) -> None:
+        """monitor the tasks running in a job
+
+        Args:
+            job_name (str): job id
+            timeout (str): timeout for monitoring job. If omitted, will use None.
+            download_job_stats (bool): whether to download job statistics when job completes. Default is False.
+        """
+        # monitor the tasks
+        logger.debug(f"starting to monitor job {job_name}.")
+        monitor = batch_helpers.monitor_tasks(
+            job_name, timeout, self.batch_service_client
+        )
+        print(monitor)
+
+        if download_job_stats:
+            batch_helpers.download_job_stats(
+                job_name=job_name,
+                batch_service_client=self.batch_service_client,
+                file_name=None,
+            )
+        logger.info("Job complete.")
+
+    def check_job_status(self, job_name: str) -> None:
+        """checks various components of a job
+        - whether job exists
+        - prints number of completed tasks
+        - prints the state of a job: completed, activate, etc.
+
+        Args:
+            job_name (str): name of job
+        """
+        # whether job exists
+        logger.debug("Checking job exists.")
+        if batch_helpers.check_job_exists(job_name, self.batch_service_client):
+            logger.debug(f"Job {job_name} exists.")
+            c_tasks = batch_helpers.get_completed_tasks(
+                job_name, self.batch_service_client
+            )
+            logger.info("Task info:")
+            logger.info(c_tasks)
+            if batch_helpers.check_job_complete(
+                job_name, self.batch_service_client
+            ):
+                logger.info(f"Job {job_name} completed.")
+            else:
+                j_state = batch_helpers.get_job_state(
+                    job_name, self.batch_service_client
+                )
+                logger.info(f"Job in {j_state} state")
+        else:
+            logger.info(f"Job {job_name} does not exist.")
