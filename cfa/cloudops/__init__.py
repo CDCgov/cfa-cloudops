@@ -4,9 +4,10 @@ import os
 import sys
 
 from ._cloudclient import CloudClient
+from ._containerappclient import ContainerAppClient
 from .helpers import get_log_level
 
-__all__ = [CloudClient]
+__all__ = [CloudClient, ContainerAppClient]
 
 logger = logging.getLogger(__name__)
 run_time = datetime.datetime.now()
