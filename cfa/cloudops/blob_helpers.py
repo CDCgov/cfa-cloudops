@@ -417,6 +417,29 @@ def list_blobs_in_container(
     ).list_blobs(name_starts_with)
 
 
+def list_blobs_flat(
+    container_name: str, blob_service_client: BlobServiceClient, verbose=True
+):
+    """
+    Args:
+        container_name (str): name of Blob container
+        blob_service_client (object): instance of BlobServiceClient
+        verbose (bool): whether to be verbose in printing files. Default True.
+
+    Returns:
+        list: list of blobs in Blob container
+    """
+    blob_list = list_blobs_in_container(
+        container_name=container_name, blob_service_client=blob_service_client
+    )
+    blob_names = [blob.name for blob in blob_list]
+    logger.debug("Blob names gathered.")
+    if verbose:
+        for blob in blob_list:
+            logger.info(f"Name: {blob.name}")
+    return blob_names
+
+
 def get_blob_service_client(config: dict, credential: object):
     """establishes Blob Service Client using credentials
 
