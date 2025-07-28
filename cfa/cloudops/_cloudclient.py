@@ -260,10 +260,6 @@ class CloudClient:
                 "Availability zone needs to be 'zonal' or 'regional'."
             )
 
-        # Configure blobfuse caching
-        if cache_blobfuse and mount_config:
-            pass
-
         try:
             # Create the pool using the batch management client
             self.batch_mgmt_client.pool.create(
