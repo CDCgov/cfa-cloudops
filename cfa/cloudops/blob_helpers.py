@@ -233,6 +233,7 @@ def upload_files_in_folder(
             if os.path.splitext(_file)[1] in include_extensions:
                 flist.append(_file)
     # iteratively call the upload_blob_file function to upload individual files
+    final_list = []
     for file in flist:
         # if a pattern from exclude_patterns is found, skip uploading this file
         if exclude_patterns is not None and any(
@@ -240,21 +241,17 @@ def upload_files_in_folder(
         ):
             # dont upload this file if an excluded pattern is found within
             continue
-        # get the right folder location, need to drop the folder from the beginning and remove the file name, keeping only middle folders
-        drop_folder = path.dirname(file).replace(folder, "", 1)
-        if drop_folder.startswith("/"):
-            drop_folder = drop_folder[
-                1:
-            ]  # removes the / so path.join doesnt mistake for root
+        else:
+            final_list.append(file)
         logger.debug(f"Calling upload_blob_file for {file}")
-        upload_to_storage_container(
-            file_paths=file,
-            blob_storage_container_name=container_name,
-            blob_service_client=blob_service_client,
-            local_root_dir=".",
-            remote_root_dir=path.join(location_in_blob, drop_folder),
-        )
-    return flist
+    upload_to_storage_container(
+        file_paths=final_list,
+        blob_storage_container_name=container_name,
+        blob_service_client=blob_service_client,
+        local_root_dir=".",
+        remote_root_dir=path.join(location_in_blob),
+    )
+    return final_list
 
 
 def download_file(
