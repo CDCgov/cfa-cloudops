@@ -3,7 +3,10 @@ Functions for handling configuration
 files and environment variables.
 """
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 
 def try_get_val_from_dict(

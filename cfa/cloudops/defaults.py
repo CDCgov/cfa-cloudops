@@ -2,9 +2,12 @@
 Default configurations for Azure resources.
 """
 
+import logging
 import os
 
 from azure.mgmt.batch import models
+
+logger = logging.getLogger(__name__)
 
 
 # autoscale default formula

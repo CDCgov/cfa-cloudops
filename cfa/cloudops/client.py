@@ -2,12 +2,16 @@
 Helper functions for setting up valid Azure clients.
 """
 
+import logging
+
 from azure.batch import BatchServiceClient
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 from azure.storage.blob import BlobServiceClient
 
 from .auth import CredentialHandler, EnvCredentialHandler
+
+logger = logging.getLogger(__name__)
 
 
 def get_batch_management_client(

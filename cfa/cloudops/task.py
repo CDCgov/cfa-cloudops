@@ -3,6 +3,7 @@ Functions for manipulating tasks within an
 Azure batch job.
 """
 
+import logging
 from pathlib import Path
 
 import azure.batch.models as batchmodels
@@ -23,6 +24,8 @@ from .auth import get_compute_node_identity_reference
 from .defaults import default_azure_blob_storage_endpoint_subdomain
 from .endpoints import construct_blob_container_endpoint
 from .util import ensure_listlike
+
+logger = logging.getLogger(__name__)
 
 
 def create_bind_mount_string(

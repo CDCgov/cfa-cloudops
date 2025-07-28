@@ -3,6 +3,7 @@ Miscellaneous utilities for interacting with Azure.
 """
 
 import json
+import logging
 import subprocess
 from collections.abc import MutableSequence
 
@@ -10,6 +11,8 @@ from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.batch.models import SupportedSku
 
 from .config import get_config_val
+
+logger = logging.getLogger(__name__)
 
 
 def lookup_service_principal(display_name: str) -> list:

@@ -2,9 +2,12 @@
 Helper functions for constructing Azure endpoint URLs.
 """
 
+import logging
 from urllib.parse import quote, urljoin, urlparse, urlunparse
 
 import cfa.cloudops.defaults as d
+
+logger = logging.getLogger(__name__)
 
 
 def _construct_https_url(netloc: str, path: str = "") -> str:

@@ -2,7 +2,11 @@
 Utilities for working with Azure Batch jobs.
 """
 
+import logging
+
 from azure.batch import BatchServiceClient, models
+
+logger = logging.getLogger(__name__)
 
 
 def create_job(

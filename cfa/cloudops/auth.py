@@ -2,6 +2,7 @@
 Helper functions for Azure authentication.
 """
 
+import logging
 import os
 from dataclasses import dataclass
 from functools import cached_property, partial
@@ -26,6 +27,8 @@ from cfa.cloudops.endpoints import (
     is_valid_acr_endpoint,
 )
 from cfa.cloudops.util import ensure_listlike
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

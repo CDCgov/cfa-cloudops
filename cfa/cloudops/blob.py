@@ -2,6 +2,7 @@
 Functions for interacting with Azure Blob Storage.
 """
 
+import logging
 import os
 
 from azure.batch import models
@@ -9,6 +10,8 @@ from azure.storage.blob import BlobServiceClient
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
+
+logger = logging.getLogger(__name__)
 
 
 def create_storage_container_if_not_exists(
