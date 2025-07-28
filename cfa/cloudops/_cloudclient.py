@@ -1273,7 +1273,7 @@ class CloudClient:
             important data before deletion.
         """
         logger.debug(f"Deleting files in {folder_path} folder.")
-        helpers.delete_blob_folder(
+        blob_helpers.delete_blob_folder(
             folder_path, container_name, self.blob_service_client
         )
         logger.debug(f"Deleted folder {folder_path}.")
