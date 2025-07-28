@@ -387,7 +387,7 @@ class EnvCredentialHandler(CredentialHandler):
 
         Loads environment variables and populates credential attributes from them.
         """
-        load_env_vars(dotenv_path=None)
+        load_env_vars(**kwargs)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
         for key in self.__dataclass_fields__.keys():

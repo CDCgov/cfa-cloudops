@@ -254,7 +254,7 @@ def upload_files_in_folder(
             local_root_dir=".",
             remote_root_dir=path.join(location_in_blob, drop_folder),
         )
-    return file_list
+    return flist
 
 
 def download_file(
