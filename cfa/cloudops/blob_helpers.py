@@ -322,7 +322,7 @@ def download_file(
         src_path, container_client=c_client, do_check=do_check
     )
     dest_path = Path(dest_path)
-    dest_path.mkdir(parents=True, exist_ok=True)
+    dest_path.parents[0].mkdir(parents=True, exist_ok=True)
     with dest_path.open(mode="wb") as blob_download:
         blob_download.write(download_stream.readall())
         logger.debug("File downloaded.")
