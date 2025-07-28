@@ -1177,11 +1177,6 @@ class CloudClient:
             configured. If neither condition is met, a warning is logged and None
             is returned.
         """
-        if not self.mounts and blob_container is None:
-            logger.warning(
-                "Please specify a blob container or have mounts associated with the client."
-            )
-            return None
         if blob_container:
             logger.debug(f"Listing blobs in {blob_container}")
             filenames = blob_helpers.list_blobs_flat(
