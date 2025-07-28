@@ -697,7 +697,6 @@ class CloudClient:
             )
             _files += _uploaded_files
         logger.debug(f"uploaded {_files}")
-        self.files += _files
         return _files
 
     def monitor_job(
