@@ -214,7 +214,7 @@ def download_job_stats(
     if file_name is None:
         file_name = f"{job_name}-stats"
     r = batch_service_client.task.list(
-        job_name=job_name,
+        job_id=job_name,
     )
 
     fields = [
