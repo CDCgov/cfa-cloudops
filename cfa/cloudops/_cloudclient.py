@@ -1273,7 +1273,7 @@ class CloudClient:
         )
         logger.debug(f"Deleted folder {folder_path}.")
 
-    def download_job_stats(self, job_id: str, file_name: str | None = None):
+    def download_job_stats(self, job_name: str, file_name: str | None = None):
         """Download job statistics for a completed Azure Batch job.
 
         Downloads detailed statistics for all tasks in the specified job and saves them
@@ -1288,18 +1288,18 @@ class CloudClient:
             Download stats for a job:
 
                 client = CloudClient()
-                client.download_job_stats(job_id="my-job")
+                client.download_job_stats(job_name="my-job")
 
             Download with custom filename:
 
-                client.download_job_stats(job_id="my-job", file_name="run42_stats")
+                client.download_job_stats(job_name="my-job", file_name="run42_stats")
 
         Note:
             The CSV file will be created in the current working directory. The job must
             be completed before statistics are available for all tasks.
         """
         batch_helpers.download_job_stats(
-            job_id=job_id,
+            job_name=job_name,
             batch_service_client=self.batch_mgmt_client,
             file_name=file_name,
         )
