@@ -1137,7 +1137,7 @@ class CloudClient:
             Pool deletion may take several minutes to complete.
         """
         batch_helpers.delete_pool(
-            resource_group_name=self.azure_resource_group_name,
+            resource_group_name=self.cred.azure_resource_group_name,
             account_name=self.account_name,
             pool_name=pool_name,
             batch_mgmt_client=self.batch_mgmt_client,
