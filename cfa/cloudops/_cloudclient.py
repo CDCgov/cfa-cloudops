@@ -1300,7 +1300,7 @@ class CloudClient:
         """
         batch_helpers.download_job_stats(
             job_name=job_name,
-            batch_service_client=self.batch_mgmt_client,
+            batch_service_client=self.batch_service_client,
             file_name=file_name,
         )
 
