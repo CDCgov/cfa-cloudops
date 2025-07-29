@@ -7,6 +7,7 @@ import os
 from dataclasses import dataclass
 from functools import cached_property, partial
 
+import requests
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.identity import (
@@ -360,6 +361,22 @@ class CredentialHandler:
             registry_server=self.azure_container_registry_endpoint,
             identity_reference=self.compute_node_identity_reference,
         )
+
+    @cached_property
+    def signed_session(self):
+        """Authenticated requests.Session for Azure REST API calls.
+
+        Returns:
+            requests.Session: Session with Authorization header set using a valid Azure token.
+        """
+        if self.method == "sp":
+            credential = self.client_secret_sp_credential
+        else:
+            credential = self.user_credential
+        token = credential.get_token("https://management.azure.com/.default")
+        session = requests.Session()
+        session.headers.update({"Authorization": f"Bearer {token.token}"})
+        return session
 
 
 class EnvCredentialHandler(CredentialHandler):
