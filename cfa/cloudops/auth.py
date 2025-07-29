@@ -196,8 +196,7 @@ class CredentialHandler:
             >>> credential = handler.user_credential
             >>> # Use credential with Azure SDK clients
         """
-        credential_order = (ManagedIdentityCredential(),)
-        return ChainedTokenCredential(*credential_order)
+        return ManagedIdentityCredential()
 
     @cached_property
     def service_principal_secret(self):
@@ -570,8 +569,7 @@ def get_sp_secret(
         ... )
     """
     if user_credential is None:
-        credential_order = (ManagedIdentityCredential(),)
-        user_credential = ChainedTokenCredential(*credential_order)
+        user_credential = ManagedIdentityCredential()
 
     secret_client = SecretClient(
         vault_url=vault_url, credential=user_credential
