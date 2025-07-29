@@ -137,7 +137,7 @@ def package_and_upload_dockerfile(
             sp.run("az login --use-device-code", shell=True)
         else:
             logger.debug("Logging in to Azure.")
-            sp.run("az login", shell=True)
+            sp.run("az login --identity", shell=True)
         sp.run(f"az acr login --name {registry_name}", shell=True)
         logger.debug("Pushing Docker container to ACR.")
         sp.run(f"docker push {full_container_name}", shell=True)
