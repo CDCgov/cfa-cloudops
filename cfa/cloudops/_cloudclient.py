@@ -1138,7 +1138,7 @@ class CloudClient:
         """
         batch_helpers.delete_pool(
             resource_group_name=self.cred.azure_resource_group_name,
-            account_name=self.account_name,
+            account_name=self.cred.azure_batch_account,
             pool_name=pool_name,
             batch_mgmt_client=self.batch_mgmt_client,
         )
