@@ -138,7 +138,7 @@ def get_batch_service_client(
         )
     else:
         return BatchServiceClient(
-            credentials=ch.user_credential,
+            credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
