@@ -332,7 +332,7 @@ def get_completed_tasks(job_name: str, batch_client: object):
         detailed success/failure information.
     """
     logger.debug("Pulling in task information.")
-    tasks = batch_client.task.list(job_name)
+    tasks = [task for task in batch_client.task.list(job_name)]
     total_tasks = len(tasks)
 
     completed_tasks = [
