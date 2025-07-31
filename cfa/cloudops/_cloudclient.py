@@ -286,6 +286,8 @@ class CloudClient:
         task_id_ints: bool = False,
         timeout: int | None = None,
         exist_ok=False,
+        verify_pool: bool = True,
+        verbose=False,
     ):
         """Create a job in Azure Batch to run tasks on a specified pool.
 
@@ -369,10 +371,16 @@ class CloudClient:
         """
         # save job information that will be used with tasks
         job_name = job_name.replace(" ", "")
+        logger.debug(f"job_id: {job_name}")
+
         if pool_name:
             self.pool_name = pool_name
         elif self.pool_name:
             pool_name = self.pool_name
+        else:
+            logger.error("Please specify a pool for the job and try again.")
+            raise Exception("Please specify a pool for the job and try again.")
+
         self.save_logs_to_blob = save_logs_to_blob
 
         if save_logs_to_blob:
@@ -415,15 +423,14 @@ class CloudClient:
             job.constraints = job.constraints or batch_models.JobConstraints()
             job.constraints.max_task_retry_count = task_retries
 
-        # Configure log saving if specified
-        if save_logs_to_blob:
-            # Note: Log saving configuration would typically be handled
-            # at the task level, not the job level. This is a placeholder
-            # for future implementation.
-            pass
-
         # Create the job
-        create_job(self.batch_service_client, job, exist_ok=exist_ok)
+        create_job(
+            self.batch_service_client,
+            job,
+            exist_ok=exist_ok,
+            verify_pool=verify_pool,
+            verbose=verbose,
+        )
 
     def add_task(
         self,
