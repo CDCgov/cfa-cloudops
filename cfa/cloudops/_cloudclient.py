@@ -755,7 +755,7 @@ class CloudClient:
             )
         logger.info("Job complete.")
 
-    def check_job_status(self, job_name: str) -> None:
+    def check_job_status(self, job_name: str) -> str:
         """Check the current status and progress of an Azure Batch job.
 
         Performs a comprehensive status check of a job including existence verification,
@@ -764,6 +764,9 @@ class CloudClient:
 
         Args:
             job_name (str): Name/ID of the job to check. The job may or may not exist.
+
+        Returns:
+            str: job status info
 
         Example:
             Check status of a running job:

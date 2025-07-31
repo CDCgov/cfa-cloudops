@@ -284,7 +284,10 @@ def check_job_exists(job_name: str, batch_client: object):
         This function searches through all jobs in the account, so it may be
         slower for accounts with many jobs. The check is case-sensitive.
     """
-    job_list = batch_client.job.list()
+    job_list = []
+    for job in batch_client.job.list():
+        job_list.append(job.id)
+
     if job_name in job_list:
         logger.debug(f"job {job_name} exists.")
         return True
