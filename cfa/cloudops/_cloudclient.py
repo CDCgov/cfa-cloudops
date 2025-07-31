@@ -795,13 +795,16 @@ class CloudClient:
                 job_name, self.batch_service_client
             ):
                 logger.info(f"Job {job_name} completed.")
+                return "complete"
             else:
                 j_state = batch_helpers.get_job_state(
                     job_name, self.batch_service_client
                 )
                 logger.info(f"Job in {j_state} state")
+                return j_state
         else:
             logger.info(f"Job {job_name} does not exist.")
+            return "does not exist"
 
     def delete_job(self, job_name: str) -> None:
         """Delete an Azure Batch job and all its associated tasks.
