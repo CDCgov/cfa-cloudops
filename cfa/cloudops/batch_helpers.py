@@ -577,6 +577,45 @@ def get_tasks_from_yaml(base_cmd: str, file_path: str) -> list[str]:
     return cmds
 
 
+def get_full_container_image_name(
+    container_name: str,
+    registry: str = "azure",
+    acr_name: str = None,
+    github_org: str = None,
+) -> str:
+    """Return the full container image name for Azure Batch pool usage.
+
+    Constructs the full image name for Azure Container Registry, Docker Hub, or GitHub Container Registry.
+
+    Args:
+        container_name (str): The name of the container image (e.g., "myimage:latest").
+        registry (str): Which registry to use: "azure", "docker", or "github". Defaults to "azure".
+        acr_name (str, optional): Azure Container Registry name (required if registry is "azure").
+        github_org (str, optional): .
+
+    Returns:
+        str: The full image name to use in Azure Batch pool.
+    """
+    if registry.lower() == "azure":
+        if not acr_name:
+            raise ValueError(
+                "acr_name must be provided for Azure Container Registry."
+            )
+        return f"{acr_name}.azurecr.io/{container_name}"
+    elif registry.lower().startswith("docker"):
+        return f"{container_name}"
+    elif registry.lower() == "github":
+        if not github_org:
+            raise ValueError(
+                "github_org must be provided for GitHub Container Registry."
+            )
+        return f"ghcr.io/{github_org.lower()}/{container_name}"
+    else:
+        raise ValueError(
+            "Unsupported registry type. Use 'azure', 'docker', or 'github'."
+        )
+
+
 class Task:
     def __init__(
         self, cmd: str, id: str | None = None, dep: str | list | None = None
