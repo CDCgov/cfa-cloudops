@@ -179,7 +179,7 @@ def get_node_mount_config(
     ),
     shared_relative_mount_path: str = "",
     mount_names: list[str] = None,
-    blobfuse_options: str | list[str] = None,
+    blobfuse_options: str | list[str] = "",
     cache_blobfuse: bool = False,
     **kwargs,
 ) -> models.MountConfiguration:
