@@ -475,8 +475,8 @@ class CloudClient:
             if self.full_container_name is None:
                 logger.debug("Gettting full pool info")
                 pool_info = batch_helpers.get_pool_full_info(
-                    self.resource_group_name,
-                    self.account_name,
+                    self.cred.azure_resource_group_name,
+                    self.cred.azure_batch_account,
                     self.pool_name,
                     self.batch_mgmt_client,
                 )
@@ -496,8 +496,8 @@ class CloudClient:
             rel_mnt_path = batch_helpers.get_rel_mnt_path(
                 blob_name=self.save_logs_to_blob,
                 pool_name=self.pool_name,
-                resource_group_name=self.resource_group_name,
-                account_name=self.account_name,
+                resource_group_name=self.cred.azure_resource_group_name,
+                account_name=self.cred.azure_batch_account,
                 batch_mgmt_client=self.batch_mgmt_client,
             )
             if rel_mnt_path != "ERROR!":
@@ -510,8 +510,8 @@ class CloudClient:
         # get all mounts from pool info
         self.mounts = batch_helpers.get_pool_mounts(
             self.pool_name,
-            self.resource_group_name,
-            self.account_name,
+            self.cred.azure_resource_group_name,
+            self.cred.azure_batch_account,
             self.batch_mgmt_client,
         )
 
