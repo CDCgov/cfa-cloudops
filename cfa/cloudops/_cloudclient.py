@@ -435,112 +435,104 @@ class CloudClient:
     def add_task(
         self,
         job_name: str,
-        base_call: list[str],
-        task_id: str = None,
+        command_line: list[str],
+        name_suffix: str = "",
         depends_on: list[str] | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
         container_image_name: str = None,
-        container_image_version: str = "latest",
         timeout: int | None = None,
     ):
-        """Add a task to an existing Azure Batch job.
-
-        Creates and adds a new task to the specified job. Tasks can have dependencies
-        on other tasks, run in containers, and have configurable timeouts and retry policies.
+        """
+        Add a task to an Azure Batch job.
 
         Args:
-            job_name (str): ID of the job to add the task to. The job must already exist.
-            base_call (list[str] | str): Command to execute for the task. Can be provided
-                as a list of strings (which will be joined with spaces) or as a single
-                command string.
-            task_id (str, optional): Unique identifier for the task within the job.
-                If None, a task ID will be auto-generated. Must be unique within the job.
-            depends_on (list[str], optional): List of task IDs that this task depends on.
-                The task will not start until all dependency tasks have completed successfully.
-                Only works if the job was created with uses_deps=True.
-            depends_on_range (tuple, optional): Range of dependent tasks when task IDs are
-                integers, specified as (start_int, end_int). Alternative to depends_on for
-                jobs using integer task IDs.
-            run_dependent_tasks_on_fail (bool, optional): Whether dependent tasks should
-                run even if this task fails. Default is False (dependent tasks only run
-                on success).
-            container_image_name (str, optional): Docker container image to use for the task.
-                Should be in format "registry/image" or "image" for Docker Hub. If None,
-                uses the container configured at the pool level.
-            container_image_version (str, optional): Version/tag of the container image.
-                Default is "latest".
-            timeout (int, optional): Maximum time in minutes the task can run before being
-                terminated. If None, no timeout is applied (task can run indefinitely).
-
-        Returns:
-            str: The task ID that was created or assigned.
-
-        Raises:
-            RuntimeError: If the task creation fails due to Azure Batch service errors,
-                authentication issues, or invalid parameters.
-            ValueError: If the job_name does not exist, task_id conflicts with existing task,
-                or if dependency configuration is invalid.
-
-        Example:
-            Add a simple task:
-
-                task_id = client.add_task(
-                    job_name="my-job",
-                    base_call=["python", "script.py", "--input", "data.txt"]
-                )
-
-            Add a task with dependencies:
-
-                task_id = client.add_task(
-                    job_name="pipeline-job",
-                    base_call="python preprocess.py",
-                    task_id="preprocess-task",
-                    timeout=30
-                )
-
-                dependent_task_id = client.add_task(
-                    job_name="pipeline-job",
-                    base_call="python analyze.py",
-                    task_id="analysis-task",
-                    depends_on=["preprocess-task"],
-                    container_image_name="myregistry/analytics",
-                    container_image_version="v2.1"
-                )
-
-            Add task with integer ID dependencies:
-
-                task_id = client.add_task(
-                    job_name="bulk-job",
-                    base_call="python process_chunk.py",
-                    depends_on_range=(1, 10),  # Depends on tasks 1-10
-                    timeout=60
-                )
-
-        Note:
-            - Task dependencies only work if the job was created with uses_deps=True
-            - Container images must be accessible from the compute nodes
-            - Task IDs must be unique within the job
-            - Command execution occurs in the task's working directory on the compute node
+            job_name (str): Name of the job to add the task to.
+            base_call (list[str]): Command line arguments for the task.
+            name_suffix (str, optional): Suffix to append to the task ID.
+            depends_on (list[str], optional): List of task IDs this task depends on.
+            depends_on_range (tuple, optional): Range of task IDs this task depends on.
+            run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails.
+            container_image_name (str, optional): Container image to use for the task.
+            timeout (int, optional): Maximum time in minutes for the task to run.
         """
-        if isinstance(base_call, list):
-            base_call = " ".join(base_call)
-        # Add a task to the job
-        az_mount_dir = "$AZ_BATCH_NODE_MOUNTS_DIR"
-        user_identity = batch_models.UserIdentity(
-            auto_user=batch_models.AutoUserSpecification(
-                scope=batch_models.AutoUserScope.pool,
-                elevation_level=batch_models.ElevationLevel.admin,
+        if container_image_name is not None:
+            # check container exists
+            logger.debug("Checking the container exists.")
+            registry = container_image_name.split("/")[0]
+            repo_tag = container_image_name.split("/")[-1]
+            repo = repo_tag.split(":")[0]
+            tag = repo_tag.split(":")[-1]
+            container_name = helpers.check_azure_container_exists(
+                registry, repo, tag, credential=self.cred
             )
+            if container_name is None:
+                raise ValueError(f"{container_image_name} does not exist.")
+        else:
+            if self.full_container_name is None:
+                logger.debug("Gettting full pool info")
+                pool_info = batch_helpers.get_pool_full_info(
+                    self.resource_group_name,
+                    self.account_name,
+                    self.pool_name,
+                    self.batch_mgmt_client,
+                )
+                logger.debug("Generated full pool info.")
+                vm_config = pool_info.deployment_configuration.virtual_machine_configuration
+                logger.debug("Generated VM config.")
+                pool_container = (
+                    vm_config.container_configuration.container_image_names
+                )
+                container_name = pool_container[0].split("://")[-1]
+                logger.debug(f"Container name set to {container_name}.")
+            else:
+                container_name = self.full_container_name
+                logger.debug(f"Container name set to {container_name}.")
+
+        if self.save_logs_to_blob:
+            rel_mnt_path = batch_helpers.get_rel_mnt_path(
+                blob_name=self.save_logs_to_blob,
+                pool_name=self.pool_name,
+                resource_group_name=self.resource_group_name,
+                account_name=self.account_name,
+                batch_mgmt_client=self.batch_mgmt_client,
+            )
+            if rel_mnt_path != "ERROR!":
+                rel_mnt_path = "/" + helpers.format_rel_path(
+                    rel_path=rel_mnt_path
+                )
+        else:
+            rel_mnt_path = None
+
+        # get all mounts from pool info
+        self.mounts = batch_helpers.get_pool_mounts(
+            self.pool_name,
+            self.resource_group_name,
+            self.account_name,
+            self.batch_mgmt_client,
         )
-        print(az_mount_dir, user_identity)
 
-        # pull mounts from associated pool
-
-        # get task config for task
-        # task_config = get_task_config()
-        # add task
-        self.batch_service_client.task.add()
+        logger.debug("Adding tasks to job.")
+        tid = batch_helpers.add_task(
+            job_name=job_name,
+            task_id_base=job_name,
+            command_line=command_line,
+            save_logs_rel_path=rel_mnt_path,
+            logs_folder=self.logs_folder,
+            name_suffix=name_suffix,
+            mounts=self.mounts,
+            depends_on=depends_on,
+            depends_on_range=depends_on_range,
+            run_dependent_tasks_on_fail=run_dependent_tasks_on_fail,
+            batch_client=self.batch_service_client,
+            full_container_name=container_image_name,
+            task_id_max=self.task_id_max,
+            task_id_ints=self.task_id_ints,
+            timeout=timeout,
+        )
+        self.task_id_max += 1
+        print(f"Added task {tid} to job {job_name}.")
+        return tid
 
     def create_blob_container(self, name: str) -> None:
         """Create a blob storage container if it doesn't already exist.

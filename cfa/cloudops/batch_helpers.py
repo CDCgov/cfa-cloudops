@@ -3,10 +3,19 @@ import datetime
 import logging
 import time
 import uuid
+from zoneinfo import ZoneInfo as zi
 
 import azure.batch.models as batch_models
 import griddler
 import yaml
+from azure.batch.models import (
+    DependencyAction,
+    ExitCodeMapping,
+    ExitConditions,
+    ExitOptions,
+    JobAction,
+    TaskConstraints,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -704,3 +713,274 @@ class Task:
             other (Task): batch.Task object
         """
         self.after(other)
+
+
+def get_rel_mnt_path(
+    blob_name: str,
+    pool_name: str,
+    resource_group_name: str,
+    account_name: str,
+    batch_mgmt_client: object,
+):
+    """
+    Args:
+        blob_name (str): name of blob container
+        pool_name (str): name of pool
+        resource_group_name (str): name of resource group in Azure
+        account_name (str): name of account in Azure
+        batch_mgmt_object (object): instance of BatchManagementClient
+
+    Returns:
+        str: relative mount path for the blob and pool specified
+    """
+    try:
+        pool_info = get_pool_full_info(
+            resource_group_name=resource_group_name,
+            account_name=account_name,
+            pool_name=pool_name,
+            batch_mgmt_client=batch_mgmt_client,
+        )
+    except Exception:
+        logger.error("could not retrieve pool information.")
+        return "ERROR!"
+    mc = pool_info.as_dict()["mount_configuration"]
+    for m in mc:
+        if (
+            m["azure_blob_file_system_configuration"]["container_name"]
+            == blob_name
+        ):
+            rel_mnt_path = m["azure_blob_file_system_configuration"][
+                "relative_mount_path"
+            ]
+            return rel_mnt_path
+    logger.error(f"could not find blob {blob_name} mounted to pool.")
+    print(f"could not find blob {blob_name} mounted to pool.")
+    return "ERROR!"
+
+
+def get_pool_full_info(
+    resource_group_name: str,
+    account_name: str,
+    pool_name: str,
+    batch_mgmt_client: object,
+) -> dict:
+    """Get the full information of a specified pool.
+
+    Args:
+        resource_group_name (str): name of resource group
+        account_name (str): name of account
+        pool_name (str): name of pool
+        batch_mgmt_client (object): instance of BatchManagementClient
+
+    Returns:
+        dict: dictionary with full pool information
+    """
+    logger.debug("Pulling pool info.")
+    result = batch_mgmt_client.pool.get(
+        resource_group_name, account_name, pool_name
+    )
+    return result
+
+
+def get_pool_mounts(
+    pool_name: str,
+    resource_group_name: str,
+    account_name: str,
+    batch_mgmt_client: object,
+):
+    """
+    Args:
+        pool_name (str): name of pool
+        resource_group_name (str): name of resource group in Azure
+        account_name (str): name of account in Azure
+        batch_mgmt_client (object): instance of BatchManagementClient
+
+    Returns:
+        list: list of mounts in specified pool
+    """
+    try:
+        pool_info = get_pool_full_info(
+            resource_group_name=resource_group_name,
+            account_name=account_name,
+            pool_name=pool_name,
+            batch_mgmt_client=batch_mgmt_client,
+        )
+    except Exception:
+        logger.error("could not retrieve pool information.")
+        print(f"could not retrieve pool info for {pool_name}.")
+        return None
+    mounts = []
+    mc = pool_info.as_dict()["mount_configuration"]
+    for m in mc:
+        mounts.append(
+            (
+                m["azure_blob_file_system_configuration"]["container_name"],
+                m["azure_blob_file_system_configuration"][
+                    "relative_mount_path"
+                ],
+            )
+        )
+    return mounts
+
+
+def add_task(
+    job_name: str,
+    task_id_base: str,
+    command_line: str,
+    save_logs_rel_path: str | None = None,
+    logs_folder: str = "stdout_stderr",
+    name_suffix: str = "",
+    mounts: list | None = None,
+    depends_on: str | list[str] | None = None,
+    depends_on_range: tuple | None = None,
+    run_dependent_tasks_on_fail: bool = False,
+    batch_client: object | None = None,
+    full_container_name: str | None = None,
+    task_id_max: int = 0,
+    task_id_ints: bool = False,
+    timeout: int | None = None,
+) -> str:
+    logger.debug(f"Adding task to job {job_name}.")
+
+    # convert command line to string if given as list
+    if isinstance(command_line, list):
+        cmd_str = " ".join(command_line)
+        logger.debug("Docker command converted to string")
+    else:
+        cmd_str = command_line
+
+    # Add a task to the job
+    az_mount_dir = "$AZ_BATCH_NODE_MOUNTS_DIR"
+    user_identity = batch_models.UserIdentity(
+        auto_user=batch_models.AutoUserSpecification(
+            scope=batch_models.AutoUserScope.pool,
+            elevation_level=batch_models.ElevationLevel.admin,
+        )
+    )
+
+    task_deps = None
+    if depends_on is not None:
+        # Create a TaskDependencies object to pass in
+        if isinstance(depends_on, str):
+            depends_on = [depends_on]
+            logger.debug("Adding task dependency.")
+        task_deps = batch_models.TaskDependencies(task_ids=depends_on)
+    if depends_on_range is not None:
+        task_deps = batch_models.TaskDependencies(
+            task_id_ranges=[
+                batch_models.TaskIdRange(
+                    start=int(depends_on_range[0]),
+                    end=int(depends_on_range[1]),
+                )
+            ]
+        )
+
+    job_action = JobAction.none
+    if check_job_exists(job_name, batch_client):
+        job_details = batch_client.job.get(job_name)
+        if job_details and job_details.metadata:
+            for metadata in job_details.metadata:
+                if (
+                    metadata.name == "mark_complete"
+                    and bool(metadata.value) is True
+                ):
+                    job_action = JobAction.terminate
+                    break
+    no_exit_options = ExitOptions(
+        dependency_action=DependencyAction.satisfy, job_action=job_action
+    )
+
+    if run_dependent_tasks_on_fail:
+        exit_conditions = ExitConditions(
+            exit_codes=[
+                ExitCodeMapping(code=0, exit_options=no_exit_options),
+                ExitCodeMapping(code=1, exit_options=no_exit_options),
+            ],
+            pre_processing_error=no_exit_options,
+            file_upload_error=no_exit_options,
+            default=no_exit_options,
+        )
+    else:
+        terminate_exit_options = ExitOptions(
+            dependency_action=DependencyAction.block,
+            job_action=job_action,
+        )
+        exit_conditions = ExitConditions(
+            exit_codes=[
+                ExitCodeMapping(code=0, exit_options=no_exit_options),
+                ExitCodeMapping(code=1, exit_options=terminate_exit_options),
+            ],
+            pre_processing_error=terminate_exit_options,
+            file_upload_error=terminate_exit_options,
+            default=terminate_exit_options,
+        )
+
+    logger.debug("Creating mount configuration string.")
+    mount_str = ""
+    # src = env variable to fsmounts/rel_path
+    # target = the directory(path) you reference in your code
+    if mounts is not None:
+        mount_str = ""
+        for mount in mounts:
+            logger.debug("Adding mount to mount string.")
+            mount_str = (
+                mount_str
+                + "--mount type=bind,source="
+                + az_mount_dir
+                + f"/{mount[1]},target=/{mount[1]} "
+            )
+
+    if task_id_ints:
+        task_id = str(task_id_max + 1)
+    else:
+        task_id = f"{task_id_base}-{name_suffix}-{str(task_id_max + 1)}"
+
+    if save_logs_rel_path is not None:
+        if save_logs_rel_path == "ERROR!":
+            logger.warning("could not find rel path")
+            print(
+                "could not find rel path. Stdout and stderr will not be saved to blob storage."
+            )
+            full_cmd = cmd_str
+        else:
+            logger.debug("using rel path to save logs")
+            t = datetime.datetime.now(zi("America/New_York"))
+            s_time = t.strftime("%Y%m%d_%H%M%S")
+            if not save_logs_rel_path.startswith("/"):
+                save_logs_rel_path = "/" + save_logs_rel_path
+            _folder = f"{save_logs_rel_path}/{logs_folder}/"
+            sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
+            full_cmd = f"""/bin/bash -c "mkdir -p {_folder}; {cmd_str} 2>&1 | tee {sout}" """
+    else:
+        full_cmd = cmd_str
+
+    # add contstraints
+    if timeout is None:
+        _to = None
+    else:
+        _to = datetime.timedelta(minutes=timeout)
+
+    task_constraints = TaskConstraints(max_wall_clock_time=_to)
+    command_line = full_cmd
+    logger.debug(f"Adding task {task_id}")
+
+    # Create the task parameter
+    task_param = batch_models.TaskAddParameter(
+        id=task_id,
+        command_line=command_line,
+        container_settings=batch_models.TaskContainerSettings(
+            image_name=full_container_name,
+            container_run_options=f"--name={job_name}_{str(task_id_max + 1)} --rm "
+            + mount_str,
+        ),
+        user_identity=user_identity,
+        constraints=task_constraints,
+        depends_on=task_deps,
+        exit_conditions=exit_conditions,
+        run_dependent_tasks_on_failure=run_dependent_tasks_on_fail,
+    )
+
+    # Add the task to the job
+    batch_client.task.add(job_id=job_name, task=task_param)
+    logger.debug(f"Task '{task_id}' added to job '{job_name}'.")
+    return task_id
