@@ -83,6 +83,7 @@ class CloudClient:
         self.compute_mgmt_client = get_compute_management_client(self.cred)
         self.batch_service_client = get_batch_service_client(self.cred)
         self.blob_service_client = get_blob_service_client(self.cred)
+        self.full_container_name = None
 
     def create_pool(
         self,
@@ -244,6 +245,8 @@ class CloudClient:
                 ]
 
             d.assign_container_config(pool_config, container_config)
+        else:
+            raise ValueError("container_image_name not provided.")
 
         # Configure availability zones in the virtual machine configuration
         # Set node placement configuration for zonal deployment
