@@ -461,6 +461,10 @@ class CloudClient:
             container_image_name (str, optional): Container image to use for the task.
             timeout (int, optional): Maximum time in minutes for the task to run.
         """
+        # get pool info for related job
+        job_info = self.batch_service_client.job.get(job_name)
+        pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+
         if container_image_name is not None:
             # check container exists
             logger.debug("Checking the container exists.")
@@ -479,7 +483,7 @@ class CloudClient:
                 pool_info = batch_helpers.get_pool_full_info(
                     self.cred.azure_resource_group_name,
                     self.cred.azure_batch_account,
-                    self.pool_name,
+                    pool_name,
                     self.batch_mgmt_client,
                 )
                 logger.debug("Generated full pool info.")
