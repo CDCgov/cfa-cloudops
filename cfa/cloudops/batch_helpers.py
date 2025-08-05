@@ -964,6 +964,8 @@ def add_task(
     command_line = full_cmd
     logger.debug(f"Adding task {task_id}")
 
+    # if full container name is none, pull info from job
+
     # Create the task parameter
     task_param = batch_models.TaskAddParameter(
         id=task_id,

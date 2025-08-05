@@ -1,9 +1,16 @@
+import datetime
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
 
 import pandas as pd
 from azure.batch import models as batch_models
+from azure.batch.models import (
+    JobConstraints,
+    MetadataItem,
+    OnAllTasksComplete,
+    OnTaskFailure,
+)
 
 # from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
@@ -399,7 +406,21 @@ class CloudClient:
                 if logs_folder.endswith("/"):
                     logs_folder = logs_folder[:-1]
                 self.logs_folder - logs_folder
+        if timeout is None:
+            _to = None
+        else:
+            _to = datetime.timedelta(minutes=timeout)
 
+        on_all_tasks_complete = (
+            OnAllTasksComplete.terminate_job
+            if mark_complete_after_tasks_run
+            else OnAllTasksComplete.no_action
+        )
+
+        job_constraints = JobConstraints(
+            max_task_retry_count=task_retries,
+            max_wall_clock_time=_to,
+        )
         if task_id_ints:
             self.task_id_ints = True
             self.task_id_max = 0
@@ -411,6 +432,14 @@ class CloudClient:
             id=job_name,
             pool_info=batch_models.PoolInformation(pool_id=pool_name),
             uses_task_dependencies=uses_deps,
+            on_all_tasks_complete=on_all_tasks_complete,
+            on_task_failure=OnTaskFailure.perform_exit_options_job_action,
+            constraints=job_constraints,
+            metadata=[
+                MetadataItem(
+                    name="mark_complete", value=mark_complete_after_tasks_run
+                )
+            ],
         )
 
         # Configure job constraints if specified
