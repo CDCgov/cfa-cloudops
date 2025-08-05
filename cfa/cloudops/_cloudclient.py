@@ -86,6 +86,7 @@ class CloudClient:
         self.full_container_name = None
         self.save_logs_to_blob = None
         self.logs_folder = "stdout_stderr"
+        self.task_id_ints = False
 
     def create_pool(
         self,
