@@ -536,7 +536,7 @@ class CloudClient:
             depends_on_range=depends_on_range,
             run_dependent_tasks_on_fail=run_dependent_tasks_on_fail,
             batch_client=self.batch_service_client,
-            full_container_name=container_image_name,
+            full_container_name=container_name,
             task_id_max=self.task_id_max,
             task_id_ints=self.task_id_ints,
             timeout=timeout,
