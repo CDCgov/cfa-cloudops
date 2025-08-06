@@ -442,18 +442,6 @@ class CloudClient:
             ],
         )
 
-        # Configure job constraints if specified
-        if timeout is not None:
-            job.constraints = batch_models.JobConstraints(
-                max_wall_clock_time=timeout * 60
-            )
-
-        # Configure job manager task settings
-        if mark_complete_after_tasks_run:
-            job.on_all_tasks_complete = (
-                batch_models.OnAllTasksComplete.terminate_job
-            )
-
         # Configure task retry settings
         if task_retries > 0:
             job.constraints = job.constraints or batch_models.JobConstraints()
