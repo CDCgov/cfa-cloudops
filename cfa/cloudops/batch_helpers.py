@@ -9,11 +9,6 @@ import azure.batch.models as batch_models
 import griddler
 import yaml
 from azure.batch.models import (
-    DependencyAction,
-    ExitCodeMapping,
-    ExitConditions,
-    ExitOptions,
-    JobAction,
     TaskConstraints,
 )
 
@@ -875,45 +870,9 @@ def add_task(
             ]
         )
 
-    job_action = JobAction.none
     if check_job_exists(job_name, batch_client):
-        job_details = batch_client.job.get(job_name)
-        if job_details and job_details.metadata:
-            for metadata in job_details.metadata:
-                if (
-                    metadata.name == "mark_complete"
-                    and bool(metadata.value) is True
-                ):
-                    job_action = JobAction.terminate
-                    break
-    no_exit_options = ExitOptions(
-        dependency_action=DependencyAction.satisfy, job_action=job_action
-    )
-
-    if run_dependent_tasks_on_fail:
-        exit_conditions = ExitConditions(
-            exit_codes=[
-                ExitCodeMapping(code=0, exit_options=no_exit_options),
-                ExitCodeMapping(code=1, exit_options=no_exit_options),
-            ],
-            pre_processing_error=no_exit_options,
-            file_upload_error=no_exit_options,
-            default=no_exit_options,
-        )
-    else:
-        terminate_exit_options = ExitOptions(
-            dependency_action=DependencyAction.block,
-            job_action=job_action,
-        )
-        exit_conditions = ExitConditions(
-            exit_codes=[
-                ExitCodeMapping(code=0, exit_options=no_exit_options),
-                ExitCodeMapping(code=1, exit_options=terminate_exit_options),
-            ],
-            pre_processing_error=terminate_exit_options,
-            file_upload_error=terminate_exit_options,
-            default=terminate_exit_options,
-        )
+        # job_details = batch_client.job.get(job_name)
+        pass
 
     logger.debug("Creating mount configuration string.")
     mount_str = ""
@@ -978,7 +937,6 @@ def add_task(
         user_identity=user_identity,
         constraints=task_constraints,
         depends_on=task_deps,
-        exit_conditions=exit_conditions,
         run_dependent_tasks_on_failure=run_dependent_tasks_on_fail,
     )
 
