@@ -1366,7 +1366,7 @@ class CloudClient:
         # submit tasks
         task_list = []
         for task_str in task_strs:
-            tid = self.add_task(job_id=job_id, docker_cmd=task_str, **kwargs)
+            tid = self.add_task(job_id=job_id, command_line=task_str, **kwargs)
             task_list.append(tid)
         return task_list
 
@@ -1454,7 +1454,7 @@ class CloudClient:
                 t2 = Task(id="B", cmd="python step2.py", deps=["A"])
                 t3 = Task(id="C", cmd="python step3.py", deps=["A"])
                 t4 = Task(id="D", cmd="python step4.py", deps=["B", "C"])
-                client.run_dag(t1, t2, t3, t4, job_name="my-job")S
+                client.run_dag(t1, t2, t3, t4, job_name="my-job")
 
         Note:
             The tasks must form a valid DAG (no cycles). Task dependencies are resolved
@@ -1478,7 +1478,7 @@ class CloudClient:
         for task in task_order:
             tid = self.add_task(
                 job_name=job_name,
-                docker_cmd=task.cmd,
+                command_line=task.cmd,
                 depends_on=task_df[task_df["id"] == task.id]["deps"].values[0],
                 **kwargs,
             )
