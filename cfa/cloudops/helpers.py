@@ -242,3 +242,19 @@ def upload_docker_image(
     sp.run(f"docker push {full_container_name}", shell=True)
 
     return full_container_name
+
+
+def format_rel_path(rel_path: str) -> str:
+    """
+    Formats a relative path into the right format for Azure services
+
+    Args:
+        rel_path (str): relative mount path
+
+    Returns:
+        str: formatted relative path
+    """
+    if rel_path.startswith("/"):
+        rel_path = rel_path[1:]
+        logger.debug(f"path formatted to {rel_path}")
+    return rel_path
