@@ -9,6 +9,11 @@ import azure.batch.models as batch_models
 import griddler
 import yaml
 from azure.batch.models import (
+    DependencyAction,
+    ExitCodeMapping,
+    ExitConditions,
+    ExitOptions,
+    JobAction,
     TaskConstraints,
 )
 
@@ -870,9 +875,33 @@ def add_task(
             ]
         )
 
-    if check_job_exists(job_name, batch_client):
-        # job_details = batch_client.job.get(job_name)
-        pass
+    no_exit_options = ExitOptions(
+        dependency_action=DependencyAction.satisfy, job_action=JobAction.none
+    )
+    if run_dependent_tasks_on_fail:
+        exit_conditions = ExitConditions(
+            exit_codes=[
+                ExitCodeMapping(code=0, exit_options=no_exit_options),
+                ExitCodeMapping(code=1, exit_options=no_exit_options),
+            ],
+            pre_processing_error=no_exit_options,
+            file_upload_error=no_exit_options,
+            default=no_exit_options,
+        )
+    else:
+        terminate_exit_options = ExitOptions(
+            dependency_action=DependencyAction.block,
+            job_action=JobAction.none,
+        )
+        exit_conditions = ExitConditions(
+            exit_codes=[
+                ExitCodeMapping(code=0, exit_options=no_exit_options),
+                ExitCodeMapping(code=1, exit_options=terminate_exit_options),
+            ],
+            pre_processing_error=terminate_exit_options,
+            file_upload_error=terminate_exit_options,
+            default=terminate_exit_options,
+        )
 
     logger.debug("Creating mount configuration string.")
     mount_str = ""
@@ -938,6 +967,7 @@ def add_task(
         constraints=task_constraints,
         depends_on=task_deps,
         run_dependent_tasks_on_failure=run_dependent_tasks_on_fail,
+        exit_conditions=exit_conditions,
     )
 
     # Add the task to the job
