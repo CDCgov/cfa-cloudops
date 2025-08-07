@@ -1431,7 +1431,7 @@ class CloudClient:
                     **kwargs,
                 )
 
-    def run_dag(self, *args: batch_helpers.Task, job_id: str, **kwargs):
+    def run_dag(self, *args: batch_helpers.Task, job_name: str, **kwargs):
         """Run a set of tasks as a directed acyclic graph (DAG) in the correct order.
 
         Accepts multiple Task objects, determines their execution order using topological
@@ -1454,7 +1454,7 @@ class CloudClient:
                 t2 = Task(id="B", cmd="python step2.py", deps=["A"])
                 t3 = Task(id="C", cmd="python step3.py", deps=["A"])
                 t4 = Task(id="D", cmd="python step4.py", deps=["B", "C"])
-                client.run_dag(t1, t2, t3, t4, job_id="my-job")
+                client.run_dag(t1, t2, t3, t4, job_name="my-job")S
 
         Note:
             The tasks must form a valid DAG (no cycles). Task dependencies are resolved
@@ -1477,7 +1477,7 @@ class CloudClient:
             task_df.loc[i] = [task.id, task.cmd, task.deps]
         for task in task_order:
             tid = self.add_task(
-                job_id=job_id,
+                job_name=job_name,
                 docker_cmd=task.cmd,
                 depends_on=task_df[task_df["id"] == task.id]["deps"].values[0],
                 **kwargs,
