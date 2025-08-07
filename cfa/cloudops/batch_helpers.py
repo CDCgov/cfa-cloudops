@@ -130,7 +130,7 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
             print(
                 "monitor runtime:",
                 _runtime,
-                " ...",
+                "...",
                 completions,
                 "completed;",
                 running,
@@ -170,6 +170,7 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
     logger.info(
         f"Monitoring ended: {end_time}. Total elapsed time: {runtime}."
     )
+    print("-" * 30)
     return {
         "completed": completed,
         "elapsed time": runtime,
