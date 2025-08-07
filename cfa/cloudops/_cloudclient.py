@@ -1450,11 +1450,15 @@ class CloudClient:
             Run a DAG of tasks:
 
                 client = CloudClient()
-                t1 = Task(id="A", cmd="python step1.py", deps=[])
-                t2 = Task(id="B", cmd="python step2.py", deps=["A"])
-                t3 = Task(id="C", cmd="python step3.py", deps=["A"])
-                t4 = Task(id="D", cmd="python step4.py", deps=["B", "C"])
-                client.run_dag(t1, t2, t3, t4, job_name="my-job")
+                client.create_job("dag_job", pool_name = "test_pool")
+                t1 = Task("python step1.py")
+                t2 = Task("python step2.py")
+                t3 = Task("python step3.py")
+                t4 = Task("python step4.py")
+                t2.after(t1)
+                t3.after(t1)
+                t4.after([t2, t3])
+                client.run_dag(t1, t2, t3, t4, job_name="dag_job")
 
         Note:
             The tasks must form a valid DAG (no cycles). Task dependencies are resolved
