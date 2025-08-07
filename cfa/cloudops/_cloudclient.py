@@ -405,7 +405,7 @@ class CloudClient:
                     logs_folder = logs_folder[1:]
                 if logs_folder.endswith("/"):
                     logs_folder = logs_folder[:-1]
-                self.logs_folder - logs_folder
+                self.logs_folder = logs_folder
         if timeout is None:
             _to = None
         else:
