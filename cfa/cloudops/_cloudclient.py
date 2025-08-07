@@ -484,19 +484,7 @@ class CloudClient:
         job_info = self.batch_service_client.job.get(job_name)
         pool_name = job_info.as_dict()["execution_info"]["pool_id"]
 
-        if container_image_name is not None:
-            # check container exists
-            logger.debug("Checking the container exists.")
-            registry = container_image_name.split("/")[0]
-            repo_tag = container_image_name.split("/")[-1]
-            repo = repo_tag.split(":")[0]
-            tag = repo_tag.split(":")[-1]
-            container_name = helpers.check_azure_container_exists(
-                registry, repo, tag, credential=self.cred
-            )
-            if container_name is None:
-                raise ValueError(f"{container_image_name} does not exist.")
-        else:
+        if container_image_name is None:
             if self.full_container_name is None:
                 logger.debug("Gettting full pool info")
                 pool_info = batch_helpers.get_pool_full_info(
@@ -516,6 +504,8 @@ class CloudClient:
             else:
                 container_name = self.full_container_name
                 logger.debug(f"Container name set to {container_name}.")
+        else:
+            container_name = container_image_name
 
         if self.save_logs_to_blob:
             rel_mnt_path = batch_helpers.get_rel_mnt_path(
