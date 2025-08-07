@@ -126,8 +126,11 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
                     failures += 1
                 elif task.as_dict()["execution_info"]["result"] == "success":
                     successes += 1
-
+            _runtime = str(datetime.now() - start_time).split(".")[0]
             print(
+                "monitor runtime:",
+                _runtime,
+                " ...",
                 completions,
                 "completed;",
                 running,
