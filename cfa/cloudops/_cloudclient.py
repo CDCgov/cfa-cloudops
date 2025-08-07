@@ -104,8 +104,8 @@ class CloudClient:
         vm_size=d.default_vm_size,  # do some validation on size if too large
         autoscale=True,
         autoscale_formula="default",
-        dedicated_nodes=5,
-        low_priority_nodes=5,
+        dedicated_nodes=0,
+        low_priority_nodes=1,
         max_autoscale_nodes=3,
         task_slots_per_node=1,
         availability_zones="regional",
