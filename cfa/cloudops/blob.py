@@ -58,7 +58,7 @@ def upload_to_storage_container(
 
     Args:
         file_paths: File or list of files to upload, as string paths relative to
-            ``local_upload_dir``. A single string will be coerced to a length-one list.
+            ``local_root_dir``. A single string will be coerced to a length-one list.
         blob_storage_container_name: Name of the blob storage container to which
             to upload the files. Must already exist.
         blob_service_client: BlobServiceClient to use when uploading.
@@ -105,7 +105,7 @@ def upload_to_storage_container(
 
 
 def download_from_storage_container(
-    file_paths: list[str],
+    file_paths: str | list[str],
     blob_storage_container_name: str,
     blob_service_client: BlobServiceClient = None,
     local_root_dir: str = ".",
@@ -182,7 +182,7 @@ def get_node_mount_config(
     blobfuse_options: str | list[str] = "",
     cache_blobfuse: bool = False,
     **kwargs,
-) -> models.MountConfiguration:
+) -> list[models.MountConfiguration]:
     """Get configuration for mounting Azure Blob Storage containers to Azure Batch nodes via blobfuse.
 
     Args:
@@ -203,7 +203,7 @@ def get_node_mount_config(
             containers relative to the ``shared_relative_mount_path``. If None, use
             the storage container names given in ``storage_containers`` as the
             ``mount_names``.
-        blobfuse_options: Additional options passed to blobfuse. Defaults to None.
+        blobfuse_options: Additional options passed to blobfuse. Defaults to "".
         cache_blobfuse: Whether to cache Blob storage. Defaults to False.
         **kwargs: Additional keyword arguments passed to the
             ``models.AzureBlobFileSystemConfiguration`` constructor.

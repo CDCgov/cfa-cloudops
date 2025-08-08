@@ -605,7 +605,7 @@ def get_full_container_image_name(
         container_name (str): The name of the container image (e.g., "myimage:latest").
         registry (str): Which registry to use: "azure", "docker", or "github". Defaults to "azure".
         acr_name (str, optional): Azure Container Registry name (required if registry is "azure").
-        github_org (str, optional): .
+        github_org (str, optional): GitHub organization name (required if registry is "github").
 
     Returns:
         str: The full image name to use in Azure Batch pool.
@@ -634,11 +634,30 @@ class Task:
     def __init__(
         self, cmd: str, id: str | None = None, dep: str | list | None = None
     ):
-        """
+        """Initialize a Task object for Azure Batch job execution.
+
+        Creates a task with a command, optional ID, and optional dependencies on other tasks.
+        Used to build task graphs for batch processing workflows.
+
         Args:
-            cmd (str): command to be used with Azure Batch task
-            id (str, optional): optional id to identity tasks. Defaults to None.
-            dep (str | list[str], optional): Task object(s) this task depends on. Defaults to None.
+            cmd (str): Command to be used with Azure Batch task execution.
+            id (str, optional): Optional ID to identify tasks. If None, generates a UUID.
+                Defaults to None.
+            dep (str | list, optional): Task object(s) or task ID(s) this task depends on.
+                Can be a single task/ID or list of tasks/IDs. Defaults to None.
+
+        Example:
+            Create a simple task:
+
+                task1 = Task("python process_data.py")
+
+            Create a task with dependencies:
+
+                task2 = Task("python analyze.py", dep=[task1])
+
+            Create a task with custom ID:
+
+                task3 = Task("python report.py", id="generate-report")
         """
         self.cmd = cmd
         if id is None:
@@ -656,16 +675,24 @@ class Task:
         return self.id
 
     def before(self, other):
-        """
-        Set that this task needs to occur before another task.
+        """Set that this task needs to occur before another task.
 
-        Example:
-            t1 = Task("some command")
-            t2 = Task("another command")
-            t1.before(t2) sets t1 must occure before t2.
+        Establishes a dependency relationship where this task must complete before
+        the other task(s) can start execution.
 
         Args:
-            other (Task): batch.Task object
+            other (Task | list[Task]): Task object(s) that should run after this task.
+
+        Example:
+            Set task order:
+
+                t1 = Task("some command")
+                t2 = Task("another command")
+                t1.before(t2)  # t1 must occur before t2
+
+            Set multiple downstream tasks:
+
+                t1.before([t2, t3])  # t1 before both t2 and t3
         """
         if not isinstance(other, list):
             other = [other]
@@ -674,16 +701,24 @@ class Task:
                 task.deps.append(self)
 
     def after(self, other):
-        """
-        Set that this task needs to occur after another task.
+        """Set that this task needs to occur after another task.
 
-        Example:
-            t1 = Task("some command")
-            t2 = Task("another command")
-            t1.after(t2) sets t1 must occur after t2.
+        Establishes a dependency relationship where this task waits for the
+        other task(s) to complete before starting execution.
 
         Args:
-            other (Task): batch.Task object
+            other (Task | list[Task]): Task object(s) that must complete before this task.
+
+        Example:
+            Set task order:
+
+                t1 = Task("some command")
+                t2 = Task("another command")
+                t1.after(t2)  # t1 must occur after t2
+
+            Set multiple upstream tasks:
+
+                t3.after([t1, t2])  # t3 runs after both t1 and t2
         """
         if not isinstance(other, list):
             other = [other]
@@ -692,30 +727,38 @@ class Task:
                 self.deps.append(task)
 
     def set_downstream(self, other):
-        """
-        Sets the downstream task from the current task.
+        """Set the downstream task from the current task.
 
-        Example:
-            t1 = Task("some command")
-            t2 = Task("another command")
-            t1.set_downstream(t2) sets t2 as the downstream task from t1, like t1 >> t2
+        Convenience method equivalent to calling before(). Sets the specified task(s)
+        to run after this task completes, similar to using the >> operator concept.
 
         Args:
-            other (Task): batch.Task object
+            other (Task | list[Task]): Task object(s) to set as downstream dependencies.
+
+        Example:
+            Set downstream task:
+
+                t1 = Task("some command")
+                t2 = Task("another command")
+                t1.set_downstream(t2)  # equivalent to t1.before(t2)
         """
         self.before(other)
 
     def set_upstream(self, other):
-        """
-        Sets the upstream task from the current task.
+        """Set the upstream task from the current task.
 
-        Example:
-            t1 = Task("some command")
-            t2 = Task("another command")
-            t1.set_upstream(t2) sets t2 as the upstream task from t1, like t1 << t2
+        Convenience method equivalent to calling after(). Sets the specified task(s)
+        to run before this task starts, similar to using the << operator concept.
 
         Args:
-            other (Task): batch.Task object
+            other (Task | list[Task]): Task object(s) to set as upstream dependencies.
+
+        Example:
+            Set upstream task:
+
+                t1 = Task("some command")
+                t2 = Task("another command")
+                t1.set_upstream(t2)  # equivalent to t1.after(t2)
         """
         self.after(other)
 
@@ -727,16 +770,41 @@ def get_rel_mnt_path(
     account_name: str,
     batch_mgmt_client: object,
 ):
-    """
+    """Get the relative mount path for a blob container in a specified pool.
+
+    Retrieves the relative mount path for a specific blob container that is
+    mounted to an Azure Batch pool. This path is used to access the mounted
+    storage from within tasks running on the pool.
+
     Args:
-        blob_name (str): name of blob container
-        pool_name (str): name of pool
-        resource_group_name (str): name of resource group in Azure
-        account_name (str): name of account in Azure
-        batch_mgmt_object (object): instance of BatchManagementClient
+        blob_name (str): Name of the blob container to find the mount path for.
+        pool_name (str): Name of the pool where the blob is mounted.
+        resource_group_name (str): Name of the Azure resource group containing the pool.
+        account_name (str): Name of the Azure Batch account containing the pool.
+        batch_mgmt_client (object): Instance of BatchManagementClient for API calls.
 
     Returns:
-        str: relative mount path for the blob and pool specified
+        str: The relative mount path for the blob container, or "ERROR!" if the
+            blob container is not found mounted to the pool or if pool information
+            cannot be retrieved.
+
+    Example:
+        Get mount path for a data container:
+
+            mount_path = get_rel_mnt_path(
+                "data-container",
+                "compute-pool",
+                "my-resource-group",
+                "my-batch-account",
+                batch_mgmt_client
+            )
+            if mount_path != "ERROR!":
+                print(f"Data accessible at: {mount_path}")
+
+    Note:
+        This function searches through all mount configurations in the pool to find
+        the specified blob container. If the container is not mounted or the pool
+        cannot be accessed, it returns "ERROR!".
     """
     try:
         pool_info = get_pool_full_info(
@@ -793,15 +861,37 @@ def get_pool_mounts(
     account_name: str,
     batch_mgmt_client: object,
 ):
-    """
+    """Get all mount configurations for a specified Azure Batch pool.
+
+    Retrieves information about all blob containers that are mounted to the
+    specified pool, including the container names and their relative mount paths.
+
     Args:
-        pool_name (str): name of pool
-        resource_group_name (str): name of resource group in Azure
-        account_name (str): name of account in Azure
-        batch_mgmt_client (object): instance of BatchManagementClient
+        pool_name (str): Name of the pool to get mount information for.
+        resource_group_name (str): Name of the Azure resource group containing the pool.
+        account_name (str): Name of the Azure Batch account containing the pool.
+        batch_mgmt_client (object): Instance of BatchManagementClient for API calls.
 
     Returns:
-        list: list of mounts in specified pool
+        list[tuple[str, str]] | None: List of tuples containing (container_name, relative_mount_path)
+            for each mounted blob container, or None if pool information cannot be retrieved.
+
+    Example:
+        Get all mounts for a pool:
+
+            mounts = get_pool_mounts(
+                "compute-pool",
+                "my-resource-group",
+                "my-batch-account",
+                batch_mgmt_client
+            )
+            if mounts:
+                for container, path in mounts:
+                    print(f"Container '{container}' mounted at '{path}'")
+
+    Note:
+        If the pool information cannot be retrieved due to access issues or if the
+        pool does not exist, this function returns None and logs an error.
     """
     try:
         pool_info = get_pool_full_info(
@@ -845,6 +935,73 @@ def add_task(
     task_id_ints: bool = False,
     timeout: int | None = None,
 ) -> str:
+    """Add a task to an Azure Batch job with comprehensive configuration options.
+
+    Creates and adds a task to the specified job with support for dependencies,
+    container execution, mount configurations, log saving, and timeout constraints.
+    The task runs in a container environment with configurable execution settings.
+
+    Args:
+        job_name (str): Name/ID of the job to add the task to. The job must exist.
+        task_id_base (str): Base string for generating the task ID (used with name_suffix
+            and task_id_max unless task_id_ints is True).
+        command_line (str | list[str]): Command to execute in the task. Can be a string
+            or list of strings that will be joined.
+        save_logs_rel_path (str, optional): Relative path where stdout/stderr logs should
+            be saved. If None, logs are not saved to blob storage.
+        logs_folder (str): Name of the folder to create for saving logs. Defaults to
+            "stdout_stderr".
+        name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
+        mounts (list[tuple[str, str]], optional): List of mount configurations as tuples
+            of (container_name, relative_mount_path).
+        depends_on (str | list[str], optional): Task ID(s) that this task depends on.
+            Task will not start until dependencies complete successfully.
+        depends_on_range (tuple[int, int], optional): Range of task IDs (start, end) that
+            this task depends on. Alternative to depends_on.
+        run_dependent_tasks_on_fail (bool): If True, dependent tasks will run even if
+            this task fails. If False, failure blocks dependents. Defaults to False.
+        batch_client (object): Azure Batch service client instance for API calls.
+        full_container_name (str, optional): Full container image name to use for the task.
+        task_id_max (int): Current maximum task ID number for generating unique task IDs.
+            Defaults to 0.
+        task_id_ints (bool): If True, use integer task IDs instead of string-based IDs.
+            Defaults to False.
+        timeout (int, optional): Maximum wall clock time for the task in minutes. If None,
+            no timeout is set.
+
+    Returns:
+        str: The generated task ID for the newly created task.
+
+    Example:
+        Add a simple task:
+
+            task_id = add_task(
+                job_name="data-processing",
+                task_id_base="process",
+                command_line="python process_data.py",
+                batch_client=batch_client,
+                full_container_name="myregistry.azurecr.io/data-processor:latest"
+            )
+
+        Add a task with dependencies and log saving:
+
+            task_id = add_task(
+                job_name="analysis-job",
+                task_id_base="analyze",
+                command_line=["python", "analyze.py", "--input", "/data/input.csv"],
+                depends_on=["preprocess-task-1", "preprocess-task-2"],
+                save_logs_rel_path="/logs",
+                timeout=120,
+                batch_client=batch_client,
+                full_container_name="myregistry.azurecr.io/analyzer:v1.0"
+            )
+
+    Note:
+        The task runs with admin privileges in the pool and is configured with
+        appropriate exit conditions based on the run_dependent_tasks_on_fail setting.
+        Mount configurations allow access to blob storage from within the container.
+        Log saving creates timestamped files in the specified blob storage location.
+    """
     logger.debug(f"Adding task to job {job_name}.")
 
     # convert command line to string if given as list

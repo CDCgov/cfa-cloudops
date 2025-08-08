@@ -158,14 +158,14 @@ def construct_blob_container_endpoint(
     )
 
 
-def is_valid_acr_endpoint(endpoint: str) -> tuple[bool, str]:
+def is_valid_acr_endpoint(endpoint: str) -> tuple[bool, str | None]:
     """Check whether an Azure container registry endpoint is valid given CFA ACR configurations.
 
     Args:
         endpoint: Azure Container Registry endpoint to validate.
 
     Returns:
-        tuple[bool, str]: First entry: True if validation passes, else False.
+        tuple[bool, str | None]: First entry: True if validation passes, else False.
             Second entry: None if validation passes, else a string indicating
             what failed validation.
 

@@ -174,9 +174,9 @@ def get_blob_service_client(
     if ch is None:
         ch = EnvCredentialHandler()
     if ch.method == "sp":
-        return BatchServiceClient(
-            credentials=ch.client_secret_credential,
-            batch_url=ch.azure_batch_endpoint,
+        return BlobServiceClient(
+            account_url=ch.azure_blob_storage_endpoint,
+            credential=ch.client_secret_credential,
             **kwargs,
         )
     else:

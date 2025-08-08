@@ -10,7 +10,6 @@ from functools import cached_property, partial
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.identity import (
-    ChainedTokenCredential,
     ClientSecretCredential,
     ManagedIdentityCredential,
 )
@@ -184,11 +183,11 @@ class CredentialHandler:
         )
 
     @cached_property
-    def user_credential(self) -> ChainedTokenCredential:
+    def user_credential(self) -> ManagedIdentityCredential:
         """Azure user credential.
 
         Returns:
-            ChainedTokenCredential: The Azure user credential using ManagedIdentityCredential.
+            ManagedIdentityCredential: The Azure user credential using ManagedIdentityCredential.
 
         Example:
             >>> handler = CredentialHandler()
@@ -369,6 +368,8 @@ class EnvCredentialHandler(CredentialHandler):
     via keyword arguments passed to the constructor.
 
     Args:
+        dotenv_path (str, optional): Path to .env file to load environment variables from.
+            If None, uses default .env file discovery.
         **kwargs: Keyword arguments defining additional attributes or overriding
             those set in the environment variables. Passed as the ``config_dict``
             argument to ``config.get_config_val``.
@@ -379,14 +380,22 @@ class EnvCredentialHandler(CredentialHandler):
 
         >>> # Override specific values
         >>> handler = EnvCredentialHandler(azure_tenant_id="custom-tenant-id")
+
+        >>> # Load from custom .env file
+        >>> handler = EnvCredentialHandler(dotenv_path="/path/to/.env")
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, dotenv_path: str = None, **kwargs) -> None:
         """Initialize the EnvCredentialHandler.
 
-        Loads environment variables and populates credential attributes from them.
+        Loads environment variables from .env file and populates credential attributes from them.
+
+        Args:
+            dotenv_path (str, optional): Path to .env file to load environment variables from.
+                If None, uses default .env file discovery.
+            **kwargs: Additional keyword arguments to override specific credential attributes.
         """
-        load_env_vars(**kwargs)
+        load_env_vars(dotenv_path=dotenv_path)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
         for key in self.__dataclass_fields__.keys():
@@ -529,7 +538,7 @@ class SPCredentialHandler(CredentialHandler):
 def get_sp_secret(
     vault_url: str,
     vault_sp_secret_id: str,
-    user_credential: ChainedTokenCredential = None,
+    user_credential=None,
 ) -> str:
     """Get a service principal secret from an Azure keyvault.
 
@@ -537,10 +546,8 @@ def get_sp_secret(
         vault_url: URL for the Azure keyvault to access.
         vault_sp_secret_id: Service principal secret ID within the keyvault.
         user_credential: User credential for the Azure user, as an azure-identity
-            UserCredential class instance. If None, attempt to use a ChainedTokenCredential
-            instantiated at runtime that prefers, in order, a newly instantiated
-            AzureCliCredential (get credentials associated to the user logged in via
-            the Azure CLI (i.e. ``az login`` at the command line).
+            credential class instance. If None, will use a ManagedIdentityCredential
+            instantiated at runtime.
 
     Returns:
         str: The retrieved value of the service principal secret.
@@ -567,7 +574,7 @@ def get_client_secret_sp_credential(
     vault_sp_secret_id: str,
     tenant_id: str,
     application_id: str,
-    user_credential: ChainedTokenCredential = None,
+    user_credential=None,
 ) -> ClientSecretCredential:
     """Get a ClientSecretCredential for a given Azure service principal.
 
@@ -577,8 +584,8 @@ def get_client_secret_sp_credential(
         tenant_id: Tenant ID for the service principal credential.
         application_id: Application ID for the service principal credential.
         user_credential: User credential for the Azure user, as an azure-identity
-            UserCredential class instance. Passed to ``get_sp_secret``. If None,
-            ``get_sp_secret`` will attempt to use a ChainedTokenCredential instantiated
+            credential class instance. Passed to ``get_sp_secret``. If None,
+            ``get_sp_secret`` will use a ManagedIdentityCredential instantiated
             at runtime. See its documentation for more.
 
     Returns:
@@ -610,7 +617,7 @@ def get_service_principal_credentials(
     tenant_id: str,
     application_id: str,
     resource_url: str = d.default_azure_batch_resource_url,
-    user_credential: ChainedTokenCredential = None,
+    user_credential=None,
 ) -> ServicePrincipalCredentials:
     """Get a ServicePrincipalCredentials object for a given Azure service principal.
 
@@ -622,8 +629,8 @@ def get_service_principal_credentials(
         resource_url: URL of the Azure resource. Defaults to the value of
             ``defaults.default_azure_batch_resource_url``.
         user_credential: User credential for the Azure user, as an azure-identity
-            UserCredential class instance. Passed to ``get_sp_secret``. If None,
-            ``get_sp_secret`` will attempt to use a ChainedTokenCredential instantiated
+            credential class instance. Passed to ``get_sp_secret``. If None,
+            ``get_sp_secret`` will use a ManagedIdentityCredential instantiated
             at runtime. See the ``get_sp_secret`` documentation for details.
 
     Returns:

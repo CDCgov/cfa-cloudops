@@ -132,11 +132,11 @@ class CloudClient:
                 Use "default" for the built-in formula or provide a custom Azure Batch
                 autoscale formula. Default is "default".
             dedicated_nodes (int): Number of dedicated nodes when autoscale=False.
-                Only used for fixed scaling. Default is 5.
+                Only used for fixed scaling. Default is 0.
             low_priority_nodes (int): Number of low-priority nodes when autoscale=False.
-                Low-priority nodes are cheaper but can be preempted. Default is 5.
+                Low-priority nodes are cheaper but can be preempted. Default is 1.
             max_autoscale_nodes (int): Maximum number of nodes for autoscaling.
-                Only used when autoscale=True. Default is 10.
+                Only used when autoscale=True. Default is 3.
             task_slots_per_node (int): Number of task slots per node. Determines how many
                 tasks can run concurrently on each node. Default is 1.
             availability_zones (str): Availability zone placement policy. Must be either
@@ -472,7 +472,7 @@ class CloudClient:
 
         Args:
             job_name (str): Name of the job to add the task to.
-            base_call (list[str]): Command line arguments for the task.
+            command_line (list[str]): Command line arguments for the task.
             name_suffix (str, optional): Suffix to append to the task ID.
             depends_on (list[str], optional): List of task IDs this task depends on.
             depends_on_range (tuple, optional): Range of task IDs this task depends on.
@@ -719,7 +719,7 @@ class CloudClient:
     def monitor_job(
         self,
         job_name: str,
-        timeout: str | None = None,
+        timeout: int | None = None,
         download_job_stats: bool = False,
     ) -> None:
         """Monitor the execution of tasks in an Azure Batch job.
@@ -731,8 +731,7 @@ class CloudClient:
         Args:
             job_name (str): ID of the job to monitor. The job must exist and be in
                 an active state.
-            timeout (str, optional): Maximum time to monitor the job before giving up.
-                Should be specified as a string in a format like "30m", "2h", or "1d".
+            timeout (int, optional): Maximum time in minutes to monitor the job before giving up.
                 If None, monitoring continues indefinitely until all tasks complete.
             download_job_stats (bool, optional): Whether to download comprehensive job
                 statistics when the job completes. Statistics include task execution
@@ -748,7 +747,7 @@ class CloudClient:
 
                 client.monitor_job(
                     job_name="long-running-job",
-                    timeout="2h",
+                    timeout=120,  # 2 hours in minutes
                     download_job_stats=True
                 )
 
@@ -1054,7 +1053,7 @@ class CloudClient:
             c_client, src_path, dest_path, do_check, check_size
         )
 
-    def download_directory(
+    def download_folder(
         self,
         src_path: str,
         dest_path: str,
@@ -1064,7 +1063,7 @@ class CloudClient:
         verbose=True,
         check_size=True,
     ) -> None:
-        """Download an entire directory from Azure Blob Storage to the local filesystem.
+        """Download an entire folder from Azure Blob Storage to the local filesystem.
 
         Recursively downloads all files from a directory in a blob storage container,
         preserving the directory structure. Supports filtering by file extensions.
@@ -1090,7 +1089,7 @@ class CloudClient:
             Download entire results directory:
 
                 client = CloudClient()
-                client.download_directory(
+                client.download_folder(
                     src_path="job-123/outputs",
                     dest_path="./results",
                     container_name="job-outputs"
@@ -1098,7 +1097,7 @@ class CloudClient:
 
             Download only specific file types:
 
-                client.download_directory(
+                client.download_folder(
                     src_path="logs",
                     dest_path="./local_logs",
                     container_name="job-logs",
@@ -1108,12 +1107,12 @@ class CloudClient:
                 )
 
         Note:
-            The destination directory will be created if it doesn't exist. The source
-            directory structure is preserved in the destination. Large downloads may
+            The destination folder will be created if it doesn't exist. The source
+            folder structure is preserved in the destination. Large downloads may
             take considerable time depending on file sizes and network speed.
         """
-        logger.debug("Attempting to download directory.")
-        blob_helpers.download_directory(
+        logger.debug("Attempting to download folder.")
+        blob_helpers.download_folder(
             container_name,
             src_path,
             dest_path,
@@ -1328,7 +1327,7 @@ class CloudClient:
         )
 
     def add_tasks_from_yaml(
-        self, job_id: str, base_cmd: str, file_path: str, **kwargs
+        self, job_name: str, base_cmd: str, file_path: str, **kwargs
     ) -> list[str]:
         """Add multiple tasks to a job from a YAML file.
 
@@ -1336,7 +1335,7 @@ class CloudClient:
         submits each as a task to the specified job. Returns the list of created task IDs.
 
         Args:
-            job_id (str): ID of the job to add tasks to. The job must exist.
+            job_name (str): ID of the job to add tasks to. The job must exist.
             base_cmd (str): Base command to prepend to each task command from the YAML file.
             file_path (str): Path to the YAML file describing the tasks.
             **kwargs: Additional keyword arguments passed to add_task().
@@ -1349,7 +1348,7 @@ class CloudClient:
 
                 client = CloudClient()
                 task_ids = client.add_tasks_from_yaml(
-                    job_id="my-job",
+                    job_name="my-job",
                     base_cmd="python run.py",
                     file_path="tasks.yaml"
                 )
@@ -1366,7 +1365,9 @@ class CloudClient:
         # submit tasks
         task_list = []
         for task_str in task_strs:
-            tid = self.add_task(job_id=job_id, command_line=task_str, **kwargs)
+            tid = self.add_task(
+                job_name=job_name, command_line=task_str, **kwargs
+            )
             task_list.append(tid)
         return task_list
 
@@ -1389,7 +1390,7 @@ class CloudClient:
             blob_paths (list[str]): List of blob paths (files or directories) to download.
             target (str): Local directory where files/directories will be downloaded.
             container_name (str): Name of the blob storage container containing the files.
-            **kwargs: Additional keyword arguments passed to download_directory().
+            **kwargs: Additional keyword arguments passed to download_folder().
 
         Example:
             Download results after job completion:
@@ -1424,7 +1425,7 @@ class CloudClient:
                     container_name=container_name,
                 )
             else:
-                self.download_directory(
+                self.download_folder(
                     src_path=path,
                     dest_path=os.path.join(target),
                     container_name=container_name,
@@ -1440,7 +1441,7 @@ class CloudClient:
 
         Args:
             *args: batch_helpers.Task objects representing tasks and their dependencies.
-            job_id (str): Name/ID of the job to add tasks to.
+            job_name (str): Name/ID of the job to add tasks to.
             **kwargs: Additional keyword arguments passed to add_task().
 
         Raises:

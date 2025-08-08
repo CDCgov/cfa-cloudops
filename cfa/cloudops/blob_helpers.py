@@ -330,9 +330,33 @@ def download_file(
             print(f"Downloaded {src_path} to {dest_path}")
 
 
-def get_container_client(account_name: str, container_name: str):
-    """
-    Instantiate container client using account name and container name
+def get_container_client(
+    account_name: str, container_name: str
+) -> ContainerClient:
+    """Create a container client using managed identity authentication.
+
+    Instantiates a container client using the specified account name and container name,
+    with authentication via Azure Managed Identity.
+
+    Args:
+        account_name (str): Azure storage account name (without .blob.core.windows.net).
+        container_name (str): Name of the blob storage container.
+
+    Returns:
+        ContainerClient: Azure Container Client instance for the specified container.
+
+    Example:
+        Create a container client for a specific container:
+
+            client = get_container_client(
+                account_name="mystorageaccount",
+                container_name="data"
+            )
+
+    Note:
+        This function uses ManagedIdentityCredential for authentication, so it
+        should be used in environments where managed identity is available (e.g.,
+        Azure VMs, Container Instances, App Service).
     """
     config = {
         "Storage": {
@@ -355,6 +379,45 @@ def read_blob_stream(
     container_client: ContainerClient = None,
     do_check: bool = True,
 ) -> StorageStreamDownloader[str]:
+    """Read a blob as a stream from Azure Blob Storage.
+
+    Creates a download stream for a blob from Azure Storage. Can work with either
+    a provided container client or account/container names to create the client.
+
+    Args:
+        blob_url (str): Path/name of the blob within the container to stream.
+        account_name (str, optional): Azure storage account name. Required if
+            container_client is not provided.
+        container_name (str, optional): Name of the blob container. Required if
+            container_client is not provided.
+        container_client (ContainerClient, optional): Azure Container Client instance.
+            If provided, account_name and container_name are ignored.
+        do_check (bool, optional): Whether to verify the blob exists before streaming.
+            Default is True.
+
+    Returns:
+        StorageStreamDownloader[str]: Stream downloader object for reading blob data.
+
+    Raises:
+        ValueError: If neither container_client nor both account_name and container_name
+            are provided, or if do_check=True and the blob doesn't exist.
+
+    Example:
+        Stream a blob using container client:
+
+            stream = read_blob_stream(
+                blob_url="data/file.txt",
+                container_client=container_client
+            )
+
+        Stream a blob using account and container names:
+
+            stream = read_blob_stream(
+                blob_url="logs/app.log",
+                account_name="mystorageaccount",
+                container_name="logs"
+            )
+    """
     if container_client:
         pass
     elif container_name and account_name:
@@ -371,6 +434,23 @@ def read_blob_stream(
 
 
 def check_blob_existence(c_client: ContainerClient, blob_name: str) -> bool:
+    """Check if a blob exists in the container.
+
+    Args:
+        c_client (ContainerClient): Azure Container Client instance for the container.
+        blob_name (str): Name/path of the blob to check within the container.
+
+    Returns:
+        bool: True if the blob exists, False otherwise.
+
+    Example:
+        Check if a file exists before downloading:
+
+            if check_blob_existence(container_client, "data/file.csv"):
+                print("File exists, proceeding with download")
+            else:
+                print("File not found")
+    """
     logger.debug("Checking Blob existence.")
     blob = c_client.get_blob_client(blob=blob_name)
     logger.debug(f"Blob exists: {blob.exists()}")
@@ -409,6 +489,39 @@ def list_blobs_in_container(
     blob_service_client: BlobServiceClient = None,
     container_client: ContainerClient = None,
 ):
+    """List blobs in a container with optional name filtering.
+
+    Returns a list of blobs from the specified container, optionally filtering
+    by name prefix. Can work with various combinations of parameters to access
+    the container.
+
+    Args:
+        container_name (str, optional): Name of the blob container to list.
+        account_name (str, optional): Azure storage account name.
+        name_starts_with (str, optional): Prefix filter for blob names.
+            Only blobs whose names start with this string will be returned.
+        blob_service_client (BlobServiceClient, optional): Azure Blob service client.
+        container_client (ContainerClient, optional): Azure Container client instance.
+
+    Returns:
+        ItemPaged: Iterator of blob objects matching the criteria.
+
+    Example:
+        List all blobs in a container:
+
+            blobs = list_blobs_in_container(
+                container_name="data",
+                blob_service_client=client
+            )
+
+        List blobs with specific prefix:
+
+            blobs = list_blobs_in_container(
+                container_name="logs",
+                name_starts_with="2024/",
+                blob_service_client=client
+            )
+    """
     return instantiate_container_client(
         container_name=container_name,
         account_name=account_name,
@@ -419,11 +532,12 @@ def list_blobs_in_container(
 
 def list_blobs_flat(
     container_name: str, blob_service_client: BlobServiceClient, verbose=True
-):
-    """
+) -> list[str]:
+    """List all blob names in a container with optional filtering.
+
     Args:
         container_name (str): name of Blob container
-        blob_service_client (object): instance of BlobServiceClient
+        blob_service_client (BlobServiceClient): instance of BlobServiceClient
         verbose (bool): whether to be verbose in printing files. Default True.
 
     Returns:
@@ -445,7 +559,7 @@ def get_blob_service_client(config: dict, credential: object):
 
     Args:
         config (dict): contains configuration info
-        credential (object): credential object from aazure.identity
+        credential (object): credential object from azure.identity
 
     Returns:
         class: an instance of BlobServiceClient
@@ -470,9 +584,39 @@ def instantiate_container_client(
     account_name: str = None,
     blob_service_client: BlobServiceClient = None,
     container_client: ContainerClient = None,
-):
-    """
-    Returns a Container Client
+) -> ContainerClient:
+    """Create and return an Azure Container Client instance.
+
+    Creates a container client using various combinations of provided parameters.
+    Can work with an existing container client, blob service client, or create
+    a new one using account and container names.
+
+    Args:
+        container_name (str, optional): Name of the blob storage container.
+        account_name (str, optional): Azure storage account name.
+        blob_service_client (BlobServiceClient, optional): Existing blob service client.
+        container_client (ContainerClient, optional): Existing container client to return as-is.
+
+    Returns:
+        ContainerClient: Azure Container Client instance for the specified container.
+
+    Raises:
+        ValueError: If insufficient parameters are provided to create a container client.
+
+    Example:
+        Create client from account and container names:
+
+            client = instantiate_container_client(
+                container_name="data",
+                account_name="mystorageaccount"
+            )
+
+        Use existing blob service client:
+
+            client = instantiate_container_client(
+                container_name="data",
+                blob_service_client=blob_client
+            )
     """
     logger.debug("Creating container client for getting Blob info.")
     if container_client:
@@ -501,7 +645,7 @@ def instantiate_container_client(
     return container_client
 
 
-def download_directory(
+def download_folder(
     container_name: str,
     src_path: str,
     dest_path: str,
@@ -511,6 +655,61 @@ def download_directory(
     verbose=True,
     check_size=True,
 ) -> None:
+    """Download an entire folder (virtual directory) from Azure Blob Storage.
+
+    Recursively downloads all files from a virtual directory in a blob storage
+    container, preserving the directory structure. Supports filtering by file
+    extensions and includes size checking for large downloads.
+
+    Args:
+        container_name (str): Name of the blob storage container containing the folder.
+        src_path (str): Path of the virtual directory within the container to download.
+            Will be treated as a prefix for blob names.
+        dest_path (str): Local filesystem path where the directory should be saved.
+            Directory structure will be recreated under this path.
+        blob_service_client: Azure Blob service client instance for API calls.
+        include_extensions (str | list, optional): File extensions to include in the
+            download. Can be a single extension string or list of extensions. Cannot
+            be used together with exclude_extensions.
+        exclude_extensions (str | list, optional): File extensions to exclude from
+            the download. Can be a single extension string or list. Cannot be used
+            together with include_extensions.
+        verbose (bool, optional): Whether to print download progress information.
+            Default is True.
+        check_size (bool, optional): Whether to check total download size and warn/prompt
+            for large downloads (>2GB). Default is True.
+
+    Raises:
+        ValueError: If the source virtual directory doesn't exist, or if both
+            include_extensions and exclude_extensions are specified.
+        Exception: If both include_extensions and exclude_extensions are specified.
+
+    Example:
+        Download entire results directory:
+
+            download_folder(
+                container_name="job-outputs",
+                src_path="job-123/results",
+                dest_path="./local_results",
+                blob_service_client=client
+            )
+
+        Download only CSV files from a directory:
+
+            download_folder(
+                container_name="data",
+                src_path="datasets/",
+                dest_path="./data",
+                blob_service_client=client,
+                include_extensions=[".csv", ".json"]
+            )
+
+    Note:
+        - The destination directory is created if it doesn't exist
+        - Downloads >2GB trigger a confirmation prompt if check_size=True
+        - Virtual directory paths are treated as blob name prefixes
+        - Extensions are automatically formatted with leading periods
+    """
     # check that include and exclude extensions are not both used, format if exist
     if include_extensions is not None:
         include_extensions = format_extensions(include_extensions)

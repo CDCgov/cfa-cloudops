@@ -13,7 +13,7 @@ def try_get_val_from_dict(
     key: str,
     config_dict: dict,
     value_name: str = None,
-) -> tuple[str, str]:
+) -> tuple[str | None, str | None]:
     """Attempt to get a configuration value from a configuration dictionary.
 
     Return None along with an informative failure message if this is not possible.
@@ -26,7 +26,7 @@ def try_get_val_from_dict(
             If None, use the value of ``key``.
 
     Returns:
-        tuple[str, str]: A tuple where the first entry is the value if it was successfully
+        tuple[str | None, str | None]: A tuple where the first entry is the value if it was successfully
             retrieved and otherwise None. The second entry is None on success and otherwise
             a description of the failure, as a string.
 
@@ -60,7 +60,7 @@ def try_get_val_from_dict(
 
 def try_get_val_from_env(
     env_variable_name: str, value_name: str = None
-) -> tuple[str, str]:
+) -> tuple[str | None, str | None]:
     """Attempt to get a configuration value from local environment variables.
 
     Return None along with an informative failure message if this is not possible.
@@ -72,7 +72,7 @@ def try_get_val_from_env(
             of ``env_variable_name``.
 
     Returns:
-        tuple[str, str]: A tuple where the first entry is the value of the variable
+        tuple[str | None, str | None]: A tuple where the first entry is the value of the variable
             if it was successfully retrieved and otherwise None. The second entry is
             None on success and otherwise a description of the failure, as a string.
 
@@ -165,9 +165,10 @@ def get_config_val(
         env_variable_name = key.upper()
 
     dict_result, env_result = None, None
+    dict_msg, env_msg = None, None
 
     if config_dict is None and not try_env:
-        print(
+        raise ValueError(
             "Must either provide a configuration dictionary "
             "via the `config_dict` argument or allow for "
             "inspecting environment variables by setting "
@@ -198,6 +199,6 @@ def get_config_val(
             )
         else:
             err_msg = env_msg
-        print(err_msg)
+        raise ValueError(err_msg)
 
     return result

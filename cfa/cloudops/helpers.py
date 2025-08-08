@@ -245,14 +245,31 @@ def upload_docker_image(
 
 
 def format_rel_path(rel_path: str) -> str:
-    """
-    Formats a relative path into the right format for Azure services
+    """Format a relative path into the correct format for Azure services.
+
+    Removes leading forward slashes from relative paths to ensure compatibility
+    with Azure service mount path requirements.
 
     Args:
-        rel_path (str): relative mount path
+        rel_path (str): Relative mount path that may contain a leading forward slash.
 
     Returns:
-        str: formatted relative path
+        str: The formatted relative path with leading forward slash removed if present.
+
+    Example:
+        Remove leading slash from path:
+
+            formatted_path = format_rel_path("/data/input")
+            print(formatted_path)  # "data/input"
+
+        Path without leading slash is unchanged:
+
+            formatted_path = format_rel_path("data/output")
+            print(formatted_path)  # "data/output"
+
+    Note:
+        This function is used to ensure Azure storage mount paths are in the correct
+        format expected by Azure services.
     """
     if rel_path.startswith("/"):
         rel_path = rel_path[1:]
