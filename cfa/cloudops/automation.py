@@ -23,18 +23,18 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
         return None
 
     # check pool included in exp_toml and exists in azure
-    if "pool_name" in exp_toml["setup"].keys():
+    if "pool_name" in exp_toml["job"].keys():
         if not batch_helpers.check_pool_exists(
             resource_group_name=client.cred.azure_resource_group_name,
             account_name=client.cred.azure_batch_account,
-            pool_name=exp_toml["setup"]["pool_name"],
+            pool_name=exp_toml["job"]["pool_name"],
             batch_mgmt_client=client.batch_mgmt_client,
         ):
             print(
-                f"pool name {exp_toml['setup']['pool_name']} does not exist in the Azure environment."
+                f"pool name {exp_toml['job']['pool_name']} does not exist in the Azure environment."
             )
             return None
-        pool_name = exp_toml["setup"]["pool_name"]
+        pool_name = exp_toml["job"]["pool_name"]
     else:
         print("could not find 'pool_name' key in 'setup' section of exp toml.")
         print("please specify a pool name to use.")
@@ -61,7 +61,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
             )
 
     # create the job
-    job_name = exp_toml["job"]["name"]
+    job_name = exp_toml["job"]["job_name"]
     if "save_logs_to_blob" in exp_toml["job"].keys():
         save_logs_to_blob = exp_toml["job"]["save_logs_to_blob"]
     else:
@@ -135,18 +135,18 @@ def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
         return None
 
     # check pool included in task_toml and exists in azure
-    if "pool_name" in task_toml["setup"].keys():
+    if "pool_name" in task_toml["job"].keys():
         if not batch_helpers.check_pool_exists(
             resource_group_name=client.resource_group_name,
             account_name=client.account_name,
-            pool_name=task_toml["setup"]["pool_name"],
+            pool_name=task_toml["job"]["pool_name"],
             batch_mgmt_client=client.batch_mgmt_client,
         ):
             print(
-                f"pool name {task_toml['setup']['pool_name']} does not exist in the Azure environment."
+                f"pool name {task_toml['job']['pool_name']} does not exist in the Azure environment."
             )
             return None
-        pool_name = task_toml["setup"]["pool_name"]
+        pool_name = task_toml["job"]["pool_name"]
     else:
         print(
             "could not find 'pool_name' key in 'setup' section of task config toml."
@@ -175,7 +175,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
             )
 
     # create the job
-    job_name = task_toml["job"]["name"]
+    job_name = task_toml["job"]["job_name"]
     if "save_logs_to_blob" in task_toml["job"].keys():
         save_logs_to_blob = task_toml["job"]["save_logs_to_blob"]
     else:
