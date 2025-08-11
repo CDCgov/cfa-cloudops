@@ -110,7 +110,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
                 j.update({var_list[i]: value})
             client.add_task(
                 job_name=job_name,
-                docker_cmd=ex["base_cmd"].format(**j),
+                command_line=ex["base_cmd"].format(**j),
                 container=container,
             )
 
