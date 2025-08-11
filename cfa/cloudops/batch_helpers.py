@@ -1136,3 +1136,32 @@ def add_task(
     batch_client.task.add(job_id=job_name, task=task_param)
     logger.debug(f"Task '{task_id}' added to job '{job_name}'.")
     return task_id
+
+
+def check_pool_exists(
+    resource_group_name: str,
+    account_name: str,
+    pool_name: str,
+    batch_mgmt_client: object,
+):
+    """Check if a pool exists in Azure Batch
+
+    Args:
+        resource_group_name (str): Azure resource group name
+        account_name (str): Azure account name
+        pool_name (str): name of pool
+        batch_mgmt_client (object): instance of BatchManagementClient
+
+    Returns:
+        bool: whether the pool exists
+    """
+    logger.debug(f"Checking if pool {pool_name} exists.")
+    try:
+        batch_mgmt_client.pool.get(
+            resource_group_name, account_name, pool_name
+        )
+        logger.debug("Pool exists.")
+        return True
+    except Exception:
+        logger.debug("Pool does not exist.")
+        return False
