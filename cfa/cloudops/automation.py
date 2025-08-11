@@ -111,7 +111,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
             client.add_task(
                 job_name=job_name,
                 command_line=ex["base_cmd"].format(**j),
-                container=container,
+                container_image_name=container,
             )
 
     if "monitor_job" in exp_toml["job"].keys():
@@ -228,7 +228,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
             command_line=item["cmd"],
             depends_on=d_list,
             run_dependent_tasks_on_fail=run_dependent_tasks_on_fail,
-            container=container,
+            container_image_name=container,
         )
         df.loc[i, "task_id"] = tid
 
