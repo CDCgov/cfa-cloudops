@@ -137,8 +137,8 @@ def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
     # check pool included in task_toml and exists in azure
     if "pool_name" in task_toml["job"].keys():
         if not batch_helpers.check_pool_exists(
-            resource_group_name=client.resource_group_name,
-            account_name=client.account_name,
+            resource_group_name=client.cred.azure_resource_group_name,
+            account_name=client.cred.azure_batch_account,
             pool_name=task_toml["job"]["pool_name"],
             batch_mgmt_client=client.batch_mgmt_client,
         ):
