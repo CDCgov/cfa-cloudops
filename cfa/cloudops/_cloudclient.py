@@ -18,7 +18,11 @@ from azure.mgmt.batch import models
 import cfa.cloudops.defaults as d
 from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
 
-from .auth import EnvCredentialHandler, SPCredentialHandler
+from .auth import (
+    EnvCredentialHandler,
+    FederatedCredentialHandler,
+    SPCredentialHandler,
+)
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -78,10 +82,20 @@ class CloudClient:
             )
     """
 
-    def __init__(self, dotenv_path: str = None, use_sp=False, **kwargs):
+    def __init__(
+        self,
+        dotenv_path: str = None,
+        use_sp=False,
+        use_federated=False,
+        **kwargs,
+    ):
         # authenticate to get credentials
-        if not use_sp:
+        if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+        if use_federated:
+            self.cred = FederatedCredentialHandler(
+                dotenv_path=dotenv_path, **kwargs
+            )
         else:
             self.cred = SPCredentialHandler(dotenv_path=dotenv_path, **kwargs)
         # get clients

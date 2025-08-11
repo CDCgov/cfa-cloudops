@@ -12,6 +12,7 @@ from azure.common.credentials import ServicePrincipalCredentials
 from azure.identity import (
     ClientSecretCredential,
     ManagedIdentityCredential,
+    WorkloadIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.resource import SubscriptionClient
@@ -62,6 +63,7 @@ class CredentialHandler:
     azure_container_registry_domain: str = (
         d.default_azure_container_registry_domain
     )
+    azure_federated_token_file: str = None
     method = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
@@ -218,6 +220,21 @@ class CredentialHandler:
             self.azure_keyvault_endpoint,
             self.azure_keyvault_sp_secret_id,
             self.user_credential,
+        )
+
+    @cached_property
+    def federated_credential(self) -> WorkloadIdentityCredential:
+        self.require_attr(
+            [
+                "azure_tenant_id",
+                "azure_sp_client_id",
+                "azure_federated_token_file",
+            ]
+        )
+        return WorkloadIdentityCredential(
+            tenant_id=self.azure_tenant_id,
+            client_id=self.azure_sp_client_id,
+            token_file_path=self.azure_federated_token_file,
         )
 
     @cached_property
@@ -526,6 +543,41 @@ class SPCredentialHandler(CredentialHandler):
         if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
             raise ValueError(
                 "AZURE_CLIENT_SECRET not found in env variables and not provided."
+            )
+        d.set_env_vars()
+
+        get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
+
+        for key in self.__dataclass_fields__.keys():
+            self.__setattr__(key, get_conf(key))
+
+
+class FederatedCredentialHandler(CredentialHandler):
+    def __init__(
+        self,
+        azure_tenant_id: str | None = None,
+        azure_sp_client_id: str | None = None,
+        azure_federated_token_file: str | None = None,
+        dotenv_path: str | None = None,
+        **kwargs,
+    ) -> None:
+        self.method = "fc"
+        load_env_vars(dotenv_path=dotenv_path)
+
+        if "AZURE_TENANT_ID" not in os.environ and not azure_tenant_id:
+            raise ValueError(
+                "AZURE_TENANT_ID not found in env variables and not provided."
+            )
+        if "AZURE_SP_CLIENT_ID" not in os.environ and not azure_sp_client_id:
+            raise ValueError(
+                "AZURE_SP_CLIENT_ID not found in env variables and not provided."
+            )
+        if (
+            "AZURE_FEDERATED_TOKEN_FILE" not in os.environ
+            and not azure_federated_token_file
+        ):
+            raise ValueError(
+                "AZURE_FEDERATED_TOKEN_FILE not found in env variables and not provided."
             )
         d.set_env_vars()
 
