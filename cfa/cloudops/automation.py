@@ -48,7 +48,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
         else:
             location_in_blob = ""
         if "folders" in exp_toml["upload"].keys():
-            client.upload_files_in_folder(
+            client.upload_folder(
                 folder_names=exp_toml["upload"]["folders"],
                 location_in_blob=location_in_blob,
                 container_name=container_name,
@@ -162,7 +162,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
         else:
             location_in_blob = ""
         if "folders" in task_toml["upload"].keys():
-            client.upload_files_in_folder(
+            client.upload_folder(
                 folder_names=task_toml["upload"]["folders"],
                 location_in_blob=location_in_blob,
                 container_name=container_name,
