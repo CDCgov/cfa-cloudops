@@ -75,7 +75,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
     else:
         task_retries = 0
 
-    client.add_job(
+    client.create_job(
         job_name=job_name,
         pool_name=pool_name,
         save_logs_to_blob=save_logs_to_blob,
@@ -189,7 +189,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
     else:
         task_retries = 0
 
-    client.add_job(
+    client.create_job(
         job_name=job_name,
         pool_name=pool_name,
         save_logs_to_blob=save_logs_to_blob,
