@@ -64,7 +64,7 @@ class CredentialHandler:
         d.default_azure_container_registry_domain
     )
     azure_federated_token_file: str = None
-    method = None
+    method: str = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
         """Check that attributes required for a given operation are defined.

@@ -51,7 +51,7 @@ class CloudClient:
         **kwargs: Additional keyword arguments passed to the credential handler.
 
     Attributes:
-        cred: Credential handler (EnvCredentialHandler or SPCredentialHandler)
+        cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or FederatedCredentialHandler)
         batch_mgmt_client: Azure Batch management client
         compute_mgmt_client: Azure Compute management client
         batch_service_client: Azure Batch service client
