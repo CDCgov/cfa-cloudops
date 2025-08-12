@@ -168,7 +168,7 @@ def get_config_val(
     dict_msg, env_msg = None, None
 
     if config_dict is None and not try_env:
-        print(
+        logger.debug(
             "Must either provide a configuration dictionary "
             "via the `config_dict` argument or allow for "
             "inspecting environment variables by setting "
@@ -199,6 +199,6 @@ def get_config_val(
             )
         else:
             err_msg = env_msg
-        print(err_msg)
+        logger.debug(err_msg)
 
     return result
