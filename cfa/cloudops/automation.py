@@ -6,7 +6,7 @@ import toml
 from cfa.cloudops import CloudClient, batch_helpers
 
 
-def run_experiment(exp_config: str, dotenv_path: str | None = None):
+def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
     """Run jobs and tasks automatically based on the provided experiment config.
 
     Args:
@@ -119,7 +119,9 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None):
             client.monitor_job(job_name)
 
 
-def run_tasks(task_config: str, dotenv_path: str | None = None) -> None:
+def run_tasks(
+    task_config: str, dotenv_path: str | None = None, **kwargs
+) -> None:
     """Run jobs and tasks automatically based on the provided task config.
     Args:
         task_config (str): path to task config file (toml)
