@@ -168,7 +168,7 @@ def get_config_val(
     dict_msg, env_msg = None, None
 
     if config_dict is None and not try_env:
-        raise ValueError(
+        print(
             "Must either provide a configuration dictionary "
             "via the `config_dict` argument or allow for "
             "inspecting environment variables by setting "
