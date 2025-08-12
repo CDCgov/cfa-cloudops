@@ -8,10 +8,27 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/cdcgov/cfa-cloudops?style=plastic)
 
 # cfa-cloudops
+## Created by Ryan Raasch (Peraton) for CFA
 
-## Overview
+# Outline
+- [Description](#description)
+- [Getting Started](#getting-started)
 
-Describe the purpose of your project. Add additional sections as necessary to help collaborators and potential collaborators understand and use your project.
+# Description
+The `cfa-cloudops` python module is intended to ease the challenge of working in the cloud (currently limited to Azure) for data scientists at CFA. Typically, it takes deep knowledge to authenticate and complex coding patterns to interact with the cloud via python, which takes away time and resources from data scientists doing predictions, modeling, and more impactful work. `cfa-cloudops` simplifies many repeated workflows when interacting with the cloud and unifies CFA's approach in developer interaction with the cloud. For example, creating a pool and running jobs in Azure may take several credentials and different clients  to complete, but with `cfa-cloudops`, this is reduced to a small number of functions with only a few user-provided parameters.
+
+# Getting Started
+To use `cfa-cloudops`, you need [Python 3.9 or higher](https://www.python.org/downloads/), [Azure CLI](https://learn.microsoft.com/en-us/cli/azure), and any python package manager.
+
+Currently `cfa-cloudops` is only available to install from GitHub.
+
+To install using pip:
+```bash
+pip install git+https://github.com/CDCgov/cfa-cloudops.git
+```
+
+View the documenation [here](docs/README.md) for more help getting started with the package.
+
 
 ## Public Domain Standard Notice
 This repository constitutes a work of the United States Government and is not
