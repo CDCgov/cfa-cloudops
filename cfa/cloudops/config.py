@@ -199,6 +199,6 @@ def get_config_val(
             )
         else:
             err_msg = env_msg
-        raise ValueError(err_msg)
+        print(err_msg)
 
     return result
