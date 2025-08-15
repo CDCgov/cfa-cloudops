@@ -25,6 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.lock
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -208,3 +209,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# mkdocs local build
+site/

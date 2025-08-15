@@ -68,3 +68,36 @@ client.create_pool(
     task_slots_per_node = 2
 )
 ```
+
+## Containers for Pools
+
+Containers are central to pool creation and task execution. Pools in Azure Batch use containers as the image when spinning up a node. These container images can be pulled from Azure Container Registry, GitHub Container Registry, and DockerHub. There are a couple methods available within `CloudClient` to help with this. Both of these functions can upload local containers to Azure Container Registry, in slightly different use cases.
+- package_and_upload_dockerfile: this method packages a local Dockerfile into a Docker image, which gets uploaded to the Azure Container Registry
+- upload_docker_image: this method uploads a Docker image to the Azure Container Registry
+
+### `package_and_upload_dockerfile()` in action
+
+This method takes a Dockerfile at the specified path, builds the Docker image, then uploads to the location specified in Azure Container Registry.
+```python
+client = CloudClient()
+client.package_and_upload_dockerfile(
+    registry_name = "my_azure_registry",
+    repo_name = "test-repo",
+    tag = "latest",
+    path_to_dockerfile = "./Dockerfile"
+)
+```
+
+
+### `upload_docker_image()` in action
+
+This method functions similar to above but takes the already built Docker image, referenced by its full name, and uploads it to the specified location in the Azure Container Registry.
+```python
+client = CloudClient()
+client.upload_docker_image(
+    image_name = "local_docker_registry/repo-name:latest",
+    registry_name = "my_azure_registry",
+    repo_name = "test-repo",
+    tag = "latest:
+)
+```
