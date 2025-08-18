@@ -1,12 +1,13 @@
 # Running jobs with `cfa.cloudops.CloudClient`
 
-Jobs are the main component in Azure Batch that have the capability to run large-scale parallel and high performance computing tasks. A job is composed of a collection of tasks that can be run in parallel, sequentially, or some combination of both, as well as set dependencies if one task needs to run before the other. Tasks are run on nodes within an existing pool (more info on pools [here](/docs/CloudClient/pool.md)).
+Jobs are the main component in Azure Batch that have the capability to run large-scale parallel and high performance computing tasks. A job is composed of a collection of tasks that can be run in parallel, sequentially, or some combination of both, as well as set dependencies if one task needs to run before the other. Tasks are run on nodes within an existing pool (more info on pools [here](./pool.md)).
 
 The `CloudClient` class makes it extremely easy to submit jobs and tasks. When submitting tasks, the job must already exist in Azure Batch. The `monitor_job` method can also be run after submitting tasks to print the job's process in the terminal.
 
 ## Creating Jobs
 
 The `CloudClient` class has a method called `create_job` which should be used for programmatically creating jobs in your specified Azure Batch account. The following parameters can be passed to the method for customization of the job:
+
 - job_name: name of the job to create. Spaces will be removed.
 - pool_name: name of existing pool to use for running the job.
 - uses_deps: whether the job will use task dependencies. Default is True.
@@ -93,4 +94,65 @@ client.add_task(
     depends_on = [task_id],
     run_dependent_tasks_on_fail = True
 )
+```
+
+## Monitoring Jobs
+
+Once jobs are running (or not) we can monitor the job in the terminal. This will print output every few seconds of the job status, including time being monitored and number of completed/remaining/successful/failed tasks. This is done by using the `monitor_job` method of the `CloudClient` object. It takes the following as inputs:
+
+- job_name: name of the job to monitor
+- timeout: time in minutes to monitor the job
+- download_job_stats: whether to download stats from the job when it completes. Default is False.
+
+### Example
+
+To monitor a job called 'running-job-example' for up to 60 minutes, without downloading any job statistics afterward, run the following:
+```python
+client = CloudClient()
+# job / task creation here
+# monitor the job
+client.monitor_job(
+    job_name = "running-job-example",
+    timeout = 60,
+    download_job_stats = False
+    )
+```
+
+## Checking Job Status
+
+If checking a current status of a job (rather than continuous monitoring), you should use the method `check_job_status`. This will return the status of the job.
+
+### Example
+
+If we wanted to check the current status of our job specified above, we could run the following:
+```python
+client.check_job_status("running-job-example")
+```
+
+## Download Job Statistics
+
+In Azure Batch Explorer, there is a button to download the statistics related to the job and task, like the pool/nodes used, runtime, and more. One limitation of this button is that it is only available for a litmited time. To programmatically download these job statistics to a local csv file, use the method `download_job_stats`. The following arguments should be provided in the method call:
+
+- job_name: name of the job
+- file_name: name of file to save stats to. Defaults to <job-name>-stats.csv.
+
+### Example
+
+To download the job statistics for the job "running-job-example" to the file "job-stas.csv", we could run the following:
+```python
+client = CloudClient()
+client.download_job_stats(
+    job_name = "running-job-example",
+    file_name = "job-stats"
+)
+```
+
+## Deleting a Job
+
+There are times when it's desired to delete a job, whether after it completes/fails or for general job management. This can be completed with the `delete_job` method and providing the name of the job to delete.
+
+### Example:
+
+```python
+client.delete_job("running-job-example")
 ```

@@ -1,5 +1,5 @@
 # Home
 
-- [CloudClient](./CloudClient)
-- [Automation](./automation.md)
 - [Overview](./overview.md)
+- [CloudClient](./CloudClient/index.md)
+- [Automation](./automation.md)

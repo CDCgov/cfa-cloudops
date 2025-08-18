@@ -2,6 +2,9 @@ site_name: CFA CloudOps
 
 nav:
   - Home: index.md
+  - Overview: overview.md
+  - Automation: automation.md
+  - CloudClient: CloudClient/index.md
 
 repo_url: https://github.com/cdcgov/cfa-cloudops
 repo_name: cfa-cloudops
@@ -9,7 +12,7 @@ repo_name: cfa-cloudops
 # advanced configuration ------------------------------------------------------
 
 theme:
-  name: readthedocs
+  name: "material"
   icon:
     repo: fontawesome/brands/github
   features:

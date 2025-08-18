@@ -19,13 +19,13 @@ client = CloudClient(dotenv_path = ".env")
 
 If the .env file is called "my_azure.env" then the following should be run:
 ```python
-client = CloudClient(dotenv_path = "my_azure.env)
+client = CloudClient(dotenv_path = "my_azure.env")
 ```
 
 During instantiation of the `CloudClient`, the variables from the .env file get added to the local environment variables, overriding any variables with the same name. Then all the environment variables from the local environment are used to create a cre
 dential.
 
-An example .env file can be found [here](/docs/files/sample.env).
+An example .env file can be found [here](../files/sample.env).
 
 ## Using Different Authentication Methods
 
@@ -42,7 +42,7 @@ client = CloudClient()
 
 Sometimes there are cases when a Managed Identity won't work or is not ideal. In this situation it is possible to authenticate with a Service Principal. If this is the case, set the `use_sp` parameter to `True` when instantiating the `CloudClient`. This method requires the existence of AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_SP_CLIENT_ID, and AZURE_CLIENT_SECRET to exist in the local environment variables or .env file, or these can be passed in to the `CloudClient` as lowercase parameters of the same name.
 
-Check [here](/docs/files/sp_sample.env) for an example .env to be used with a service principal.
+Check [here](../files/sp_sample.env) for an example .env to be used with a service principal.
 
 The following is an example of including the additional environment variables in the .env file.
 ```python
