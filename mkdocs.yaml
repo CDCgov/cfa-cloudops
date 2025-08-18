@@ -5,6 +5,7 @@ nav:
   - Overview: overview.md
   - Automation: automation.md
   - CloudClient: CloudClient/index.md
+  - Sample Files: files/index.md
 
 repo_url: https://github.com/cdcgov/cfa-cloudops
 repo_name: cfa-cloudops

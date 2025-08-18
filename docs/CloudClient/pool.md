@@ -104,3 +104,13 @@ client.upload_docker_image(
     tag = "latest:
 )
 ```
+
+## Pool Deletion
+
+When pools are no longer needed or major changes need to be made to a pool, it is a good idea to delete the pool (and recreate if necessary). The `delete_pool` method allows users to programmatically delete the pool of their choice.
+
+### Example
+
+```python
+client.delete_pool("my-pool")
+```
