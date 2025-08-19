@@ -1,0 +1,5 @@
+metaflow
+azure-identity
+azure-batch
+cfa-azure @ git+https://github.com/CDCgov/cfa_azure.git
+numpy
