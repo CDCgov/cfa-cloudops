@@ -1,9 +1,6 @@
 from metaflow import FlowSpec, step
-import numpy as np
 import os
 import sys
-
-from cfa_azure.helpers import read_config
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 plugins_folder = os.path.join(current_dir, "custom_metaflow", "plugins", "decorators")
@@ -17,22 +14,22 @@ class MyFlow(FlowSpec):
     @step
     def start(self):
         print("Starting the flow...")
-        self.batch_pool_service = CFABatchPoolService()
         self.all_states = []
         with open('states.txt', 'r') as file:
             all_states = file.read().splitlines()
-        configuration = read_config("client_config_states.toml")
-        parallel_pool_limit = int(configuration.get("ParallelPoolLimit", "5"))
-        self.split_lists = np.array_split(all_states, parallel_pool_limit)
+        self.batch_pool_service = CFABatchPoolService()
+        self.batch_pool_service.setup_pools()
+        self.split_lists = self.batch_pool_service.setup_step_parameters(all_states)
         self.next(self.process_state, foreach='split_lists')
 
     @step
     def process_state(self):
         # Dynamically apply the decorator
         decorator = CFAAzureBatchDecorator(
-            batch_pool_service=self.batch_pool_service,
+            pool_name=self.input['pool_name'],
+            sp_secret=self.input['sp_secret'],
             config_file="client_config_states.toml", 
-            docker_command=f'echo {self.input}'
+            docker_command=f'echo {self.input["parameters"]}'
         )
         decorator(self._process_state)()
         self.next(self.join)
