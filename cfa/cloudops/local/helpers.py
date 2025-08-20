@@ -6,8 +6,9 @@ from os import path, walk
 from pathlib import Path
 
 import docker
+import yaml
 from docker.errors import DockerException
-from griddler import griddle
+from griddler import parse
 
 from cfa.cloudops.local import batch
 
@@ -416,7 +417,10 @@ def get_args_from_yaml(file_path: str) -> list[str]:
     Returns:
         list[str]: list of command line arguments
     """
-    parameter_sets = griddle.read(file_path)
+    with open(file_path, "r") as f:
+        raw_griddler = yaml.safe_load(f)
+    griddle = parse(raw_griddler)
+    parameter_sets = griddle.to_dicts()
     output = []
     for i in parameter_sets:
         full_cmd = ""
