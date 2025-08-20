@@ -21,6 +21,15 @@ class CloudClient:
         use_federated=False,
         **kwargs,
     ):
+        """
+        Initialize a CloudClient instance for managing Azure Batch, Blob Storage, and Docker operations.
+
+        Args:
+            dotenv_path (str, optional): Path to dotenv file for environment variables.
+            use_sp (bool, optional): Use service principal authentication.
+            use_federated (bool, optional): Use federated authentication.
+            **kwargs: Additional keyword arguments for future extensibility.
+        """
         # authenticate to get credentials
         if not use_sp and not use_federated:
             self.cred = "envcred"
@@ -378,8 +387,6 @@ class CloudClient:
         depends_on: list[str] | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
-        container_image_name: str = None,
-        timeout: int | None = None,
     ) -> str:
         """
         Add a task to an Azure Batch job.
