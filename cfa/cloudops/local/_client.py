@@ -387,7 +387,7 @@ class CloudClient:
         depends_on: list[str] | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
-    ) -> str:
+    ):
         """
         Add a task to an Azure Batch job.
 
@@ -400,6 +400,9 @@ class CloudClient:
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails.
             container_image_name (str, optional): Container image to use for the task.
             timeout (int, optional): Maximum time in minutes for the task to run.
+
+        Returns:
+            str: The ID of the added task.
         """
         # run tasks for input files
         logger.debug("Adding task to job.")
@@ -412,7 +415,7 @@ class CloudClient:
         self.task_id_max += 1
         return task_id
 
-    def create_blob_container(self, name: str) -> None:
+    def create_blob_container(self, name: str):
         """Create a blob storage container if it doesn't already exist.
 
         Creates a new Azure Blob Storage container with the specified name. If the
@@ -447,7 +450,7 @@ class CloudClient:
         container_name: str,
         local_root_dir: str = ".",
         location_in_blob: str = ".",
-    ) -> None:
+    ):
         """Upload files to an Azure Blob Storage container.
 
         Uploads one or more files from the local filesystem to a blob storage container.
@@ -505,7 +508,7 @@ class CloudClient:
         exclude_patterns: str | list | None = None,
         location_in_blob: str = ".",
         force_upload: bool = False,
-    ) -> list[str]:
+    ):
         """Upload entire folders to an Azure Blob Storage container with filtering options.
 
         Recursively uploads all files from specified folders to a blob storage container.
@@ -582,7 +585,7 @@ class CloudClient:
         job_name: str,
         timeout: int | None = None,
         download_job_stats: bool = False,
-    ) -> None:
+    ):
         """Monitor the execution of tasks in an Azure Batch job.
 
         Continuously monitors the progress of all tasks in a job until they complete
@@ -620,7 +623,7 @@ class CloudClient:
         # monitor the tasks
         pass
 
-    def check_job_status(self, job_name: str) -> str:
+    def check_job_status(self, job_name: str):
         """Check the current status and progress of an Azure Batch job.
 
         Performs a comprehensive status check of a job including existence verification,
@@ -661,6 +664,21 @@ class CloudClient:
             return "does not exist"
 
     def delete_job(self, job_id: str):
+        """
+        Delete a job and its associated Docker container.
+
+        Args:
+            job_id (str): ID of the job to delete.
+
+        Example:
+            Delete a job and stop its container:
+
+                client = CloudClient()
+                client.delete_job("my-job-id")
+
+        Note:
+            This operation will remove the job record and stop the related Docker container.
+        """
         # delete the file
         job_id_r = job_id.replace(" ", "")
         os.remove(f"tmp/jobs/{job_id_r}.txt")
@@ -675,7 +693,7 @@ class CloudClient:
         tag: str,
         path_to_dockerfile: str = "./Dockerfile",
         use_device_code: bool = False,
-    ) -> str:
+    ):
         """Build a Docker image from a Dockerfile and upload it to Azure Container Registry.
 
         Takes a Dockerfile, builds it into a Docker image, and uploads the resulting
@@ -740,7 +758,7 @@ class CloudClient:
         repo_name: str,
         tag: str,
         use_device_code: bool = False,
-    ) -> str:
+    ):
         """Upload an existing Docker image to Azure Container Registry.
 
         Takes a Docker image that already exists locally and uploads it to the specified
@@ -805,7 +823,7 @@ class CloudClient:
         container_name: str = None,
         do_check: bool = True,
         check_size: bool = True,
-    ) -> None:
+    ):
         """Download a single file from Azure Blob Storage to the local filesystem.
 
         Downloads a file from a blob storage container to a local destination path.
@@ -863,7 +881,7 @@ class CloudClient:
         exclude_extensions: str | list | None = None,
         verbose=True,
         check_size=True,
-    ) -> None:
+    ):
         """Download an entire folder from Azure Blob Storage to the local filesystem.
 
         Recursively downloads all files from a directory in a blob storage container,
@@ -925,7 +943,7 @@ class CloudClient:
         )
         logger.debug("finished call to download")
 
-    def delete_pool(self, pool_name: str) -> None:
+    def delete_pool(self, pool_name: str):
         """Delete an Azure Batch pool and all its compute nodes.
 
         Permanently removes a pool from the Batch account. This operation stops all
@@ -1103,7 +1121,7 @@ class CloudClient:
 
     def add_tasks_from_yaml(
         self, job_name: str, base_cmd: str, file_path: str, **kwargs
-    ) -> list[str]:
+    ):
         """Add multiple tasks to a job from a YAML file.
 
         Reads a YAML file describing tasks, constructs the corresponding commands, and
