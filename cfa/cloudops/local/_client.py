@@ -174,17 +174,17 @@ class CloudClient:
             return None
         # check if image exists
         try:
-            docker_env.images.get(self.full_container_name)
+            docker_env.images.get(container_image_name)
         except docker.errors.NotFound:
             print(
-                f"image not found... make sure image {self.full_container_name} exists."
+                f"image not found... make sure image {container_image_name} exists."
             )
             return None
 
         print("Verify the size of the VM is appropriate for the use case.")
         print("**Please use smaller VMs for dev/testing.**")
         try:
-            self.pool = batch.Pool(pool_name, self.cont_name)
+            self.pool = batch.Pool(pool_name, container_image_name)
             logger.info(f"Pool {pool_name!r} created.")
         except Exception:
             logger.warning(f"Pool {pool_name!r} already exists")
@@ -201,7 +201,7 @@ class CloudClient:
                 )
         # format pool info to save
         pool_info = {
-            "image_name": self.full_container_name,
+            "image_name": container_image_name,
             "mount_str": mount_str,
         }
         # save pool info
