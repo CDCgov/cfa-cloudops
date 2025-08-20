@@ -6,7 +6,8 @@ import docker
 import pandas as pd
 import toml
 
-from cfa.cloudops.local import CloudClient, helpers
+from cfa.cloudops.local import helpers
+from cfa.cloudops.local._client import CloudClient
 
 
 def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
