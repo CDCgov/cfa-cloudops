@@ -113,7 +113,7 @@ def upload_folder(
     location_in_blob: str = ".",
     blob_service_client=None,
     force_upload: bool = True,
-) -> list[str]:
+):
     """Upload all files from a local folder to Azure Blob Storage with filtering options.
 
     Recursively uploads files from a local folder to a blob storage container while
@@ -389,7 +389,7 @@ def download_file(c_client, src_path, dest_path, do_check, check_size):
     shutil.copy2(src, dest)
 
 
-def get_tasks_from_yaml(base_cmd: str, file_path: str) -> list[str]:
+def get_tasks_from_yaml(base_cmd: str, file_path: str):
     """
     combines output of get_args_from_yaml with a base command to get a complete command
 
@@ -407,7 +407,7 @@ def get_tasks_from_yaml(base_cmd: str, file_path: str) -> list[str]:
     return cmds
 
 
-def get_args_from_yaml(file_path: str) -> list[str]:
+def get_args_from_yaml(file_path: str):
     """
     parses yaml file and returns list of strings containing command line arguments and flags captured in the yaml.
 
@@ -454,7 +454,7 @@ def format_extensions(extension):
     return ext
 
 
-def walk_folder(folder: str) -> list | None:
+def walk_folder(folder: str):
     """
     Args:
         folder (str): folder path
