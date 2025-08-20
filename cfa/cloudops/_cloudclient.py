@@ -85,14 +85,14 @@ class CloudClient:
     def __init__(
         self,
         dotenv_path: str = None,
-        use_sp=False,
-        use_federated=False,
+        use_sp: bool = False,
+        use_federated: bool = False,
         **kwargs,
     ):
         # authenticate to get credentials
         if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
-        if use_federated:
+        elif use_federated:
             self.cred = FederatedCredentialHandler(
                 dotenv_path=dotenv_path, **kwargs
             )
