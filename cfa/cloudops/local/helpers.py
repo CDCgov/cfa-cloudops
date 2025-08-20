@@ -357,7 +357,7 @@ def upload_docker_image(
     except docker.errors.ImageNotFound:
         # Log available images to guide the user
         available_images = [img.tags for img in docker_env.images.list()]
-        logger.error(
+        print(
             f"Image {image_name} does not exist. Available images are: {available_images}"
         )
         raise
