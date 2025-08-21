@@ -252,10 +252,8 @@ def upload_folder(
             final_list.append(file)
             upload_to_storage_container(
                 filepath=file,
-                blob_storage_container_name=container_name,
-                blob_service_client=blob_service_client,
-                local_root_dir=".",
-                remote_root_dir=path.join(location_in_blob),
+                container_name=container_name,
+                location=location_in_blob,
             )
         logger.debug(f"Calling upload_blob_file for {file}")
 
