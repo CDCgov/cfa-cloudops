@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import shutil
 import subprocess as sp
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
@@ -1083,7 +1084,7 @@ class CloudClient:
             important data before deletion.
         """
         logger.debug(f"Deleting files in {folder_path} folder.")
-        os.rmdir(f"{container_name}/{folder_path}")
+        shutil.rmtree(f"{container_name}/{folder_path}")
         logger.debug(f"Deleted folder {folder_path}.")
 
     def download_job_stats(self, job_name: str, file_name: str | None = None):
