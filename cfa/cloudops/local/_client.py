@@ -144,10 +144,6 @@ class CloudClient:
         # validate pool name
         pool_name = pool_name.replace(" ", "_")
 
-        # validate vm size
-        print("Verify the size of the VM is appropriate for the use case.")
-        print("**Please use smaller VMs for dev/testing.**")
-
         # Configure container if image is provided
         if container_image_name:
             pass
@@ -181,8 +177,6 @@ class CloudClient:
             )
             return None
 
-        print("Verify the size of the VM is appropriate for the use case.")
-        print("**Please use smaller VMs for dev/testing.**")
         try:
             self.pool = batch.Pool(pool_name, container_image_name)
             logger.info(f"Pool {pool_name!r} created.")

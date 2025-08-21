@@ -40,7 +40,7 @@ def add_job(
     return j
 
 
-def create_container(container_name: str, blob_service_client: object):
+def create_container(container_name: str):
     """creates a Blob container if not exists
 
     Args:
