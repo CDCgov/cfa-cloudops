@@ -1045,7 +1045,7 @@ class CloudClient:
             Ensure you have backed up any important data before deletion.
         """
         logger.debug(f"Deleting blob {blob_name} from {container_name}.")
-        os.remove(f"{container_name}/{blob_name}")
+        os.rmdir(f"{container_name}/{blob_name}")
         logger.debug(f"Deleted {blob_name}.")
 
     def delete_blob_folder(self, folder_path: str, container_name: str):
