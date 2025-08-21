@@ -1045,7 +1045,7 @@ class CloudClient:
             Ensure you have backed up any important data before deletion.
         """
         logger.debug(f"Deleting blob {blob_name} from {container_name}.")
-        os.rmdir(f"{container_name}/{blob_name}")
+        os.remove(f"{container_name}/{blob_name}")
         logger.debug(f"Deleted {blob_name}.")
 
     def delete_blob_folder(self, folder_path: str, container_name: str):
@@ -1083,7 +1083,7 @@ class CloudClient:
             important data before deletion.
         """
         logger.debug(f"Deleting files in {folder_path} folder.")
-        os.remove(f"{container_name}/{folder_path}")
+        os.rmdir(f"{container_name}/{folder_path}")
         logger.debug(f"Deleted folder {folder_path}.")
 
     def download_job_stats(self, job_name: str, file_name: str | None = None):
