@@ -28,8 +28,8 @@ from azure.common.credentials import ServicePrincipalCredentials
 DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"
 
 class CFABatchPoolService:
-    def __init__(self):
-        self.attributes = read_config("client_config_states.toml")
+    def __init__(self, config_file_path):
+        self.attributes = read_config(config_file_path)
         self.resource_group_name = self.attributes["Authentication"]["resource_group"]
         self.account_name = self.attributes["Batch"]["batch_account_name"]
         self.batch_pools = []
@@ -41,21 +41,14 @@ class CFABatchPoolService:
             client_id=self.attributes["Authentication"]["sp_application_id"],
             client_secret=self.sp_secret,
         )
-        self.batch_cred = ServicePrincipalCredentials(
-            client_id=self.attributes["Authentication"]["sp_application_id"],
-            tenant=self.attributes["Authentication"]["tenant_id"],
-            secret=self.sp_secret,
-            resource="https://batch.core.windows.net/",
-        )
 
     def __setup_clients(self):
-        self.batch_client = get_batch_service_client(self.attributes, self.batch_cred)
         self.batch_mgmt_client = get_batch_mgmt_client(config=self.attributes, credential=self.secret_cred)
         self.blob_service_client = get_blob_service_client(self.attributes, self.secret_cred)
 
     def setup_pools(self):
-        self.parallel_pool_limit = int(self.attributes.get("ParallelPoolLimit", "1"))
-        pool_name_prefix = self.attributes.get("PoolNamePrefix", "cfa_pool_")
+        self.parallel_pool_limit = int(self.attributes['Batch'].get("parallel_pool_limit", "1"))
+        pool_name_prefix = self.attributes['Batch'].get("pool_name_prefix", "cfa_pool_")
         self.__get_secret_credentials()
         self.__setup_clients()
         for i in range(self.parallel_pool_limit):
@@ -83,7 +76,7 @@ class CFABatchPoolService:
 
     def __fetch_or_create_pool(self, pool_name) -> bool:
         if check_pool_exists(self.resource_group_name, self.account_name, pool_name, self.batch_mgmt_client):
-            print(f'Existing Azure batch pool {self.pool_name} is being reused')
+            print(f'Existing Azure batch pool {pool_name} is being reused')
         else:
             mounts = self.__create_containers()
             blob_config = []

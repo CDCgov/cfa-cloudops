@@ -59,7 +59,7 @@ class CFAAzureBatchDecorator(StepDecorator):
             secret=self.sp_secret,
             resource="https://batch.core.windows.net/",
         )
-        batch_client = get_batch_service_client(self.attributes, batch_cred)
+        self.batch_client = get_batch_service_client(self.attributes, batch_cred)
         if 'job_id_prefix' in self.attributes['Batch'] and self.attributes['Batch']['job_id_prefix']:
             job_id_prefix = self.attributes['Batch']['job_id_prefix']
             job_id = f'{job_id_prefix}{generate_random_string(5)}'
@@ -68,7 +68,7 @@ class CFAAzureBatchDecorator(StepDecorator):
         if check_job_exists(job_id=job_id, batch_client=self.batch_client):
             print(f'Existing Azure batch job {job_id} is being reused')
         else:
-            add_job(job_id=job_id, pool_id=self.pool_name, batch_client=batch_client, mark_complete=True)
+            add_job(job_id=job_id, pool_id=self.pool_name, batch_client=self.batch_client, mark_complete=True)
             print("Azure Batch Job created")
         return job_id
 

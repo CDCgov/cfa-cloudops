@@ -17,9 +17,10 @@ class MyFlow(FlowSpec):
         self.all_states = []
         with open('states.txt', 'r') as file:
             all_states = file.read().splitlines()
-        self.batch_pool_service = CFABatchPoolService()
+        self.batch_pool_service = CFABatchPoolService("client_config_states.toml")
         self.batch_pool_service.setup_pools()
         self.split_lists = self.batch_pool_service.setup_step_parameters(all_states)
+        #self.next(self.end)
         self.next(self.process_state, foreach='split_lists')
 
     @step
@@ -35,11 +36,12 @@ class MyFlow(FlowSpec):
         self.next(self.join)
 
     def _process_state(self):
-        print(f"Running the _process_state step in Azure Batch for {self.input}...")
+        print(f"Running the _process_state step in Azure Batch for pool {self.input['pool_name']} with parameters {self.input['parameters']}")
 
     @step
     def join(self, inputs):
         print("Flow joined.")
+        self.merge_artifacts(inputs) 
         self.next(self.end)
 
     @step
