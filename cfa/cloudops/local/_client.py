@@ -382,6 +382,7 @@ class CloudClient:
         depends_on: list[str] | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
+        container_image_name: str = None,
     ):
         """
         Add a task to an Azure Batch job.
