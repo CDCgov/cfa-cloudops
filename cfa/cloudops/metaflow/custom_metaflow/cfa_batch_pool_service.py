@@ -1,28 +1,26 @@
 import numpy as np
-from cfa_azure.batch_helpers import (
+from cfa.cloudops.batch_helpers import (
     check_pool_exists,
     create_batch_pool, 
     delete_pool,
     get_pool_parameters,
     get_batch_mgmt_client
 )
-from cfa_azure.blob_helpers import (
+from cfa.cloudops.blob_helpers import (
     get_blob_config,
     get_mount_config,
     get_blob_service_client
 )
-from cfa_azure.helpers import (
+from cfa.cloudops.helpers import (
     create_container,
     format_rel_path,
     get_sp_secret,
-    get_batch_service_client,
     read_config
 )
 from azure.identity import (
     ClientSecretCredential,
     ManagedIdentityCredential,
 )
-from azure.common.credentials import ServicePrincipalCredentials
 
 
 DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"

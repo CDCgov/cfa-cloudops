@@ -1,13 +1,13 @@
 from metaflow.decorators import StepDecorator
 
-from cfa_azure.helpers import (
+from cfa.cloudops.helpers import (
     add_job, 
     add_task_to_job,
     check_job_exists,
     read_config
 )
 from azure.common.credentials import ServicePrincipalCredentials
-from cfa_azure.helpers import (
+from cfa.cloudops.helpers import (
     get_batch_service_client
 )
 from functools import wraps

@@ -1,5 +1,5 @@
 metaflow
 azure-identity
 azure-batch
-cfa-azure @ git+https://github.com/CDCgov/cfa_azure.git
+cfa-cloudops @ git+https://github.com/CDCgov/cfa-cloudops.git
 numpy
