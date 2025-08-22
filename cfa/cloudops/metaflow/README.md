@@ -5,7 +5,9 @@
 Metaflow is an open-source job orchestration framework that can run tasks locally or remotely in the Cloud as part of a job. 
 Each job is defined as a class that inherits from the FlowSpec class and overrides its methods. Tasks within a job are decorated with @step. By default all tasks run locally but we can also run these in a Kubernetes cluster and AWS Batch. Since Azure Batch is not supported in Metaflow currently, this example illustrates how to use a custom Azure Batch Decorator that can run step within Metaflow job remotely using the Azure Batch service. 
 
-![image info](./MetaflowandCustomAzureDecorator.png)
+A singleton class CFA Azure Batch Pool Service has been added to the custom_metaflow package to encapsulate the API calls needed for creating batch pools and mounting containers. 
+
+![image info](./MetaflowAndParallelTasks.png)
 
 # Steps
 1. Add a step to the `main.py` workflow for the operation you want to perform in the Azure Batch. Decorate that method with `@cfa_azure_batch`. 
@@ -31,11 +33,14 @@ Each job is defined as a class that inherits from the FlowSpec class and overrid
   subnet_id="REPLACE_WITH_AZURE_SUBNET_ID"
 
   [Batch]
+  job_id="REPLACE_WITH_JOB_NAME"
   batch_account_name="REPLACE_WITH_BATCH_ACCOUNT"
   batch_service_url="REPLACE_WITH_BATCH_SERVICE_URL"
   pool_vm_size="STANDARD_A2_V2"
   pool_name="REPLACE_WITH_POOL_NAME"
+  parallel_pool_limit="1"
   scaling_mode="fixed"
+
 
   [Container]
   container_registry_url="URL_FOR_CONTAINER_REGISTRY"

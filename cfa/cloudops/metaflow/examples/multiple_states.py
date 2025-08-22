@@ -20,7 +20,6 @@ class MyFlow(FlowSpec):
         self.batch_pool_service = CFABatchPoolService("client_config_states.toml")
         self.batch_pool_service.setup_pools()
         self.split_lists = self.batch_pool_service.setup_step_parameters(all_states)
-        #self.next(self.end)
         self.next(self.process_state, foreach='split_lists')
 
     @step
@@ -36,7 +35,9 @@ class MyFlow(FlowSpec):
         self.next(self.join)
 
     def _process_state(self):
-        print(f"Running the _process_state step in Azure Batch for pool {self.input['pool_name']} with parameters {self.input['parameters']}")
+        step_pool_name = self.input['pool_name']
+        step_parameters = self.input['parameters']
+        print(f"Running the _process_state step in Azure Batch for pool {step_pool_name} with {len(step_parameters)} parameters which are {step_parameters}")
 
     @step
     def join(self, inputs):
