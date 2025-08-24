@@ -1,12 +1,4 @@
 from metaflow import FlowSpec, step
-import os
-import sys
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-plugins_folder = os.path.join(current_dir, "custom_metaflow", "plugins", "decorators")
-if plugins_folder not in sys.path:
-    sys.path.insert(0, plugins_folder)
-
 from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import CFAAzureBatchDecorator
 from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
 
@@ -17,8 +9,8 @@ class MyFlow(FlowSpec):
         self.all_states = []
         with open('states.txt', 'r') as file:
             all_states = file.read().splitlines()
-        self.batch_pool_service = CFABatchPoolService("client_config_states.toml")
-        self.batch_pool_service.setup_pools()
+        self.batch_pool_service = CFABatchPoolService()
+        self.batch_pool_service.setup_pools("client_config_states.toml")
         self.split_lists = self.batch_pool_service.setup_step_parameters(all_states)
         self.next(self.process_state, foreach='split_lists')
 

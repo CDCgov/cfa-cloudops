@@ -1,15 +1,3 @@
-[Authentication]
-subscription_id="REPLACE_WITH_AZURE_SUBSCRIPTION_ID"
-resource_group="REPLACE_WITH_AZURE_RESOURCE_GROUP"
-user_assigned_identity="REPLACE_WITH_USER_ASSIGNED_ID"
-tenant_id="REPLACE_WITH_TENANT_ID"
-batch_application_id="REPLACE_WITH_BATCH_APP_ID"
-batch_object_id="REPLACE_WITH_BATCH_OBJECT_ID"
-sp_application_id="REPLACE_WITH_SERVICE_PRINCIPAL_APP_ID"
-vault_url="REPLACE_WITH_AZURE_VAULT_URL"
-vault_sp_secret_id="REPLACE_WITH_SECRET_ID"
-subnet_id="REPLACE_WITH_AZURE_SUBNET_ID"
-
 [Batch]
 batch_account_name="REPLACE_WITH_BATCH_ACCOUNT"
 batch_service_url="REPLACE_WITH_BATCH_SERVICE_URL"

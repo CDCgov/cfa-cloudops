@@ -1,5 +1,19 @@
 # Examples
 
+## Environmental Variables
+Setup the following environment variables in your Linux shell or Dockerfile:
+  ```text
+  export USERNAME="YOUR_USER_NAME"
+
+  export USERNAME="YOUR_USER_NAME"
+  export PYTHONPATH="/path_to_cfa-cloudops/cfa/cloudops/metaflow:$PYTHONPATH"
+  export AZURE_TENANT_ID="REPLACE_WITH_TENANT_ID"
+  export AZURE_SUBSCRIPTION_ID="REPLACE_WITH_SUBSCRIPTION_ID"
+  export AZURE_SP_CLIENT_ID="REPLACE_WITH_SERVICE_PRINCIPAL_ID"
+  export AZURE_KEYVAULT_ENDPOINT="REPLACE_WITH_AZURE_KEY_VAULT_URL"
+  export AZURE_KEYVAULT_SP_SECRET_ID="REPLACE_WITH_AZURE_KEY_VAULT_SECRET_NAME"
+  ```text
+
 ## Parallel Steps with Distinct Datases: Read Different Blobs
 This is an example of creating one flowspec that contains 2 steps that runs remotely in Azure Batch. Both steps use the same batch pool but read data from different Azure blob locations and process it. When the 2 steps complete successfully, the flowspec terminates the batch pool. 
 
@@ -25,7 +39,7 @@ This is an example of creating one flowspec that contains 2 steps that runs remo
   source metaflow_env/bin/activate
   pip install -r requirements.txt
 
-  export USERNAME="YOUR_USER_NAME"
+  export PYTHONPATH="/path_to_cfa-cloudops/cfa/cloudops/metaflow:$PYTHONPATH"
 
   python main.py run
   ```
@@ -67,8 +81,6 @@ This is an example of creating one flowspec that contains 1 step that runs remot
   source metaflow_env/bin/activate
   pip install -r requirements.txt
 
-  export USERNAME="YOUR_USER_NAME"
-
   python multiple_states.py run
   ```
 
@@ -109,7 +121,7 @@ This is an example of creating one flowspec that contains 50 steps that run remo
   source metaflow_env/bin/activate
   pip install -r requirements.txt
 
-  export USERNAME="YOUR_USER_NAME"
+  export PYTHONPATH="/path_to_cfa-cloudops/cfa/cloudops/metaflow:$PYTHONPATH"
 
   python multiple_states.py run
   ```
@@ -148,6 +160,7 @@ This is a variation of the previous example. To avoid exceeding the quota of 100
   pip install -r requirements.txt
 
   export USERNAME="YOUR_USER_NAME"
+  export PYTHONPATH="/path_to_cfa-cloudops/cfa/cloudops/metaflow:$PYTHONPATH"
 
   python multiple_states.py run
   ```
@@ -162,54 +175,3 @@ This is a variation of the previous example. To avoid exceeding the quota of 100
   docker build . -t my_parallel_states_container -f DockerfileMultipleParallel
   docker run my_parallel_states_container
   ```
-
-
-
-
-
-
-
-
-
-# Steps
-1. Add a step to the `main.py` workflow for the operation you want to perform in the Azure Batch. Decorate that method with `@cfa_azure_batch`. 
-  ```python
-  @step
-  @cfa_azure_batch
-  def perform_remote_task(self):
-      # YOUR CODE GOES IN HERE
-      self.next(self.end)
-  ```
-2. Provide the Azure batch configuration in a `client_config.toml` file:
-  ```text
-  [Authentication]
-  subscription_id="REPLACE_WITH_AZURE_SUBSCRIPTION_ID"
-  resource_group="REPLACE_WITH_AZURE_RESOURCE_GROUP"
-  user_assigned_identity="REPLACE_WITH_USER_ASSIGNED_ID"
-  tenant_id="REPLACE_WITH_TENANT_ID"
-  batch_application_id="REPLACE_WITH_BATCH_APP_ID"
-  batch_object_id="REPLACE_WITH_BATCH_OBJECT_ID"
-  sp_application_id="REPLACE_WITH_SERVICE_PRINCIPAL_APP_ID"
-  vault_url="REPLACE_WITH_AZURE_VAULT_URL"
-  vault_sp_secret_id="REPLACE_WITH_SECRET_ID"
-  subnet_id="REPLACE_WITH_AZURE_SUBNET_ID"
-
-  [Batch]
-  batch_account_name="REPLACE_WITH_BATCH_ACCOUNT"
-  batch_service_url="REPLACE_WITH_BATCH_SERVICE_URL"
-  pool_vm_size="STANDARD_A2_V2"
-  pool_name="REPLACE_WITH_POOL_NAME"
-  scaling_mode="fixed"
-
-  [Container]
-  container_registry_url="URL_FOR_CONTAINER_REGISTRY"
-  container_registry_server="CONTAINER_REGISTRY_SERVER"
-  container_registry_username="USER_NAME_FOR_CONTAINER_REGISTRY"
-  container_registry_password="PASSWORD_FOR_CONTAINER_REGISTRY"
-  container_image_name="CONTAINER_IMAGE_NAME"
-
-  [Storage]
-  storage_account_name="AZURE_BLOB_STORAGE_ACCOUNT"
-  storage_account_url="AZURE_BLOB_STORAGE_URL"
-  ```
-
