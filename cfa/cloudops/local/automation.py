@@ -208,7 +208,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs):
     else:
         p_path = Path(f"tmp/pools/{pool_name}.txt")
         pool_info = eval(p_path.read_text())
-        container = pool_info["image_name"]
+        container = f"{pool_info['image_name']}.{job_name}"
 
     # submit the tasks
     tt = task_toml["task"]
