@@ -5,6 +5,7 @@ nav:
   - Overview: overview.md
   - Automation: automation.md
   - CloudClient: CloudClient/index.md
+  - Local Execution: local.md
   - Sample Files: files/index.md
   - Troubleshooting: troubleshooting.md
 
