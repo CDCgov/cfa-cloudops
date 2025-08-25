@@ -208,6 +208,8 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs):
     else:
         p_path = Path(f"tmp/pools/{pool_name}.txt")
         pool_info = eval(p_path.read_text())
+        image_name = pool_info["image_name"]
+        image_name = image_name.replace("/", "_").replace(":", "_")
         container = f"{pool_info['image_name']}.{job_name}"
 
     # submit the tasks
