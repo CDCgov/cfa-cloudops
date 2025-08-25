@@ -102,7 +102,11 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
     if "container" in exp_toml["job"].keys():
         container = exp_toml["job"]["container"]
     else:
-        container = None
+        p_path = Path(f"tmp/pools/{pool_name}.txt")
+        pool_info = eval(p_path.read_text())
+        image_name = pool_info["image_name"]
+        image_name = image_name.replace("/", "_").replace(":", "_")
+        container = f"{image_name}.{job_name}"
 
     # submit the experiment tasks
     ex = exp_toml["experiment"]
