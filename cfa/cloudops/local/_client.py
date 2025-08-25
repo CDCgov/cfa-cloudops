@@ -382,6 +382,7 @@ class CloudClient:
         depends_on: list[str] | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
+        container_image_name: str = None,
     ):
         """
         Add a task to an Azure Batch job.
@@ -403,9 +404,8 @@ class CloudClient:
         logger.debug("Adding task to job.")
         task_id = self.task_id_max
         print(f"Running {task_id}.")
-        sp.run(
-            f"""docker exec -i {self.cont_name} {command_line}""", shell=True
-        )
+        cont_name = container_image_name if not None else self.cont_name
+        sp.run(f"""docker exec -i {cont_name} {command_line}""", shell=True)
 
         self.task_id_max += 1
         return task_id
