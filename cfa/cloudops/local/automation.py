@@ -100,13 +100,13 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
     # create the tasks for the experiment
     # get the container to use if necessary
     if "container" in exp_toml["job"].keys():
-        container = exp_toml["job"]["container"]
+        image_name = exp_toml["job"]["container"]
     else:
         p_path = Path(f"tmp/pools/{pool_name}.txt")
         pool_info = eval(p_path.read_text())
         image_name = pool_info["image_name"]
-        image_name = image_name.replace("/", "_").replace(":", "_")
-        container = f"{image_name}.{job_name}"
+    image_name = image_name.replace("/", "_").replace(":", "_")
+    container = f"{image_name}.{job_name}"
 
     # submit the experiment tasks
     ex = exp_toml["experiment"]
@@ -208,13 +208,13 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs):
     # create the tasks for the experiment
     # get the container to use if necessary
     if "container" in task_toml["job"].keys():
-        container = task_toml["job"]["container"]
+        image_name = task_toml["job"]["container"]
     else:
         p_path = Path(f"tmp/pools/{pool_name}.txt")
         pool_info = eval(p_path.read_text())
         image_name = pool_info["image_name"]
-        image_name = image_name.replace("/", "_").replace(":", "_")
-        container = f"{image_name}.{job_name}"
+    image_name = image_name.replace("/", "_").replace(":", "_")
+    container = f"{image_name}.{job_name}"
 
     # submit the tasks
     tt = task_toml["task"]
