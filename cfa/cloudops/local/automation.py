@@ -133,9 +133,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
             client.monitor_job(job_name)
 
 
-def run_tasks(
-    task_config: str, dotenv_path: str | None = None, **kwargs
-) -> None:
+def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs):
     """Run jobs and tasks automatically based on the provided task config.
     Args:
         task_config (str): path to task config file (toml)
@@ -208,7 +206,9 @@ def run_tasks(
     if "container" in task_toml["job"].keys():
         container = task_toml["job"]["container"]
     else:
-        container = None
+        p_path = Path(f"tmp/pools/{pool_name}.txt")
+        pool_info = eval(p_path.read_text())
+        container = pool_info["image_name"]
 
     # submit the tasks
     tt = task_toml["task"]

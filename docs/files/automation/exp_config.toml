@@ -5,7 +5,7 @@ folders=['data', 'input'] #optional
 files=['input/vars.py'] #optional
 
 [job]
-name='test_auto'
+job_name='test_auto'
 pool_name='auto_pool_test'
 save_logs_to_blob="input-test" #optional
 logs_folder='logs-folder' #optional
