@@ -22,9 +22,9 @@ This class is discussed in detail [here](./CloudClient/index.md).
 
 This module assists with authentication to the Cloud. It contains a base class called `CredentialHandler`, which holds and creates various Azure information and credentials. This class should not be called directly. The following three classes are built on the `CredentialHandler` and should be used for authentication to the Cloud:
 
-- EnvCredentialHandler: uses a managed identity to authenticate to the Cloud based on environment variables or values in a .env file. 
-- SPCredentialHandler: uses a service principal to authenticate to the Cloud based on environment variables or values in a .env file. 
-- FederatedCredentialHandler: uses a federated token credential to authenticate to the Cloud based on environment variables or values in a .env file. This is credential method is preferred when using `cfa-cloudops` via GitHub Actions. 
+- EnvCredentialHandler: uses a managed identity to authenticate to the Cloud based on environment variables or values in a .env file.
+- SPCredentialHandler: uses a service principal to authenticate to the Cloud based on environment variables or values in a .env file.
+- FederatedCredentialHandler: uses a federated token credential to authenticate to the Cloud based on environment variables or values in a .env file. This is credential method is preferred when using `cfa-cloudops` via GitHub Actions.
 
 These handlers are discussed in more detail [here](./CloudClient/authentication.md).
 
@@ -34,11 +34,11 @@ This module is discussed in detail [here](./automation.md).
 
 ## autoscale
 
-This module contains two autoscale formulas: `dev_autoscale_formula` and `prod_autoscale_formula`. These are available to use directly as your autoscale formula or as a starting place for you to tweak. They can be imported from `cfa.cloudops.autoscale`. 
+This module contains two autoscale formulas: `dev_autoscale_formula` and `prod_autoscale_formula`. These are available to use directly as your autoscale formula or as a starting place for you to tweak. They can be imported from `cfa.cloudops.autoscale`.
 
 The `dev_autoscale_formula` makes use of a combination of half low priority nodes and half dedicated nodes up to a maximum of 10 nodes total.
 
-The `prod_autoscale_formula` uses only dedicated nodes up to a maximum of 25 nodes. 
+The `prod_autoscale_formula` uses only dedicated nodes up to a maximum of 25 nodes.
 
 ### Example
 
@@ -75,7 +75,7 @@ This module helps with the creation of various clients to interact with the Clou
 
 ## defaults
 
-This module contains functions that return default values for various Cloud services. 
+This module contains functions that return default values for various Cloud services.
 
 - remaining_task_autoscale_formula
 - default_image_publisher
