@@ -10,7 +10,6 @@ import datetime
 from functools import wraps
 import random
 import string
-import toml
 from cfa.cloudops import batch_helpers, helpers
 from cfa.cloudops.client import get_batch_service_client, get_batch_management_client
 from cfa.cloudops.job import create_job
@@ -42,12 +41,10 @@ class CFAAzureBatchDecorator(StepDecorator):
         'Storage': None
     }
 
-    def __init__(self, pool_name, cred, config_file=None, **kwargs):
+    def __init__(self, pool_name, cred, attributes, **kwargs):
         super(CFAAzureBatchDecorator, self).__init__()
         self.attributes = self.defaults.copy()
-        # Load configuration from the JSON file if provided
-        if config_file:
-            self.attributes.update(toml.load(config_file))
+        self.attributes.update(attributes)
         self.cred = cred
         self.pool_name = pool_name
         self.docker_command = kwargs.get('docker_command', 'python main.py')
@@ -176,11 +173,11 @@ class CFAAzureBatchDecorator(StepDecorator):
         self.batch_client = get_batch_service_client(self.cred)
         self.batch_mgmt_client = get_batch_management_client(self.cred)
 
-        if 'job_id_prefix' in self.attributes['Batch'] and self.attributes['Batch']['job_id_prefix']:
-            job_id_prefix = self.attributes['Batch']['job_id_prefix']
+        job_id = self.attributes.get('JOB_ID')
+        job_id_prefix = self.attributes.get('JOB_ID_PREFIX')
+        if job_id_prefix:
             job_id = f'{job_id_prefix}{generate_random_string(5)}'
-        else:
-            job_id=self.attributes['Batch']['job_id']
+
         if batch_helpers.check_job_exists(job_id, self.batch_client):
             print(f'Existing Azure batch job {job_id} is being reused')
         else:
@@ -194,14 +191,15 @@ class CFAAzureBatchDecorator(StepDecorator):
         def wrapper(*args, **kwargs):
             job_id = self.fetch_or_create_job()
             task_dependencies = None
-            if 'parent_task' in self.attributes["Batch"] and self.attributes["Batch"]["parent_task"]:
-                task_dependencies = self.attributes["Batch"]["parent_task"].split(",")
+            parent_tasks = self.attributes.get('PARENT_TASK')
+            if parent_tasks:
+                task_dependencies = parent_tasks.split(",")
             self.task_id = self.add_task(
                 job_name=job_id, 
                 command_line=self.docker_command,
                 name_suffix=f"{job_id}_task_{generate_random_string(3)}_", 
                 depends_on=task_dependencies,
-                container_image_name=self.attributes['Batch'].get("container_image_name", DEFAULT_CONTAINER_IMAGE_NAME)
+                container_image_name=self.attributes.get("CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME)
             )
             return func(*args, **kwargs)
         return wrapper

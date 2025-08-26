@@ -10,7 +10,7 @@ class MyFlow(FlowSpec):
         with open('states.txt', 'r') as file:
             all_states = file.read().splitlines()
         self.batch_pool_service = CFABatchPoolService(dotenv_path='metaflow.env')
-        self.batch_pool_service.setup_pools("client_config_states.toml")
+        self.batch_pool_service.setup_pools()
         self.split_lists = self.batch_pool_service.setup_step_parameters(all_states)
         self.next(self.process_state, foreach='split_lists')
         
@@ -20,7 +20,7 @@ class MyFlow(FlowSpec):
         decorator = CFAAzureBatchDecorator(
             pool_name=self.input['pool_name'],
             cred=self.input['cred'],
-            config_file="client_config_states.toml", 
+            attributes=self.input['attributes'],
             docker_command=f'echo {self.input["parameters"]}'
         )
         decorator(self._process_state)()

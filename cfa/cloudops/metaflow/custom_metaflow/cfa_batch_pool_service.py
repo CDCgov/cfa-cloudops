@@ -1,7 +1,7 @@
 from azure.mgmt.batch import models
+from dotenv import dotenv_values
 import numpy as np
-import toml
-from cfa.cloudops.batch_helpers import check_pool_exists
+import cfa.cloudops.batch_helpers as bh
 from cfa.cloudops.auth import SPCredentialHandler
 from cfa.cloudops.blob import get_node_mount_config
 from cfa.cloudops.client import get_batch_management_client
@@ -18,27 +18,28 @@ class CFABatchPoolService:
         self.batch_pools = []
         self.resource_group_name = None
         self.account_name = None
+        self.dotenv_path = dotenv_path
         self.cred = SPCredentialHandler(dotenv_path)
         self.batch_mgmt_client = get_batch_management_client(self.cred)
 
 
-    def setup_pools(self, config_file_path):
-        attributes = toml.load(config_file_path)
-        self.parallel_pool_limit = int(attributes['Batch'].get("parallel_pool_limit", "1"))
-        pool_name_prefix = attributes['Batch'].get("pool_name_prefix", "cfa_pool_")
-        self.cred.azure_user_assigned_identity = attributes['Authentication'].get("azure_user_assigned_identity")
-        self.cred.azure_resource_group_name = attributes['Authentication'].get("resource_group")
-        self.cred.azure_batch_account =  attributes['Batch'].get("batch_account_name")
+    def setup_pools(self):
+        self.attributes = dotenv_values(self.dotenv_path)
+        self.parallel_pool_limit = int(self.attributes.get("PARALLEL_POOL_LIMIT", "1"))
+        pool_name_prefix = self.attributes.get("POOL_NAME_PREFIX", "cfa_pool_")
+        self.cred.azure_user_assigned_identity = self.attributes.get("AZURE_USER_ASSIGNED_IDENTITY")
+        self.cred.azure_resource_group_name = self.attributes.get("AZURE_RESOURCE_GROUP")
+        self.cred.azure_batch_account =  self.attributes.get("AZURE_BATCH_ACCOUNT")
         for i in range(self.parallel_pool_limit):
             pool_name = f"{pool_name_prefix}{i}"
-            if check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
+            if bh.check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
                 print(f'Existing Azure batch pool {pool_name} is being reused')
                 continue
             mount_config = self.__create_containers()
-            pool_config = self.__create_pool_configuration(pool_name, mount_config, attributes)
+            pool_config = self.__create_pool_configuration(pool_name, mount_config)
             self.__create_pool(pool_name, pool_config)
             self.batch_pools.append(pool_name)
-        
+
 
     def __create_containers(self):
         storage_containers = []
@@ -57,17 +58,17 @@ class CFABatchPoolService:
         return mount_config
 
 
-    def __create_pool_configuration(self, pool_name, mount_config, attributes):
+    def __create_pool_configuration(self, pool_name, mount_config):
         pool_config = get_default_pool_config(
             pool_name=pool_name,
             subnet_id=self.cred.azure_subnet_id,
             user_assigned_identity=self.cred.azure_user_assigned_identity,
             mount_configuration=mount_config,
-            vm_size=attributes['Batch'].get("pool_vm_size"),
+            vm_size=self.attributes.get("POOL_VM_SIZE"),
         )
         formula = remaining_task_autoscale_formula(
             task_sample_interval_minutes=15,
-            max_number_vms=int(attributes['Batch'].get("max_autoscale_nodes", "3")),
+            max_number_vms=int(self.attributes.get("MAX_AUTOSCALE_NODES", "3")),
         )
         pool_config.scale_settings = models.ScaleSettings(
             auto_scale=models.AutoScaleSettings(
@@ -75,11 +76,11 @@ class CFABatchPoolService:
                 evaluation_interval="PT5M",  # Evaluate every 5 minutes
             )
         )
-        pool_config.task_slots_per_node = int(attributes['Batch'].get("task_slots_per_node", "1"))
+        pool_config.task_slots_per_node = int(self.attributes.get("TASK_SLOTS_PER_NODE", "1"))
 
         container_config = models.ContainerConfiguration(
             type="dockerCompatible",
-            container_image_names=[attributes['Batch'].get("container_image_name", DEFAULT_CONTAINER_IMAGE_NAME)],
+            container_image_names=[self.attributes.get("CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME)],
         )
 
         if hasattr(self.cred, "azure_container_registry"):
@@ -115,13 +116,18 @@ class CFABatchPoolService:
          for i in range(self.parallel_pool_limit):
             pool_name = self.batch_pools[i] if i < len(self.batch_pools) else None
             step_parameters.append(
-                {'pool_name': pool_name, 'cred': self.cred, 'parameters': item_chunks[i]}
+                {'pool_name': pool_name, 'cred': self.cred, 'attributes': self.attributes, 'parameters': item_chunks[i]}
             )
          return step_parameters
 
 
     def delete_all_pools(self):
         for pool_name in self.batch_pools:
-            self.cloud_client.delete_pool(pool_name)
+            bh.delete_pool(
+                resource_group_name=self.cred.azure_resource_group_name,
+                account_name=self.cred.azure_batch_account,
+                pool_name=pool_name,
+                batch_mgmt_client=self.batch_mgmt_client,
+            )
             print(f"Deleted Azure Batch Pool: {pool_name}")
         return True
