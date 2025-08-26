@@ -9,17 +9,17 @@ class MyFlow(FlowSpec):
         self.all_states = []
         with open('states.txt', 'r') as file:
             all_states = file.read().splitlines()
-        self.batch_pool_service = CFABatchPoolService()
+        self.batch_pool_service = CFABatchPoolService(dotenv_path='metaflow.env')
         self.batch_pool_service.setup_pools("client_config_states.toml")
         self.split_lists = self.batch_pool_service.setup_step_parameters(all_states)
         self.next(self.process_state, foreach='split_lists')
-
+        
     @step
     def process_state(self):
         # Dynamically apply the decorator
         decorator = CFAAzureBatchDecorator(
             pool_name=self.input['pool_name'],
-            sp_secret=self.input['sp_secret'],
+            cred=self.input['cred'],
             config_file="client_config_states.toml", 
             docker_command=f'echo {self.input["parameters"]}'
         )
@@ -39,7 +39,7 @@ class MyFlow(FlowSpec):
 
     @step
     def end(self):
-        self.batch_pool_service.delete_all_pools()
+        #self.batch_pool_service.delete_all_pools()
         print("Flow completed.")
 
 
