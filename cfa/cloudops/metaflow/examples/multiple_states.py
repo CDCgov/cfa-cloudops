@@ -39,7 +39,7 @@ class MyFlow(FlowSpec):
 
     @step
     def end(self):
-        #self.batch_pool_service.delete_all_pools()
+        self.batch_pool_service.delete_all_pools()
         print("Flow completed.")
 
 
