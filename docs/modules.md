@@ -44,7 +44,7 @@ The `prod_autoscale_formula` uses only dedicated nodes up to a maximum of 25 nod
 
 The following code creates a pool using the CloudClient and dev_autoscale_formula.
 
-```
+```python
 from cfa.cloudops.autoscale import dev_autoscale_formula
 from cfa.cloudops import CloudClient
 cc = CloudClient()

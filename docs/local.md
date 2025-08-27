@@ -7,7 +7,7 @@ The local module helps with debugging or troubleshooting errors that are appeari
 ## A Simple Example
 
 Suppose we have the following python script to start execute a job in Azure Batch.
-```
+```python
 from cfa.cloudops import CloudClient
 
 cc = CloudClient()
@@ -26,7 +26,7 @@ cc.add_task(
 ```
 
 This same script can be run in a local environment by only switching the import line of the code. Note that the folder 'input-test' needs to exist locally, or you can include the line `cc.create_blob_container("input-test")` to mimic creating a Blob container. The following will now run the same code but in a terminal.
-```
+```python
 from cfa.cloudops.local import CloudClient
 
 cc = CloudClient()
