@@ -44,7 +44,8 @@ This is an example of creating one flowspec that contains 2 steps that runs remo
   python main.py run
   ```
 
-3. To execute the flowspec in Docker container, replace user name in `DockerfileMultipleParallel` with your CDC EXT user name
+3. To execute the flowspec in Docker container, replace user name in `DockerfileMultipleParallel` with your CDC EXT user name. Also copy the custom_metaflow folder to the /examples subfolder. 
+
   ```text
   ENV USERNAME="YOUR_USER_NAME"
   ```
