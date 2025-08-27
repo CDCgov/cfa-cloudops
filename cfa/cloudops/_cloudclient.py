@@ -399,7 +399,7 @@ class CloudClient:
         """
         # save job information that will be used with tasks
         job_name = job_name.replace(" ", "")
-        logger.debug(f"job_id: {job_name}")
+        logger.debug(f"job_name: {job_name}")
 
         if pool_name:
             self.pool_name = pool_name
@@ -1316,9 +1316,9 @@ class CloudClient:
         to a CSV file. The statistics include task execution times, exit codes, and node info.
 
         Args:
-            job_id (str): ID of the job to download statistics for. The job must exist.
+            job_name (str): Name of the job to download statistics for. The job must exist.
             file_name (str, optional): Name of the output CSV file (without extension).
-                If None, defaults to "{job_id}-stats.csv".
+                If None, defaults to "{job_name}-stats.csv".
 
         Example:
             Download stats for a job:

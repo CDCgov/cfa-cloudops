@@ -10,6 +10,7 @@ nav:
   - Sample Files: files/index.md
   - Examples: ./examples/index.md
   - Troubleshooting: troubleshooting.md
+  - API Documentation: ./api/index.md
 
 repo_url: https://github.com/cdcgov/cfa-cloudops
 repo_name: cfa-cloudops

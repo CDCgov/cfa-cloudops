@@ -8,3 +8,4 @@
 - [Sample Files](./files/index.md)
 - [Examples](./examples/index.md)
 - [Troubleshooting](./troubleshooting.md)
+- [API Documentation](./api/index.md)
