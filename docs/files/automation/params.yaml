@@ -1,0 +1,12 @@
+schema: v0.3
+parameters:
+  method: {vary: [newton, brent]}
+  start_point:
+    if: {equals: {method: newton}}
+    vary: [0.25, 0.50, 0.75]
+  bounds:
+    if: {equals: {method: brent}}
+    fix: [0.0, 1.0]
+  check(flag):
+    if: {equals: {method: brent}}
+    fix: x
