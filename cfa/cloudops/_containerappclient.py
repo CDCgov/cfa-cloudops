@@ -138,7 +138,7 @@ class ContainerAppClient:
         ]
         return job_list
 
-    def check_job_exists(self, job_name: str | None = None):
+    def check_job_exists(self, job_name: str):
         """
         Check if a Container App job exists in the resource group.
 
