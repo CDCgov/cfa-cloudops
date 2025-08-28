@@ -25,18 +25,18 @@ class ContainerAppClient:
     def __init__(
         self,
         dotenv_path=None,
-        job_name=None,
         resource_group=None,
         subscription_id=None,
+        job_name=None,
     ):
         """
         Initialize a ContainerAppClient for Azure Container Apps jobs.
 
         Args:
-            job_name (str, optional): Default job name for operations.
+            dotenv_path (str, optional): Path to a .env file to load environment variables.
             resource_group (str, optional): Azure resource group name. If None, uses env var AZURE_RESOURCE_GROUP_NAME.
             subscription_id (str, optional): Azure subscription ID. If None, uses env var AZURE_SUBSCRIPTION_ID.
-
+            job_name (str, optional): Job name for Container App Job.
 
         Raises:
             ValueError: If required parameters are missing and not set in environment variables.
@@ -64,6 +64,7 @@ class ContainerAppClient:
                 )
         self.subscription_id = subscription_id
         self.job_name = job_name
+        self.credential = ManagedIdentityCredential()
 
         self.client = ContainerAppsAPIClient(
             credential=self.credential, subscription_id=subscription_id
@@ -148,12 +149,6 @@ class ContainerAppClient:
         Returns:
             bool: True if job exists, False otherwise.
         """
-        if job_name is None:
-            if self.job_name is None:
-                raise ValueError("Please specify a job name.")
-            else:
-                job_name = self.job_name
-
         if job_name in self.list_jobs():
             return True
         else:
