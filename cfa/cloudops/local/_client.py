@@ -173,10 +173,12 @@ class CloudClient:
         try:
             docker_env.images.get(container_image_name)
         except docker.errors.NotFound:
-            print(
-                f"image not found... make sure image {container_image_name} exists."
-            )
-            return None
+            try:
+                image = docker_env.images.pull(container_image_name)
+                print(f"Successfully pulled image: {image.tags[0]}")
+            except docker.errors.APIError as e:
+                print(f"Error pulling image: {e}")
+                return None
 
         try:
             self.pool = batch.Pool(pool_name, container_image_name)
@@ -400,11 +402,29 @@ class CloudClient:
         Returns:
             str: The ID of the added task.
         """
+        # check for job
+        job_path = Path(f"tmp/jobs/{job_name}.txt")
+        if not job_path.exists():
+            logger.error(f"Job {job_name} does not exist.")
+            return None
+        pool_name = job_path.read_text().split(" ")[0]
+        # check for pool
+        pool_path = Path(f"tmp/pools/{pool_name}.txt")
+        if not pool_path.exists():
+            logger.error(f"Pool {pool_name} does not exist.")
+            return None
+        # pull container from pool
+        pool_info = eval(pool_path.read_text())
+        c_name = pool_info["image_name"]
         # run tasks for input files
         logger.debug("Adding task to job.")
         task_id = self.task_id_max
         print(f"Running {task_id}.")
-        cont_name = container_image_name if not None else self.cont_name
+        cont_name = (
+            container_image_name
+            if container_image_name is not None
+            else c_name
+        )
         sp.run(f"""docker exec -i {cont_name} {command_line}""", shell=True)
 
         self.task_id_max += 1
