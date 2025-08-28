@@ -415,7 +415,10 @@ class CloudClient:
             return None
         # pull container from pool
         pool_info = eval(pool_path.read_text())
-        c_name = pool_info["image_name"]
+        c_name = (
+            pool_info["image_name"].replace("/", "_").replace(":", "_")
+            + f".{job_name}"
+        )
         # run tasks for input files
         logger.debug("Adding task to job.")
         task_id = self.task_id_max
