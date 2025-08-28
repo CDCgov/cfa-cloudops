@@ -498,7 +498,6 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-        self.method = "sp"
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -549,6 +548,8 @@ class SPCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+
+        self.method = "sp"
 
 
 class FederatedCredentialHandler(CredentialHandler):
