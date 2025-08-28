@@ -16,35 +16,41 @@ DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"
 class CFABatchPoolService:
     def __init__(self, dotenv_path):
         self.batch_pools = []
-        self.resource_group_name = None
-        self.account_name = None
-        self.dotenv_path = dotenv_path
-        self.cred = SPCredentialHandler(dotenv_path)
+        self.attributes = dotenv_values(dotenv_path)
+        self.cred = SPCredentialHandler(
+            azure_tenant_id=self.attributes['AZURE_TENANT_ID'],
+            azure_subscription_id=self.attributes['AZURE_SUBSCRIPTION_ID'],
+            azure_sp_client_id=self.attributes['AZURE_SP_CLIENT_ID'],
+            azure_client_secret=self.attributes['AZURE_CLIENT_SECRET'],
+            azure_keyvault_endpoint=self.attributes['AZURE_KEYVAULT_ENDPOINT'],
+            azure_keyvault_sp_secret_id=self.attributes['AZURE_KEYVAULT_SP_SECRET_ID']
+        )
+        self.cred.azure_user_assigned_identity = self.attributes.get("AZURE_USER_ASSIGNED_IDENTITY")
+        self.cred.azure_resource_group_name = self.attributes.get("AZURE_RESOURCE_GROUP")
+        self.cred.azure_batch_account = self.attributes.get("AZURE_BATCH_ACCOUNT")
+        self.cred.azure_blob_storage_account = self.attributes.get("AZURE_BLOB_STORAGE_ACCOUNT")
+        self.cred.azure_subnet_id = self.attributes.get("AZURE_SUBNET_ID")
         self.batch_mgmt_client = get_batch_management_client(self.cred)
 
 
     def setup_pools(self):
-        self.attributes = dotenv_values(self.dotenv_path)
         self.parallel_pool_limit = int(self.attributes.get("PARALLEL_POOL_LIMIT", "1"))
         pool_name_prefix = self.attributes.get("POOL_NAME_PREFIX", "cfa_pool_")
-        self.cred.azure_user_assigned_identity = self.attributes.get("AZURE_USER_ASSIGNED_IDENTITY")
-        self.cred.azure_resource_group_name = self.attributes.get("AZURE_RESOURCE_GROUP")
-        self.cred.azure_batch_account =  self.attributes.get("AZURE_BATCH_ACCOUNT")
         for i in range(self.parallel_pool_limit):
             pool_name = f"{pool_name_prefix}{i}"
             if bh.check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
                 print(f'Existing Azure batch pool {pool_name} is being reused')
-                continue
-            mount_config = self.__create_containers()
-            pool_config = self.__create_pool_configuration(pool_name, mount_config)
-            self.__create_pool(pool_name, pool_config)
+            else:
+                mount_config = self.__create_containers()
+                pool_config = self.__create_pool_configuration(pool_name, mount_config)
+                self.__create_pool(pool_name, pool_config)
             self.batch_pools.append(pool_name)
 
 
     def __create_containers(self):
         storage_containers = []
         mount_names = []
-        mounts=['input', 'output'],
+        mounts=[('input','input'), ('output', 'output')]
         for mount in mounts:
             storage_containers.append(mount[0])
             mount_names.append(mount[1])
@@ -107,7 +113,7 @@ class CFABatchPoolService:
             print(f"created pool: {pool_name}")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
-        raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg)
 
 
     def setup_step_parameters(self, items):
