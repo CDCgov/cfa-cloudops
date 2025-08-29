@@ -15,7 +15,7 @@ dependencies = [
     "tqdm (>=4.67.0)",
     "azure-core",
     "azure-mgmt-batch",
-    "azure-storage-blob)",
+    "azure-storage-blob",
     "azure-identity,
     "msrest (>=0.7.1)",
     "msrestazure (>=0.6.4.post1)",
