@@ -50,7 +50,7 @@ This is an example of creating one flow spec that contains 2 steps that runs rem
  
  The `parallel_pool_limit` of 1 means only one Azure batch pool and one step will be spawned. The pool will be assigned the prefix specified in `pool_name_prefix` property followed by an ordinal number (e.g. my_parallel_states_pool_1).  
 
- The step will create a job with name specified in `job_id` property. Tasks will be added each to the job to process the U.S. states assigned to that step. 
+ The step will create a job with name specified in `JOB_ID` property. Tasks will be added each to the job to process the U.S. states assigned to that step. 
 
 2. To execute the flow spec in Linux shell, run the following command: `python main.py run`
 
@@ -88,7 +88,7 @@ This example consumes the least amount of Azure Batch resources. However runtime
  
  The `parallel_pool_limit` of 1 means only one Azure batch pool and one step will be spawned. The pool will be assigned the prefix specified in `pool_name_prefix` property followed by an ordinal number (e.g. my_parallel_states_pool_1).  
 
- The step will create a job with name specified in `job_id` property. Tasks will be added each to the job to process the U.S. states assigned to that step. 
+ The step will create a job with name specified in `JOB_ID` property. Tasks will be added each to the job to process the U.S. states assigned to that step. 
 
 2. To execute the flow spec in Linux shell, run the following command: `python multiple_states.py run`
 
@@ -109,8 +109,8 @@ This is an example of creating one flow spec that contains 50 steps that run rem
 
 The flow spec contains 4 steps: 
 - `start`: initializes 50 batch pools and splits the list of 50 U.S. states into 50 separate lists, one per pool 
-- `process_state`: invoked concurrently 50 times, one per pool
-- `join`: executed when the 50 concurrent steps are complete
+- `process_state`: invoked concurrently 50 times, once per pool
+- `join`: executed when the 50 concurrent executions of process_state step are complete
 - `end`: deletes the 50 pools created in start step
 
 ### Steps 
@@ -123,7 +123,7 @@ The flow spec contains 4 steps:
  
  The `parallel_pool_limit` of 50 means one Azure batch pool will be spawned per step. Each pool will be assigned the prefix specified in `pool_name_prefix` property followed by an ordinal number (e.g. my_parallel_states_pool_1, my_parallel_states_pool_2, my_parallel_states_pool_50, etc.). This will achieve maximum concurrency. However, there is a possibility of the flow spec being terminated if the Azure subscription quota of 100 pools is exceeded. 
 
- Each step will create a job with name specified in `job_id` property. Tasks will be added each to the job to process the U.S. states assigned to each step. 
+ Each step will create a job with name specified in `JOB_ID` property. Tasks will be added each to the job to process the U.S. states assigned to each step. 
 
 2. To execute the flow spec in Linux shell, run the following command: `python multiple_states.py run`
 
@@ -144,7 +144,7 @@ This is a variation of the previous example. To avoid exceeding the quota of 100
 
 The flow spec contains 4 steps: 
 - `start`: initializes 5 batch pools and splits the list of 50 U.S. states into 5 separate lists, one per pool 
-- `process_state`: invoked concurrently 5 times, one per pool
+- `process_state`: invoked concurrently 5 times, once per pool
 - `join`: executed when the 5 concurrent steps are complete
 - `end`: deletes the 5 pools created in start step
 
