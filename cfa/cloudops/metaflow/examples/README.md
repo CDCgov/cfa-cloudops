@@ -62,7 +62,7 @@ This is an example of creating one flow spec that contains 2 steps that runs rem
 
  Then build and run Docker container:
  ```shell
- docker build. -t my_remote_container
+ docker build . -t my_remote_container
  docker run my_remote_container
  ```
 
@@ -99,7 +99,7 @@ This example consumes the least amount of Azure Batch resources. However runtime
 
  Then build and run Docker container:
  ```shell
- docker build. -t my_parallel_states_container -f DockerfileMultipleParallel
+ docker build . -t my_parallel_states_container -f DockerfileMultipleParallel
  docker run my_parallel_states_container
  ```
 
@@ -134,7 +134,7 @@ The flow spec contains 4 steps:
 
  Then build and run Docker container:
  ```shell
- docker build. -t my_parallel_states_container -f DockerfileMultipleParallel
+ docker build . -t my_parallel_states_container -f DockerfileMultipleParallel
  docker run my_parallel_states_container
  ```
 
@@ -166,6 +166,6 @@ The flow spec contains 4 steps:
 
  Then build and run Docker container:
  ```shell
- docker build. -t my_parallel_states_container -f DockerfileMultipleParallel
+ docker build . -t my_parallel_states_container -f DockerfileMultipleParallel
  docker run my_parallel_states_container
  ```
