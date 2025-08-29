@@ -1,11 +1,14 @@
+import logging
 from metaflow import FlowSpec, step
 from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import CFAAzureBatchDecorator
 from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
 
+logger = logging.getLogger(__name__)
+
 class MyFlow(FlowSpec):
     @step
     def start(self):
-        print("Starting the flow...")
+        logger.info("Starting the flow...")
         self.all_states = []
         with open('states.txt', 'r') as file:
             all_states = file.read().splitlines()
@@ -19,7 +22,6 @@ class MyFlow(FlowSpec):
         # Dynamically apply the decorator
         decorator = CFAAzureBatchDecorator(
             pool_name=self.input['pool_name'],
-            cred=self.input['cred'],
             attributes=self.input['attributes'],
             docker_command=f'echo {self.input["parameters"]}'
         )
@@ -29,18 +31,18 @@ class MyFlow(FlowSpec):
     def _process_state(self):
         step_pool_name = self.input['pool_name']
         step_parameters = self.input['parameters']
-        print(f"Running the _process_state step in Azure Batch for pool {step_pool_name} with {len(step_parameters)} parameters which are {step_parameters}")
+        logger.info(f"Running the _process_state step in Azure Batch for pool {step_pool_name} with {len(step_parameters)} parameters which are {step_parameters}")
 
     @step
     def join(self, inputs):
-        print("Flow joined.")
+        logger.info("Flow joined.")
         self.merge_artifacts(inputs) 
         self.next(self.end)
 
     @step
     def end(self):
         self.batch_pool_service.delete_all_pools()
-        print("Flow completed.")
+        logger.info("Flow completed.")
 
 
 if __name__ == "__main__":

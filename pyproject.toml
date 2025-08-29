@@ -6,25 +6,25 @@ authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
 ]
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "tomli (>=2.2.1,<3.0.0)",
     "tqdm (>=4.67.1,<5.0.0)",
-    "pandas (>=2.3.0)",
+    "pandas (>=2.2.3)",
     "polars (>=1.26.0)",
     "tqdm (>=4.67.0)",
-    "azure-core",
-    "azure-mgmt-batch",
-    "azure-storage-blob",
-    "azure-identity",
+    "azure-core (>=1.35.0)",
+    "azure-mgmt-batch (>=18.0.0)",
+    "azure-storage-blob (>=12.26.0)",
+    "azure-identity (>=1.23.0)",
     "msrest (>=0.7.1)",
     "msrestazure (>=0.6.4.post1)",
-    "azure-keyvault",
-    "azure-mgmt-compute",
-    "azure-batch",
-    "azure-mgmt-resource",
-    "azure-mgmt-appcontainers",
-    "azure-mgmt-authorization",
+    "azure-keyvault (>=4.2.0)",
+    "azure-mgmt-compute (>=35.0.0)",
+    "azure-batch (>=14.2.0)",
+    "azure-mgmt-resource (>=24.0.0)",
+    "azure-mgmt-appcontainers (>=3.2.0)",
+    "azure-mgmt-authorization (>=4.0.0)",
     "python-dotenv (>=1.1.1)",
     "pathlib (>=1.0.0)",
     "docker (>=7.1.0)",
@@ -45,6 +45,12 @@ pytest-mock = "^3.14.0"
 pytest-cov = "^6.1.1"
 coverage-badge = "^1.1.2"
 
+[tool.poetry.group.mkdocs.dependencies]
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.6.16"
+mkdocstrings = { extras = ["python"], version = "^0.30.0" }
+mdx-truly-sane-lists = "^1.3"
+
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core>=1.8.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

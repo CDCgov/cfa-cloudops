@@ -1,5 +1,6 @@
 from azure.mgmt.batch import models
 from dotenv import dotenv_values
+import logging
 import numpy as np
 import cfa.cloudops.batch_helpers as bh
 from cfa.cloudops.auth import SPCredentialHandler
@@ -7,11 +8,15 @@ from cfa.cloudops.blob import get_node_mount_config
 from cfa.cloudops.client import get_batch_management_client
 from cfa.cloudops.defaults import (
     assign_container_config,
+    default_azure_batch_endpoint_subdomain, 
+    default_azure_batch_location,
     get_default_pool_config,
     remaining_task_autoscale_formula, 
 )
 
 DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"
+
+logger = logging.getLogger(__name__)
 
 class CFABatchPoolService:
     def __init__(self, dotenv_path):
@@ -27,9 +32,11 @@ class CFABatchPoolService:
         )
         self.cred.azure_user_assigned_identity = self.attributes.get("AZURE_USER_ASSIGNED_IDENTITY")
         self.cred.azure_resource_group_name = self.attributes.get("AZURE_RESOURCE_GROUP")
-        self.cred.azure_batch_account = self.attributes.get("AZURE_BATCH_ACCOUNT")
         self.cred.azure_blob_storage_account = self.attributes.get("AZURE_BLOB_STORAGE_ACCOUNT")
         self.cred.azure_subnet_id = self.attributes.get("AZURE_SUBNET_ID")
+        self.cred.azure_batch_account = self.attributes.get("AZURE_BATCH_ACCOUNT")
+        self.cred.azure_batch_location = default_azure_batch_location
+        self.cred.azure_batch_endpoint_subdomain = default_azure_batch_endpoint_subdomain
         self.batch_mgmt_client = get_batch_management_client(self.cred)
 
 
@@ -39,7 +46,7 @@ class CFABatchPoolService:
         for i in range(self.parallel_pool_limit):
             pool_name = f"{pool_name_prefix}{i}"
             if bh.check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
-                print(f'Existing Azure batch pool {pool_name} is being reused')
+                logger.info(f'Existing Azure batch pool {pool_name} is being reused')
             else:
                 mount_config = self.__create_containers()
                 pool_config = self.__create_pool_configuration(pool_name, mount_config)
@@ -110,7 +117,7 @@ class CFABatchPoolService:
                 parameters=pool_config,
             )
             self.pool_name = pool_name
-            print(f"created pool: {pool_name}")
+            logger.info(f"created pool: {pool_name}")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
             raise RuntimeError(error_msg)
@@ -122,7 +129,7 @@ class CFABatchPoolService:
          for i in range(self.parallel_pool_limit):
             pool_name = self.batch_pools[i] if i < len(self.batch_pools) else None
             step_parameters.append(
-                {'pool_name': pool_name, 'cred': self.cred, 'attributes': self.attributes, 'parameters': item_chunks[i]}
+                {'pool_name': pool_name, 'attributes': self.attributes, 'parameters': item_chunks[i]}
             )
          return step_parameters
 
@@ -135,5 +142,5 @@ class CFABatchPoolService:
                 pool_name=pool_name,
                 batch_mgmt_client=self.batch_mgmt_client,
             )
-            print(f"Deleted Azure Batch Pool: {pool_name}")
+            logger.info(f"Deleted Azure Batch Pool: {pool_name}")
         return True
