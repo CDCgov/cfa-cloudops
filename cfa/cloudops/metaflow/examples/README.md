@@ -5,7 +5,7 @@
  ```text
  export USERNAME="YOUR_USER_NAME"
  export PYTHONPATH="/path_to_cfa-cloudops/cfa/cloud ops/metaflow:$PYTHONPATH"
- ```text
+ ```
 
 2. Create a `metaflow.env` file and add the following parameters:
 ```text
@@ -68,7 +68,15 @@ This is an example of creating one flow spec that contains 2 steps that runs rem
 
 
 ## Multiple Parallel Steps with Partitioned Dataset: Process a list of 50 U.S. states
-This is an example of creating one flow spec that contains 1 step that runs remotely in Azure Batch. The step processes 50 U.S. states in one Azure batch pool. When the step has completed successfully, the flow spec deletes the batch pool. This example consumes the least amount of Azure Batch resources. However runtime is longer because the 50 U.S. states are sequentially executed within one job queue in one pool. To achieve higher concurrency, you need to enable autoscaling within the pool.  
+This is an example of creating one flow spec that contains 1 step that runs remotely in Azure Batch. The step processes 50 U.S. states in one Azure batch pool. 
+
+The flow spec contains 4 steps: 
+- `start`: initializes 1 batch pool 
+- `process_state`: invoked once and receives the list of 50 U.S. states as input parameter
+- `join`: executed when the process_state step completes
+- `end`: deletes the pool created in start step
+
+This example consumes the least amount of Azure Batch resources. However runtime is longer because the 50 U.S. states are sequentially executed within one job queue in one pool. To achieve higher concurrency, you need to enable autoscaling within the pool.  
 
 ### Steps 
 1. Modify the `metaflow.env` file and add the following parameters:
@@ -97,7 +105,13 @@ This is an example of creating one flow spec that contains 1 step that runs remo
 
 
 ## Multiple Parallel Steps with Partitioned Dataset: Process a list of 50 U.S. states concurrently
-This is an example of creating one flow spec that contains 50 steps that run remotely in Azure Batch. Each step processes one U.S. state in a separate Azure batch pool. When all the steps have completed successfully, the flow spec deletes the 50 batch pools. 
+This is an example of creating one flow spec that contains 50 steps that run remotely in Azure Batch. Each step processes one U.S. state in a separate Azure batch pool. 
+
+The flow spec contains 4 steps: 
+- `start`: initializes 50 batch pools and splits the list of 50 U.S. states into 50 separate lists, one per pool 
+- `process_state`: invoked concurrently 50 times, one per pool
+- `join`: executed when the 50 concurrent steps are complete
+- `end`: deletes the 50 pools created in start step
 
 ### Steps 
 1. Add the following parameters to `metaflow.env`:
@@ -126,7 +140,14 @@ This is an example of creating one flow spec that contains 50 steps that run rem
 
 
 ## Multiple Parallel Steps with Partitioned Dataset: Process a list of 50 U.S. states in 5 pools with 10 states per pool
-This is a variation of the previous example. To avoid exceeding the quota of 100 batch pools in Azure subscription, this example creates 5 distinct pools and distributes the 50 U.S. states to each pool. The flow spec shall contain 5 remote parallel steps and execute 10 U.S. states per step. When all the steps have completed successfully, the flow spec deletes the 5 batch pools. 
+This is a variation of the previous example. To avoid exceeding the quota of 100 batch pools in Azure subscription, this example creates 5 distinct pools and distributes the 50 U.S. states uniformly across these pools. 
+
+The flow spec contains 4 steps: 
+- `start`: initializes 5 batch pools and splits the list of 50 U.S. states into 5 separate lists, one per pool 
+- `process_state`: invoked concurrently 5 times, one per pool
+- `join`: executed when the 5 concurrent steps are complete
+- `end`: deletes the 5 pools created in start step
+
 
 ### Steps 
 1. Add the following parameters to `metaflow.env`:
