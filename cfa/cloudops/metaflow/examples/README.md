@@ -37,6 +37,33 @@ TASK_INTERVAL="10"
  pip install -r requirements.txt
 ```
 
+## Parallel Steps with Distinct Datasets: Read Different Blobs
+This is an example of creating one flow spec that contains 2 steps that runs remotely in Azure Batch. Both steps use the same batch pool but use a different Docker container image and command to run the batch task. When the 2 steps complete successfully, the flow spec terminates the batch pool. 
+
+### Steps 
+1. Add the following parameters to `metaflow.env` file:
+ ```text
+ JOB_ID="my_remote_job"
+ POOL_NAME="my_pool_1"
+ ```
+ 
+The flow spec will read `POOL_NAME` proprty and create a pool with that name. Both steps will create a job with name specified in `JOB_ID` property. Tasks will be added each to the job and execute the Docker container specified in `CONTAINER_IMAGE_NAME`. 
+
+
+2. To execute the flow spec in Linux shell, run the following command: `python main.py run`
+
+3. To execute the flow spec in Docker container, replace username in `Dockerfile` with your CDC EXT username. Also copy the custom_metaflow folder to the /examples subfolder. 
+
+ ```text
+ ENV USERNAME="YOUR_USER_NAME"
+ ```
+
+ Then build and run Docker container:
+ ```shell
+ docker build . -t my_remote_container
+ docker run my_remote_container
+ ```
+
 ## Multiple Parallel Steps with Partitioned Dataset: Process a list of 50 U.S. states
 This is an example of creating one flow spec that contains 1 step that runs remotely in Azure Batch. The step processes 50 U.S. states in one Azure batch pool. 
 

@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 class CFABatchPoolService:
     def __init__(self, dotenv_path):
         self.batch_pools = []
+        self.parallel_pool_limit = 1
         self.attributes = dotenv_values(dotenv_path)
         self.cred = SPCredentialHandler(
             azure_tenant_id=self.attributes['AZURE_TENANT_ID'],
@@ -40,18 +41,30 @@ class CFABatchPoolService:
         self.batch_mgmt_client = get_batch_management_client(self.cred)
 
 
-    def setup_pools(self):
-        self.parallel_pool_limit = int(self.attributes.get("PARALLEL_POOL_LIMIT", "1"))
-        pool_name_prefix = self.attributes.get("POOL_NAME_PREFIX", "cfa_pool_")
-        for i in range(self.parallel_pool_limit):
-            pool_name = f"{pool_name_prefix}{i}"
-            if bh.check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
-                logger.info(f'Existing Azure batch pool {pool_name} is being reused')
-            else:
-                mount_config = self.__create_containers()
-                pool_config = self.__create_pool_configuration(pool_name, mount_config)
-                self.__create_pool(pool_name, pool_config)
+    def __setup_pool(self, pool_name):
+        if bh.check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
+            logger.info(f'Existing Azure batch pool {pool_name} is being reused')
+        else:
+            mount_config = self.__create_containers()
+            pool_config = self.__create_pool_configuration(pool_name, mount_config)
+            self.__create_pool(pool_name, pool_config)
+        if pool_name not in self.batch_pools:
             self.batch_pools.append(pool_name)
+
+
+    def setup_pools(self, pools:list[str]=None):
+        pool_name = self.attributes.get("POOL_NAME")
+        if pool_name:
+            self.__setup_pool(pool_name)
+        elif pools:
+            for pool_name in pools:
+                self.__setup_pool(pool_name)
+        else:
+            self.parallel_pool_limit = int(self.attributes.get("PARALLEL_POOL_LIMIT", "1"))
+            pool_name_prefix = self.attributes.get("POOL_NAME_PREFIX", "cfa_pool_")
+            for i in range(self.parallel_pool_limit):
+                pool_name = f"{pool_name_prefix}{i}"
+                self.__setup_pool(pool_name)
 
 
     def __create_containers(self):
@@ -123,15 +136,18 @@ class CFABatchPoolService:
             raise RuntimeError(error_msg)
 
 
-    def setup_step_parameters(self, items):
-         item_chunks = np.array_split(items, self.parallel_pool_limit)
-         step_parameters = []
-         for i in range(self.parallel_pool_limit):
+    def setup_step_parameters(self, items, pools:list[str]=None):
+        if pools:
+            item_chunks = np.array_split(items, len(pools))
+        else:
+            item_chunks = np.array_split(items, self.parallel_pool_limit)
+        step_parameters = []
+        for i in range(len(item_chunks)):
             pool_name = self.batch_pools[i] if i < len(self.batch_pools) else None
             step_parameters.append(
                 {'pool_name': pool_name, 'attributes': self.attributes, 'parameters': item_chunks[i]}
             )
-         return step_parameters
+        return step_parameters
 
 
     def delete_all_pools(self):
