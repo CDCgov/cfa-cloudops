@@ -64,7 +64,6 @@ class ContainerAppClient:
                 )
         self.subscription_id = subscription_id
         self.job_name = job_name
-        self.credential = ManagedIdentityCredential()
 
         self.client = ContainerAppsAPIClient(
             credential=self.credential, subscription_id=subscription_id
