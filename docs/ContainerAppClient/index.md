@@ -1,7 +1,3 @@
-# ContainerAppClient
-
-## Getting Started
-
 # ContainerAppClient Overview
 
 The `ContainerAppClient` class provides a Python interface for managing Azure Container Apps jobs using the Azure SDK. It supports job creation, inspection, listing, existence checks, and starting jobs with custom commands and environment variables.
@@ -18,9 +14,10 @@ The `ContainerAppClient` class provides a Python interface for managing Azure Co
 
 1. **Install dependencies**
    - The ContainerAppClient is available in the `cfa-cloudops` package. Install the package by executing the following code in your terminal.
+
    ```bash
-    pip install git+https://github.com/CDCgov/cfa-cloudops.git
-    ```
+   pip install git+https://github.com/CDCgov/cfa-cloudops.git
+   ```
 
 2. **Environment variables**
    - The client uses Managed Identity credentialing by default, which can then pull in the subscription ID, resource group name, and tenant Id.
@@ -85,4 +82,3 @@ client.start_job(
 - The client uses Azure Managed Identity for authentication. Ensure your environment supports this (e.g., Azure VM, App Service, or configure credentials).
 - If you do not provide `resource_group`, `subscription_id`, or `job_name`, the client will attempt to use environment variables or values from the `.env` file.
 - All operations are logged using Python's `logging` module for easier debugging.
-
