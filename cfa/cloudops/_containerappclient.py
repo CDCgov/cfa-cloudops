@@ -222,3 +222,21 @@ class ContainerAppClient:
             except Exception as e:
                 logger.error(f"Failed to start job {job_name}: {e}")
                 raise
+
+    def stop_job(self, job_name: str, job_execution_name: str):
+        """
+        Stops a specific execution of an Azure Container App Job.
+        """
+        try:
+            response = self.client.jobs.begin_stop_execution(
+                resource_group_name=self.resource_group,
+                job_name=job_name,
+                job_execution_name=job_execution_name,
+            ).result()
+            print(
+                f"Job execution '{job_execution_name}' for job '{job_name}' stopped successfully."
+            )
+            return response
+        except Exception as e:
+            print(f"Error stopping job execution: {e}")
+            return None
