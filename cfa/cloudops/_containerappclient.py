@@ -212,8 +212,13 @@ class ContainerAppClient:
                 new_containers.append(container)
             t = JobExecutionTemplate(containers=new_containers)
             logger.debug("submitting job start request.")
-            self.client.jobs.begin_start(
-                resource_group_name=self.resource_group,
-                job_name=job_name,
-                template=t,
-            )
+            try:
+                self.client.jobs.begin_start(
+                    resource_group_name=self.resource_group,
+                    job_name=job_name,
+                    template=t,
+                )
+                print(f"Started job {job_name}.")
+            except Exception as e:
+                logger.error(f"Failed to start job {job_name}: {e}")
+                raise
