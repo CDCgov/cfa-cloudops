@@ -61,6 +61,12 @@ client.start_job(
     args=["--input", "data.csv"],
     env=[{"name": "ENV_VAR", "value": "value"}]
 )
+
+# Stop a job
+client.stop_job(
+    job_name="my-job",
+    job_execution_name="my-job-xxxxxxx"
+)
 ```
 
 ## Method Reference
@@ -77,6 +83,8 @@ client.start_job(
   - Returns a list of container info dicts (name, image, command, args, env).
 - `start_job(job_name, command, args, env)`
   - Starts a job, optionally overriding command, args, and environment variables.
+- `stop_job(job_name, job_execution_name)`
+  - Stops the specified job execution.
 
 ## Notes
 - The client uses Azure Managed Identity for authentication. Ensure your environment supports this (e.g., Azure VM, App Service, or configure credentials).

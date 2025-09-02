@@ -225,7 +225,17 @@ class ContainerAppClient:
 
     def stop_job(self, job_name: str, job_execution_name: str):
         """
-        Stops a specific execution of an Azure Container App Job.
+        Stop a specific execution of an Azure Container App Job.
+
+        Args:
+            job_name (str): Name of the Container App Job.
+            job_execution_name (str): Name of the job execution to stop.
+
+        Returns:
+            Any: Response object from the Azure SDK if successful, or None if an error occurs.
+
+        Raises:
+            Exception: If the stop operation fails.
         """
         try:
             response = self.client.jobs.begin_stop_execution(
