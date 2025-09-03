@@ -8,6 +8,11 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 
+## v0.0.2
+
+- Updated ContainerAppClient
+- New documentation for ContainerAppClient
+
 ## v0.0.1
 
 - Added CloudClient, ContainerAppClient, and other modules
