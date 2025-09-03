@@ -243,10 +243,10 @@ class ContainerAppClient:
                 job_name=job_name,
                 job_execution_name=job_execution_name,
             ).result()
-            print(
+            logger.info(
                 f"Job execution '{job_execution_name}' for job '{job_name}' stopped successfully."
             )
             return response
         except Exception as e:
-            print(f"Error stopping job execution: {e}")
+            logger.error(f"Error stopping job execution: {e}")
             return None
