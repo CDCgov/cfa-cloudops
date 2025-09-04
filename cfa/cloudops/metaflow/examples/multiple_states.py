@@ -23,7 +23,7 @@ class MyFlow(FlowSpec):
         decorator = CFAAzureBatchDecorator(
             pool_name=self.input['pool_name'],
             attributes=self.input['attributes'],
-            docker_command=f'echo {self.input["parameters"]}'
+            docker_command=f'python /input/exp/outlook_2507/eli_test_viz_US002/run_projection.py -s {",".join(self.input["parameters"])} log -l info -o both'
         )
         decorator(self._process_state)()
         self.next(self.join)
