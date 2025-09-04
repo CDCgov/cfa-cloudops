@@ -72,6 +72,6 @@ Besides the two ways of setting dependencies mentioned above (`before()` and `af
 - after = set_upstream
 
 For example, a Task t1 that will be followed by Task t2 can be set by
-```
+```python
 t1.set_downstream(t2)
 ```

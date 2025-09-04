@@ -3,6 +3,7 @@
 Pools in Azure Batch form the compute component which jobs and tasks use to execute commands. A pool is a collection of nodes which can autoscale or be fixed to a certain number of nodes. It can be set with certain properties such as connections to Blob Storage and Container Registry to use for the node. It is encouraged to use autoscaling when possible to avoid additional charges by leaving fixed pools running.
 
 Pools can easily be created with a `CloudClient` object while maintaining the flexibility needed for each unique use case. To create a pool using an instantiated `CloudClient` object, simply use the `create_pool()` method. The following parameters are available:
+
 - pool_name: name to call the pool. Any spaces with be replaced with "_". Required.
 - container_image_name: full name of the container image to use. Can be from Azure Container Registry, GitHub, or DockerHub. Optional but pretty necessary.
 - mounts: list of mounts to Blob Storage. The mounts are in a tuple form, where the first entry is the name of the Blob Container name, followed by the name to use as referenced in your code. Optional if not connecting to Blob Storage.
@@ -25,6 +26,7 @@ client.create_pool("sample_pool_name")
 ## Autoscale Pool Example
 
 For this example, suppose we want to create an autoscale pool with the following setup:
+
 - pool name "sample-pool"
 - use the Docker container python:3.10 as the base OS
 - connect to two Blob Storage containers
@@ -34,7 +36,7 @@ For this example, suppose we want to create an autoscale pool with the following
 - use up to 10 nodes when scaling
 - don't cache the blobfuse
 
-The pool can bet setup in the following way:
+The pool can be setup in the following way:
 ```python
 client = CloudClient()
 client.create_pool(
@@ -50,6 +52,7 @@ client.create_pool(
 ## Fixed Pool Example
 
 Say we are performing a lot of debugging in Azure Batch and need a pool to keep its nodes available to run multiple jobs/tasks as we troubleshoot. This is the perfect example of using a fixed pool. For this example, suppose we want to create a fixed pool with the following characteristics:
+
 - pool name "sample-pool-debug"
 - container_image_name = "my_azure_registry/azurecr.io/test_repo:latest"
 - one connection to Blob Storage to the container "input-files" which we refer to as "/data" in the code
@@ -67,4 +70,48 @@ client.create_pool(
     low_priority_nodes = 3,
     task_slots_per_node = 2
 )
+```
+
+## Containers for Pools
+
+Containers are central to pool creation and task execution. Pools in Azure Batch use containers as the image when spinning up a node. These container images can be pulled from Azure Container Registry, GitHub Container Registry, and DockerHub. There are a couple methods available within `CloudClient` to help with this. Both of these functions can upload local containers to Azure Container Registry, in slightly different use cases.
+
+- package_and_upload_dockerfile: this method packages a local Dockerfile into a Docker image, which gets uploaded to the Azure Container Registry
+- upload_docker_image: this method uploads a Docker image to the Azure Container Registry
+
+### `package_and_upload_dockerfile()` in action
+
+This method takes a Dockerfile at the specified path, builds the Docker image, then uploads to the location specified in Azure Container Registry.
+```python
+client = CloudClient()
+client.package_and_upload_dockerfile(
+    registry_name = "my_azure_registry",
+    repo_name = "test-repo",
+    tag = "latest",
+    path_to_dockerfile = "./Dockerfile"
+)
+```
+
+
+### `upload_docker_image()` in action
+
+This method functions similar to above but takes the already built Docker image, referenced by its full name, and uploads it to the specified location in the Azure Container Registry.
+```python
+client = CloudClient()
+client.upload_docker_image(
+    image_name = "local_docker_registry/repo-name:latest",
+    registry_name = "my_azure_registry",
+    repo_name = "test-repo",
+    tag = "latest:
+)
+```
+
+## Pool Deletion
+
+When pools are no longer needed or major changes need to be made to a pool, it is a good idea to delete the pool (and recreate if necessary). The `delete_pool` method allows users to programmatically delete the pool of their choice.
+
+### Example
+
+```python
+client.delete_pool("my-pool")
 ```
