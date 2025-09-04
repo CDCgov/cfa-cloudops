@@ -27,7 +27,7 @@ AZURE_USER_ASSIGNED_IDENTITY="REPLACE_WITH_USER_ASSIGNED_ID"
 AZURE_BLOB_STORAGE_ACCOUNT="REPLACE_WITH_AZURE_BLOB_STORAGE_ACCOUNT"
 
 # Azure Pool info
-POOL_VM_SIZE="STANDARD_A2_V2"
+POOL_VM_SIZE="STANDARD_D4d_V5"
 TASK_INTERVAL="10"
 ```
 3. If you will be running the flow spec from a Linux environment, you need to set up the Python virtual environment:
