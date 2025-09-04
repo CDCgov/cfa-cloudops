@@ -27,7 +27,9 @@ To install using pip:
 pip install git+https://github.com/CDCgov/cfa-cloudops.git
 ```
 
-View the documenation [here](docs/README.md) for more help getting started with the package.
+View the documentation [here](docs/index.md) for more help getting started with the package.
+
+To build documentation locally, clone this repo, navigate to the root of this repo, then run `poetry run mkdocs serve`.
 
 
 ## Public Domain Standard Notice

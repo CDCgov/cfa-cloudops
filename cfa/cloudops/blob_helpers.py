@@ -3,7 +3,7 @@ import os
 from os import path, walk
 from pathlib import Path
 
-from azure.identity import ManagedIdentityCredential
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.storage.blob import (
     BlobServiceClient,
     ContainerClient,
@@ -863,3 +863,66 @@ def delete_blob_folder(
             container_name=container_name,
             blob_service_client=blob_service_client,
         )
+
+
+def walk_blobs_in_container(
+    container_name: str = None,
+    account_name: str = None,
+    name_starts_with: str = None,
+    blob_service_client: BlobServiceClient = None,
+    container_client: ContainerClient = None,
+):
+    return instantiate_container_client(
+        container_name=container_name,
+        account_name=account_name,
+        blob_service_client=blob_service_client,
+        container_client=container_client,
+    ).walk_blobs(name_starts_with)
+
+
+def write_blob_stream(
+    data,
+    blob_url: str,
+    account_name: str = None,
+    container_name: str = None,
+    container_client: ContainerClient = None,
+) -> bool:
+    """
+    Write a stream into a file in Azure Blob storage
+
+    Args:
+        data (stream):
+            [Required] File contents as stream
+        blob_url (str):
+            [Required] Path within the container to the desired file (including filename)
+        account_name (str):
+            [Optional] Name of Azure storage account
+        container_name (str):
+            [Optional] Name of Blob container within storage account
+        container_client (ContainerClient):
+            [Optional] Instance of ContainerClient provided with the storage account
+
+    Raises:
+        ValueError:
+            When no blobs exist with the specified name (src_path)
+    """
+    if container_client:
+        pass
+    elif container_name and account_name:
+        config = {
+            "Storage": {
+                "storage_account_url": f"https://{account_name}.blob.core.windows.net"
+            }
+        }
+        blob_service_client = get_blob_service_client(
+            config=config, credential=DefaultAzureCredential()
+        )
+        container_client = blob_service_client.get_container_client(
+            container=container_name
+        )
+    else:
+        raise ValueError(
+            "Either container name and account name or container client must be provided."
+        )
+    container_client.upload_blob(name=blob_url, data=data, overwrite=True)
+    return True

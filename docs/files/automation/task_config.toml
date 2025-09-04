@@ -1,8 +1,3 @@
-[setup]
-credential_method='sp' #optional
-use_env_vars=false #optional
-pool_name='a_fixed_pool_test'
-
 [upload]
 container_name='input-test'
 location_in_blob='data' #optional
@@ -10,7 +5,8 @@ folders=['data', 'input'] #optional
 files=['input/vars.py'] #optional
 
 [job]
-name='test_auto'
+job_name='test_auto'
+pool_name='a_fixed_pool_test'
 save_logs_to_blob="input-test" #optional
 logs_folder='logs-folder' #optional
 task_retries=1 #optional

@@ -12,13 +12,31 @@ logger = logging.getLogger(__name__)
 
 
 class ContainerAppClient:
-    # allow for using env vars or config to instantiate
+    """
+    Client for managing Azure Container Apps jobs via the Azure SDK.
+
+    Provides methods to list, start, and inspect jobs in a resource group using
+    managed identity authentication. Supports job info retrieval, command inspection,
+    job existence checks, and flexible job start options.
+    """
+
     def __init__(
         self,
         resource_group=None,
         subscription_id=None,
         job_name=None,
     ):
+        """
+        Initialize a ContainerAppClient for Azure Container Apps jobs.
+
+        Args:
+            resource_group (str, optional): Azure resource group name. If None, uses env var AZURE_RESOURCE_GROUP_NAME.
+            subscription_id (str, optional): Azure subscription ID. If None, uses env var AZURE_SUBSCRIPTION_ID.
+            job_name (str, optional): Default job name for operations.
+
+        Raises:
+            ValueError: If required parameters are missing and not set in environment variables.
+        """
         if resource_group is None:
             resource_group = os.getenv("AZURE_RESOURCE_GROUP_NAME")
             if resource_group is None:
@@ -42,12 +60,30 @@ class ContainerAppClient:
         logger.debug("client initialized.")
 
     def get_job_info(self, job_name):
+        """
+        Retrieve detailed information about a specific Container App job.
+
+        Args:
+            job_name (str): Name of the job to retrieve information for.
+
+        Returns:
+            dict: Dictionary containing job details.
+        """
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
                 job_info = i
         return job_info.as_dict()
 
     def get_command_info(self, job_name):
+        """
+        Get command, image, and environment details for containers in a job.
+
+        Args:
+            job_name (str): Name of the job to inspect.
+
+        Returns:
+            list[dict]: List of container info dicts (name, image, command, args, env).
+        """
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
                 job_info = i
@@ -65,6 +101,12 @@ class ContainerAppClient:
         return container_dicts
 
     def list_jobs(self):
+        """
+        List all Container App job names in the resource group.
+
+        Returns:
+            list[str]: List of job names.
+        """
         job_list = [
             i.name
             for i in self.client.jobs.list_by_resource_group(
@@ -74,6 +116,15 @@ class ContainerAppClient:
         return job_list
 
     def check_job_exists(self, job_name):
+        """
+        Check if a Container App job exists in the resource group.
+
+        Args:
+            job_name (str): Name of the job to check.
+
+        Returns:
+            bool: True if job exists, False otherwise.
+        """
         if job_name in self.list_jobs():
             return True
         else:
@@ -87,6 +138,18 @@ class ContainerAppClient:
         args: list[str] = None,
         env: list[str] = None,
     ):
+        """
+        Start a Container App job, optionally overriding command, args, or environment.
+
+        Args:
+            job_name (str, optional): Name of the job to start. If None, uses default job_name.
+            command (list[str], optional): Command to run in the container.
+            args (list[str], optional): Arguments for the command.
+            env (list[str], optional): Environment variables for the container.
+
+        Raises:
+            ValueError: If required parameters are missing or not in correct format.
+        """
         if job_name is None:
             if self.job_name is None:
                 raise ValueError("Please specify a job name.")
