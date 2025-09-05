@@ -84,6 +84,7 @@ class CFAAzureBatchDecorator(StepDecorator):
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.pool_name = pool_name
         self.docker_command = kwargs.get('docker_command', 'python main.py')
+        self.task_parameters = kwargs.get('task_parameters', [])
 
 
     def __create_job(
@@ -228,12 +229,16 @@ class CFAAzureBatchDecorator(StepDecorator):
             if parent_tasks:
                 task_dependencies = parent_tasks.split(",")
             time.sleep(self.task_interval)
-            self.task_id = self.add_task(
-                job_name=job_id, 
-                command_line=self.docker_command,
-                name_suffix=f"{job_id}_task_{generate_random_string(3)}_", 
-                depends_on=task_dependencies,
-                container_image_name=self.attributes.get("CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME)
-            )
+            for task_input in self.task_parameters:
+                print(f'docker_template={self.docker_command}/ntask_input={task_input}')
+                docker_command = self.docker_command.format(task_input=task_input)
+                print(docker_command)
+                self.task_id = self.add_task(
+                    job_name=job_id, 
+                    command_line=docker_command,
+                    name_suffix=f"{job_id}_task_{generate_random_string(3)}_", 
+                    depends_on=task_dependencies,
+                    container_image_name=self.attributes.get("CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME)
+                )
             return func(*args, **kwargs)
         return wrapper

@@ -1,5 +1,6 @@
 from azure.mgmt.batch import models
 from dotenv import dotenv_values
+import toml
 import logging
 import numpy as np
 import cfa.cloudops.batch_helpers as bh
@@ -138,7 +139,13 @@ class CFABatchPoolService:
             raise RuntimeError(error_msg)
 
 
-    def setup_step_parameters(self, items, pools:list[str]=None):
+    def setup_step_parameters(self, items, job_config_file, pools:list[str]=None):
+        job_configuration = toml.load(job_config_file)
+        docker_command_formatted = None
+        if 'Job' in job_configuration:
+            docker_command = job_configuration['Job'].get('docker_command', 'python main.py')
+            arguments = {k:v for k, v in job_configuration['Job'].items() if k.lower().startswith('arg')}
+            docker_command_formatted = docker_command.format(**arguments)
         if pools:
             item_chunks = np.array_split(items, len(pools))
         else:
@@ -147,7 +154,12 @@ class CFABatchPoolService:
         for i in range(len(item_chunks)):
             pool_name = self.batch_pools[i] if i < len(self.batch_pools) else None
             step_parameters.append(
-                {'pool_name': pool_name, 'attributes': self.attributes, 'parameters': item_chunks[i]}
+                {
+                    'pool_name': pool_name, 
+                    'attributes': self.attributes, 
+                    'task_parameters': item_chunks[i], 
+                    'docker_command': docker_command_formatted
+                }
             )
         return step_parameters
 

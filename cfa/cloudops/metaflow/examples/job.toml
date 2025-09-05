@@ -1,0 +1,4 @@
+[Job]
+docker_command="python {arg_1} -s {arg_2} log -l info -o both"
+arg_1="/input/exp/outlook_2507/eli_test_viz_US002/run_projection.py"
+arg_2="{task_input}"
