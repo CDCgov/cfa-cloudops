@@ -392,3 +392,383 @@ def upload_files():
         source=args.source,
         destination=args.destination,
     )
+
+
+def upload_folders():
+    parser = argparse.ArgumentParser(description="Upload folder(s) to Blob")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-n",
+        "--folder_names",
+        type=list,
+        required=True,
+        help="List of folder names to upload",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to upload folders to",
+    )
+    parser.add_argument(
+        "-i",
+        "--include_extensions",
+        type=list,
+        default=None,
+        help="List of file extensions to include",
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude_extensions",
+        type=list,
+        default=None,
+        help="List of file extensions to exclude",
+    )
+    parser.add_argument(
+        "-l",
+        "--location_in_blob",
+        type=str,
+        default=".",
+        help="Destination path in the blob container",
+    )
+    parser.add_argument(
+        "-fu",
+        "--force_upload",
+        action="store_true",
+        help="Force upload even if files exist",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.upload_folders_to_blob_container(
+        folder_names=args.folder_names,
+        container_name=args.container_name,
+        include_extensions=args.include_extensions,
+        exclude_extensions=args.exclude_extensions,
+        location_in_blob=args.location_in_blob,
+        force_upload=args.force_upload,
+    )
+
+
+def monitor_job():
+    parser = argparse.ArgumentParser(description="Monitor a job")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-n",
+        "--job_name",
+        type=str,
+        required=True,
+        help="Name of the job to monitor",
+    )
+    parser.add_argument(
+        "-t",
+        "--timeout",
+        type=int,
+        default=None,
+        help="Timeout in seconds for monitoring the job",
+    )
+    parser.add_argument(
+        "-d",
+        "--download_job_stats",
+        action="store_true",
+        help="Download job statistics",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.monitor_job(
+        job_name=args.job_name,
+        timeout=args.timeout,
+        download_job_stats=args.download_job_stats,
+    )
+
+
+def check_job_status():
+    parser = argparse.ArgumentParser(description="Check job status")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-n",
+        "--job_name",
+        type=str,
+        required=True,
+        help="Name of the job to check status for",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    print(client.check_job_status(job_name=args.job_name))
+
+
+def delete_job():
+    parser = argparse.ArgumentParser(description="Delete a job")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-n",
+        "--job_name",
+        type=str,
+        required=True,
+        help="Name of the job to delete",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.delete_job(job_name=args.job_name)
+
+
+def package_and_upload_dockerfile():
+    parser = argparse.ArgumentParser(
+        description="Package and upload Dockerfile"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-r",
+        "--registry_name",
+        type=str,
+        required=True,
+        help="Name of the Azure registry",
+    )
+    parser.add_argument(
+        "-n",
+        "--repo_name",
+        type=str,
+        required=True,
+        help="Name of the repository to upload the package to",
+    )
+    parser.add_argument(
+        "-t",
+        "--tag",
+        type=str,
+        default=".",
+        help="Tag for the container image",
+    )
+    parser.add_argument(
+        "-d",
+        "--path_to_dockerfile",
+        type=str,
+        required=False,
+        default="./Dockerfile",
+        help="Path to the Dockerfile",
+    )
+    parser.add_argument(
+        "-u",
+        "--use_device_code",
+        action="store_true",
+        help="Use device code for authentication",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.package_and_upload_dockerfile(
+        registry_name=args.registry_name,
+        repo_name=args.repo_name,
+        tag=args.tag,
+        path_to_dockerfile=args.path_to_dockerfile,
+        use_device_code=args.use_device_code,
+    )
+
+
+def upload_docker_image():
+    parser = argparse.ArgumentParser(
+        description="Upload Docker image to Azure Container Registry"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-i",
+        "--image_name",
+        type=str,
+        required=True,
+        help="Name of the Docker image to upload",
+    )
+    parser.add_argument(
+        "-r",
+        "--registry_name",
+        type=str,
+        required=True,
+        help="Name of the Azure Container Registry",
+    )
+    parser.add_argument(
+        "-n",
+        "--repo_name",
+        type=str,
+        required=True,
+        help="Name of the repository to upload the image to",
+    )
+    parser.add_argument(
+        "-t",
+        "--tag",
+        type=str,
+        default="latest",
+        help="Tag for the container image",
+    )
+    parser.add_argument(
+        "-u",
+        "--use_device_code",
+        action="store_true",
+        help="Use device code for authentication",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.upload_docker_image(
+        image_name=args.image_name,
+        registry_name=args.registry_name,
+        repo_name=args.repo_name,
+        tag=args.tag,
+        use_device_code=args.use_device_code,
+    )
+
+
+def download_file():
+    parser = argparse.ArgumentParser(
+        description="Download a file from Blob storage"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to download the file from",
+    )
+    parser.add_argument(
+        "-b",
+        "--blob_name",
+        type=str,
+        required=True,
+        help="Name of the blob to download",
+    )
+    parser.add_argument(
+        "-d",
+        "--destination_path",
+        type=str,
+        required=True,
+        help="Local path to save the downloaded file",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.download_file_from_blob_container(
+        container_name=args.container_name,
+        blob_name=args.blob_name,
+        destination_path=args.destination_path,
+    )
