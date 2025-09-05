@@ -3,6 +3,10 @@ marp: true
 title: cfa-cloudops
 theme: uncover
 class: invert
+style: |
+  section {
+    font-size: 30px; /* Adjust the pixel value as needed */
+  }
 ---
 
 # cfa-cloudops
@@ -30,13 +34,11 @@ Python Package for Cloud Operations
 - part of greater `cfa.` namespace
     - `cfa.cloudops`
     - `cfa.dataops`
-
-
 ---
 ## Why use cfa-cloudops
-
-
-
+- easy authentication
+- intuitive functions and workflows
+-
 ---
 
 <style>
@@ -53,7 +55,7 @@ Python Package for Cloud Operations
 <div class="col">
 Azure API
 
-```
+```python
 from azure.batch import BatchServiceClient
 from azure.batch.models import (
     PoolAddParameter, VirtualMachineConfiguration, ImageReference,
@@ -62,7 +64,7 @@ from azure.batch.models import (
 
 # Replace with your Batch account details
 BATCH_ACCOUNT_NAME = 'your_batch_account_name'
-BATCH_ACCOUNT_KEY = 'your_batch_account_key'
+BATCH_ACCOUNT = 'your_batch_account_key'
 BATCH_ACCOUNT_URL = 'your_batch_account_url'
 
 # Create a Batch service client
@@ -103,7 +105,7 @@ print(f"Pool '{pool_id}' created successfully.")
 <div class = "col">
 
 cfa-cloudops
-```
+```python
 from cfa.cloudops import CloudClient
 
 client = CloudClient()
@@ -126,14 +128,23 @@ client.create_pool(
 ---
 ## Authentication Methods
 
-- uses .env files or environment variables for more secure storin
+- uses .env files or environment variables for more secure storing
 - Managed Identity
+  - less tokens/secrets to maintain locally
+  - easier/convenient
 - Service Principals
 - Federated Token Credential (for GH Actions)
 ---
 ## `cfa-cloudops` modules
+
+- low level functions (similar to cfa-azuretools)
+- CloudClient (similar to cfa_azure AzureClient)
+- ContainerAppClient
+- automation (run tasks from toml)
+- local (debugging or initial development locally emulating Cloud environment)
 ---
 ## `cfa.cloudops.CloudClient`
+
 ---
 ### `cfa.cloudops.ContainerAppClient`
 ---
@@ -141,13 +152,16 @@ client.create_pool(
 ---
 ## Roadmap
 
+- CLI commands: easy cloud interactions for any programming language
+- metaflow
+- DAGster: workflow orchestrator
 ---
 ## Documentation
 
 https://cdcgov.github.io/cfa-cloudops/
 
 ---
-## Questions? 
+## Questions?
 
 For more information or help getting started:
 Contact: Ryan Raasch (xng3@cdc.gov)
