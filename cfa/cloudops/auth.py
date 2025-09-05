@@ -52,7 +52,7 @@ class CredentialHandler:
         d.default_azure_batch_endpoint_subdomain
     )
     azure_batch_account: str = None
-    azure_batch_location: str = "eastus"
+    azure_batch_location: str = d.default_azure_batch_location
     azure_batch_resource_url: str = d.default_azure_batch_resource_url
     azure_blob_storage_endpoint_subdomain: str = (
         d.default_azure_blob_storage_endpoint_subdomain
@@ -498,7 +498,6 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-        self.method = "sp"
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -549,6 +548,8 @@ class SPCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+
+        self.method = "sp"
 
 
 class FederatedCredentialHandler(CredentialHandler):

@@ -72,6 +72,7 @@ default_node_agent_sku_id = "batch.node.ubuntu 22.04"
 # batch info
 default_azure_batch_resource_url = "https://batch.core.windows.net/"
 default_azure_batch_endpoint_subdomain = "batch.azure.com/"
+default_azure_batch_location = "eastus"
 default_azure_blob_storage_endpoint_subdomain = "blob.core.windows.net/"
 default_azure_container_registry_domain = "azurecr.io"
 default_azure_keyvault_endpoint_subdomain = "vault.azure.net"
