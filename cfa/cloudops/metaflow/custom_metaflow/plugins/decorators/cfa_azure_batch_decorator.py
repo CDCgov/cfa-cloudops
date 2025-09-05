@@ -48,25 +48,25 @@ class CFAAzureBatchDecorator(StepDecorator):
 
     name = "cfa_azure_batch"
     defaults = {
-        'Authentication': None,
-        'Batch': None,
-        'Container': None,
-        'Storage': None
+        "Authentication": None,
+        "Batch": None,
+        "Container": None,
+        "Storage": None
     }
 
     def __init__(self, pool_name, attributes, **kwargs):
         super(CFAAzureBatchDecorator, self).__init__()
         self.attributes = self.defaults.copy()
         self.attributes.update(attributes)
-        self.task_interval = int(self.attributes.get('TASK_INTERVAL', DEFAULT_TASK_INTERVAL))
+        self.task_interval = int(self.attributes.get("TASK_INTERVAL", DEFAULT_TASK_INTERVAL))
 
         self.cred = SPCredentialHandler(
-            azure_tenant_id=self.attributes['AZURE_TENANT_ID'],
-            azure_subscription_id=self.attributes['AZURE_SUBSCRIPTION_ID'],
-            azure_sp_client_id=self.attributes['AZURE_SP_CLIENT_ID'],
-            azure_client_secret=self.attributes['AZURE_CLIENT_SECRET'],
-            azure_keyvault_endpoint=self.attributes['AZURE_KEYVAULT_ENDPOINT'],
-            azure_keyvault_sp_secret_id=self.attributes['AZURE_KEYVAULT_SP_SECRET_ID']
+            azure_tenant_id=self.attributes["AZURE_TENANT_ID"],
+            azure_subscription_id=self.attributes["AZURE_SUBSCRIPTION_ID"],
+            azure_sp_client_id=self.attributes["AZURE_SP_CLIENT_ID"],
+            azure_client_secret=self.attributes["AZURE_CLIENT_SECRET"],
+            azure_keyvault_endpoint=self.attributes["AZURE_KEYVAULT_ENDPOINT"],
+            azure_keyvault_sp_secret_id=self.attributes["AZURE_KEYVAULT_SP_SECRET_ID"]
         )
         self.cred.azure_user_assigned_identity = self.attributes.get("AZURE_USER_ASSIGNED_IDENTITY")
         self.cred.azure_resource_group_name = self.attributes.get("AZURE_RESOURCE_GROUP")
@@ -83,8 +83,8 @@ class CFAAzureBatchDecorator(StepDecorator):
         )
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.pool_name = pool_name
-        self.docker_command = kwargs.get('docker_command', 'python main.py')
-        self.task_parameters = kwargs.get('task_parameters', [])
+        self.docker_command = kwargs.get("docker_command", "python main.py")
+        self.task_parameters = kwargs.get("task_parameters", [])
 
 
     def __create_job(
@@ -206,13 +206,13 @@ class CFAAzureBatchDecorator(StepDecorator):
 
 
     def fetch_or_create_job(self):
-        job_id = self.attributes.get('JOB_ID')
-        job_id_prefix = self.attributes.get('JOB_ID_PREFIX')
+        job_id = self.attributes.get("JOB_ID")
+        job_id_prefix = self.attributes.get("JOB_ID_PREFIX")
         if job_id_prefix:
-            job_id = f'{job_id_prefix}{generate_random_string(5)}'
+            job_id = f"{job_id_prefix}{generate_random_string(5)}"
 
         if batch_helpers.check_job_exists(job_id, self.batch_client):
-            logger.info(f'Existing Azure batch job {job_id} is being reused')
+            logger.info(f"Existing Azure batch job {job_id} is being reused")
         else:
             self.__create_job(job_name=job_id, mark_complete_after_tasks_run=True)
             logger.info(f"Azure Batch Job {job_id} created")
@@ -225,14 +225,12 @@ class CFAAzureBatchDecorator(StepDecorator):
         def wrapper(*args, **kwargs):
             job_id = self.fetch_or_create_job()
             task_dependencies = None
-            parent_tasks = self.attributes.get('PARENT_TASK')
+            parent_tasks = self.attributes.get("PARENT_TASK")
             if parent_tasks:
                 task_dependencies = parent_tasks.split(",")
             time.sleep(self.task_interval)
             for task_input in self.task_parameters:
-                print(f'docker_template={self.docker_command}/ntask_input={task_input}')
                 docker_command = self.docker_command.format(task_input=task_input)
-                print(docker_command)
                 self.task_id = self.add_task(
                     job_name=job_id, 
                     command_line=docker_command,

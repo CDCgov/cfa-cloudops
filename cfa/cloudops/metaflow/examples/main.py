@@ -6,15 +6,15 @@ from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
 
 logger = logging.getLogger(__name__)
 
-my_dotenv_path = 'metaflow.env'
+my_dotenv_path = "metaflow.env"
 
 attributes = dotenv_values(my_dotenv_path)
 
 attributes_1 = attributes.copy()
-attributes_1['CONTAINER_IMAGE_NAME'] = 'r-base:latest'
+attributes_1["CONTAINER_IMAGE_NAME"] = "r-base:latest"
 
 attributes_2 = attributes.copy()
-attributes_2['CONTAINER_IMAGE_NAME'] = 'python:3.10.17-slim-bullseye'
+attributes_2["CONTAINER_IMAGE_NAME"] = "python:3.10.17-slim-bullseye"
 
 
 class MyFlow(FlowSpec):
@@ -28,9 +28,9 @@ class MyFlow(FlowSpec):
 
     @step
     @CFAAzureBatchDecorator(
-        pool_name=attributes['POOL_NAME'],
+        pool_name=attributes["POOL_NAME"],
         attributes=attributes_1,
-        docker_command='Rscript main.r',
+        docker_command="Rscript main.r",
     )
     def perform_remote_read_arizona(self):
         print("Running the perform_remote_read_arizona step in Azure Batch...")
@@ -38,9 +38,9 @@ class MyFlow(FlowSpec):
 
     @step
     @CFAAzureBatchDecorator(
-        pool_name=attributes['POOL_NAME'],
+        pool_name=attributes["POOL_NAME"],
         attributes=attributes_2,
-        docker_command='python3 main.py'
+        docker_command="python3 main.py"
     )
     def perform_remote_read_california(self):
         print(

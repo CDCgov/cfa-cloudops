@@ -44,7 +44,7 @@ class CFABatchPoolService:
 
     def __setup_pool(self, pool_name):
         if bh.check_pool_exists(self.cred.azure_resource_group_name, self.cred.azure_batch_account, pool_name, self.batch_mgmt_client):
-            logger.info(f'Existing Azure batch pool {pool_name} is being reused')
+            logger.info(f"Existing Azure batch pool {pool_name} is being reused")
         else:
             mount_config = self.__create_containers()
             pool_config = self.__create_pool_configuration(pool_name, mount_config)
@@ -71,9 +71,9 @@ class CFABatchPoolService:
     def __create_containers(self):
         storage_containers = []
         mount_names = []
-        input_mount_name = self.attributes.get('INPUT_MOUNT', 'input')
-        output_mount_name = self.attributes.get('OUTPUT_MOUNT', 'output')
-        mounts=[(input_mount_name,'input'), (output_mount_name, 'output')]
+        input_mount_name = self.attributes.get("INPUT_MOUNT', "input")
+        output_mount_name = self.attributes.get("OUTPUT_MOUNT', "output")
+        mounts=[(input_mount_name,"input"), (output_mount_name, "output")]
         for mount in mounts:
             storage_containers.append(mount[0])
             mount_names.append(mount[1])
@@ -143,8 +143,8 @@ class CFABatchPoolService:
         job_configuration = toml.load(job_config_file)
         docker_command_formatted = None
         if 'Job' in job_configuration:
-            docker_command = job_configuration['Job'].get('docker_command', 'python main.py')
-            arguments = {k:v for k, v in job_configuration['Job'].items() if k.lower().startswith('arg')}
+            docker_command = job_configuration["Job"].get("docker_command", "python main.py")
+            arguments = {k:v for k, v in job_configuration["Job"].items() if k.lower().startswith("arg")}
             docker_command_formatted = docker_command.format(**arguments)
         if pools:
             item_chunks = np.array_split(items, len(pools))
@@ -155,10 +155,10 @@ class CFABatchPoolService:
             pool_name = self.batch_pools[i] if i < len(self.batch_pools) else None
             step_parameters.append(
                 {
-                    'pool_name': pool_name, 
-                    'attributes': self.attributes, 
-                    'task_parameters': item_chunks[i], 
-                    'docker_command': docker_command_formatted
+                    "pool_name": pool_name, 
+                    "attributes": self.attributes, 
+                    "task_parameters": item_chunks[i], 
+                    "docker_command": docker_command_formatted
                 }
             )
         return step_parameters
