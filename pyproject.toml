@@ -57,3 +57,6 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 hello = "cfa.cloudops.scripts:hello"
 create_pool = "cfa.cloudops.scripts:create_pool"
+create_job = "cfa.cloudops.scripts:create_job"
+add_task = "cfa.cloudops.scripts:add_task"
+create_blob_container = "cfa.cloudops.scripts:create_blob_container"
