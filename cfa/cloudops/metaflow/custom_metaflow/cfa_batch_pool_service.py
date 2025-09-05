@@ -71,8 +71,8 @@ class CFABatchPoolService:
     def __create_containers(self):
         storage_containers = []
         mount_names = []
-        input_mount_name = self.attributes.get("INPUT_MOUNT', "input")
-        output_mount_name = self.attributes.get("OUTPUT_MOUNT', "output")
+        input_mount_name = self.attributes.get("INPUT_MOUNT", "input")
+        output_mount_name = self.attributes.get("OUTPUT_MOUNT", "output")
         mounts=[(input_mount_name,"input"), (output_mount_name, "output")]
         for mount in mounts:
             storage_containers.append(mount[0])
