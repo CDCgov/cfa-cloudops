@@ -24,7 +24,7 @@ class MyFlow(FlowSpec):
             all_states, "job.toml"
         )
         self.next(self.process_state, foreach='split_lists')
-        
+
     @step
     def process_state(self):
         # Dynamically apply the decorator
@@ -47,7 +47,7 @@ class MyFlow(FlowSpec):
     @step
     def join(self, inputs):
         logger.info("Flow joined.")
-        self.merge_artifacts(inputs) 
+        self.merge_artifacts(inputs)
         self.next(self.end)
 
     @step
