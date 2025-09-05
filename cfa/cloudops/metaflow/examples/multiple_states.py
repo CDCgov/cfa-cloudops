@@ -1,10 +1,6 @@
 import logging
-from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import (
-    CFAAzureBatchDecorator
-)
-from custom_metaflow.cfa_batch_pool_service import ( 
-    CFABatchPoolService
-)
+from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import CFAAzureBatchDecorator
+from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
 from metaflow import FlowSpec, step
 
 logger = logging.getLogger(__name__)
@@ -32,7 +28,7 @@ class MyFlow(FlowSpec):
             pool_name=self.input['pool_name'],
             attributes=self.input['attributes'],
             task_parameters=self.input['task_parameters'],
-            docker_command=self.input['docker_command']
+            docker_command=self.input['docker_command'],
         )
         decorator(self._process_state)()
         self.next(self.join)

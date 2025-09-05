@@ -1,12 +1,9 @@
 from dotenv import dotenv_values
 import logging
 from metaflow import FlowSpec, step
-from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import (
-    CFAAzureBatchDecorator
-)
-from custom_metaflow.cfa_batch_pool_service import (
-    CFABatchPoolService
-)
+from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import CFAAzureBatchDecorator
+from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
+
 logger = logging.getLogger(__name__)
 
 my_dotenv_path = 'metaflow.env'
@@ -33,7 +30,7 @@ class MyFlow(FlowSpec):
     @CFAAzureBatchDecorator(
         pool_name=attributes['POOL_NAME'],
         attributes=attributes_1,
-        docker_command='Rscript main.r'
+        docker_command='Rscript main.r',
     )
     def perform_remote_read_arizona(self):
         print("Running the perform_remote_read_arizona step in Azure Batch...")
