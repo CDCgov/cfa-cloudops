@@ -8,7 +8,6 @@ style: |
     font-size: 30px; /* Adjust the pixel value as needed */
   }
 ---
-
 # cfa-cloudops
 
 Python Package for Cloud Operations
@@ -38,9 +37,9 @@ Python Package for Cloud Operations
 ## Why use cfa-cloudops
 - easy authentication
 - intuitive functions and workflows
--
+- upgraded libraries
+- more features beyond Azure integration coming soon
 ---
-
 <style>
     .container{
         display: flex;
@@ -114,6 +113,8 @@ client.create_pool(
     container_name = "ubuntu:22.04"
 )
 ```
+
+## Example creating a pool
 </div>
 </div>
 
@@ -143,17 +144,12 @@ client.create_pool(
 - automation (run tasks from toml)
 - local (debugging or initial development locally emulating Cloud environment)
 ---
-## `cfa.cloudops.CloudClient`
-
----
-### `cfa.cloudops.ContainerAppClient`
----
 ## Live Demo
 ---
 ## Roadmap
 
 - CLI commands: easy cloud interactions for any programming language
-- metaflow
+- Metaflow
 - DAGster: workflow orchestrator
 ---
 ## Documentation

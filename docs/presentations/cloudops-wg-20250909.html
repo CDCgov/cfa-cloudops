@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>cloudops-wg-20250909.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="cfa-cloudops">cfa-cloudops</h1>
+<p>Python Package for Cloud Operations</p>
+<p><em>Presenter: Ryan Raasch (xng3)</em></p>
+<hr>
+<h2 id="what-is-cfa-cloudops">What is cfa-cloudops?</h2>
+<ul>
+<li>open source python package</li>
+<li>provides easy interaction with the Cloud (Azure)</li>
+<li>single repository improving upon other existing Azure libraries
+<ul>
+<li>cfa_azure + cfa-azuretools</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="motivation-for-the-refactor">Motivation for the Refactor</h2>
+<ul>
+<li>combine existing CFA Azure packages into a single standardized package</li>
+<li>easy authentication and development for data scientists</li>
+<li>updated python and dependent packages</li>
+<li>option for other cloud integrations</li>
+<li>workflow orchestration and model tracking</li>
+<li>part of greater <code>cfa.</code> namespace
+<ul>
+<li><code>cfa.cloudops</code></li>
+<li><code>cfa.dataops</code></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="why-use-cfa-cloudops">Why use cfa-cloudops</h2>
+<ul>
+<li>easy authentication</li>
+<li>intuitive functions and workflows</li>
+<li>upgraded libraries</li>
+<li>more features beyond Azure integration coming soon</li>
+</ul>
+<hr>
+<style>
+    .container{
+        display: flex;
+    }
+    .col{
+        flex: 1;
+    }
+</style>
+<div class="container">
+<div class="col">
+Azure API
+<pre class="hljs"><code><div><span class="hljs-keyword">from</span> azure.batch <span class="hljs-keyword">import</span> BatchServiceClient
+<span class="hljs-keyword">from</span> azure.batch.models <span class="hljs-keyword">import</span> (
+    PoolAddParameter, VirtualMachineConfiguration, ImageReference,
+    DeploymentConfiguration, CloudServiceConfiguration, PoolLifetimeOption
+)
+
+<span class="hljs-comment"># Replace with your Batch account details</span>
+BATCH_ACCOUNT_NAME = <span class="hljs-string">'your_batch_account_name'</span>
+BATCH_ACCOUNT = <span class="hljs-string">'your_batch_account_key'</span>
+BATCH_ACCOUNT_URL = <span class="hljs-string">'your_batch_account_url'</span>
+
+<span class="hljs-comment"># Create a Batch service client</span>
+batch_client = BatchServiceClient(
+    batch_url=BATCH_ACCOUNT_URL,
+    credentials=BatchSharedKeyCredentials(
+        BATCH_ACCOUNT_NAME, BATCH_ACCOUNT_KEY
+    )
+)
+
+pool_id = <span class="hljs-string">"my-python-pool"</span>
+vm_size = <span class="hljs-string">"Standard_A1_v2"</span>  <span class="hljs-comment"># Choose an appropriate VM size</span>
+target_dedicated_nodes = <span class="hljs-number">1</span>
+
+<span class="hljs-comment"># Define the virtual machine configuration (e.g., Ubuntu Server)</span>
+vm_configuration = VirtualMachineConfiguration(
+    image_reference=ImageReference(
+        publisher=<span class="hljs-string">"Canonical"</span>,
+        offer=<span class="hljs-string">"UbuntuServer"</span>,
+        sku=<span class="hljs-string">"18.04-LTS"</span>,
+        version=<span class="hljs-string">"latest"</span>
+    ),
+    node_agent_sku_id=<span class="hljs-string">"batch.node.ubuntu 18.04"</span>
+)
+
+<span class="hljs-comment"># Create the pool</span>
+new_pool = PoolAddParameter(
+    id=pool_id,
+    vm_size=vm_size,
+    target_dedicated_nodes=target_dedicated_nodes,
+    virtual_machine_configuration=vm_configuration
+)
+
+batch_client.pool.add(new_pool)
+print(<span class="hljs-string">f"Pool '<span class="hljs-subst">{pool_id}</span>' created successfully."</span>)
+</div></code></pre>
+</div>
+<div class = "col">
+<p>cfa-cloudops</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">from</span> cfa.cloudops <span class="hljs-keyword">import</span> CloudClient
+
+client = CloudClient()
+client.create_pool(
+    pool_name = <span class="hljs-string">"my-python-pool"</span>,
+    container_name = <span class="hljs-string">"ubuntu:22.04"</span>
+)
+</div></code></pre>
+<h2 id="example-creating-a-pool">Example creating a pool</h2>
+</div>
+</div>
+<hr>
+<h2 id="available-cloud-integrations">Available Cloud Integrations</h2>
+<ul>
+<li>Azure Batch</li>
+<li>Azure Container Registry</li>
+<li>Azure Blob Storage</li>
+<li>Azure Container App Jobs</li>
+</ul>
+<hr>
+<h2 id="authentication-methods">Authentication Methods</h2>
+<ul>
+<li>uses .env files or environment variables for more secure storing</li>
+<li>Managed Identity
+<ul>
+<li>less tokens/secrets to maintain locally</li>
+<li>easier/convenient</li>
+</ul>
+</li>
+<li>Service Principals</li>
+<li>Federated Token Credential (for GH Actions)</li>
+</ul>
+<hr>
+<h2 id="cfa-cloudops-modules"><code>cfa-cloudops</code> modules</h2>
+<ul>
+<li>low level functions (similar to cfa-azuretools)</li>
+<li>CloudClient (similar to cfa_azure AzureClient)</li>
+<li>ContainerAppClient</li>
+<li>automation (run tasks from toml)</li>
+<li>local (debugging or initial development locally emulating Cloud environment)</li>
+</ul>
+<hr>
+<h2 id="live-demo">Live Demo</h2>
+<hr>
+<h2 id="roadmap">Roadmap</h2>
+<ul>
+<li>CLI commands: easy cloud interactions for any programming language</li>
+<li>Metaflow</li>
+<li>DAGster: workflow orchestrator</li>
+</ul>
+<hr>
+<h2 id="documentation">Documentation</h2>
+<p>https://cdcgov.github.io/cfa-cloudops/</p>
+<hr>
+<h2 id="questions">Questions?</h2>
+<p>For more information or help getting started:
+Contact: Ryan Raasch (xng3@cdc.gov)</p>
+<hr>
+
+</body>
+</html>
