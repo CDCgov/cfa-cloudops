@@ -97,9 +97,10 @@ def create_pool():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
+    new_mounts = [(m, m) for m in args.mounts]
     client.create_pool(
         pool_name=args.pool_name,
-        mounts=args.mounts,
+        mounts=new_mounts,
         container_image_name=args.container_image_name,
         vm_size=args.vm_size,
         autoscale=args.autoscale,
@@ -144,7 +145,7 @@ def create_job():
         help="Name of the resource pool to use",
     )
     parser.add_argument(
-        "-dep", "--use_deps", action="store_true", help="Use dependencies"
+        "-dep", "--uses_deps", action="store_true", help="Use dependencies"
     )
     parser.add_argument(
         "-s",
@@ -205,7 +206,7 @@ def create_job():
     client.create_job(
         job_name=args.job_name,
         pool_name=args.pool_name,
-        use_deps=args.use_deps,
+        uses_deps=args.uses_deps,
         save_logs_to_blob=args.save_logs_to_blob,
         logs_folder=args.logs_folder,
         task_retries=args.task_retries,
@@ -341,7 +342,7 @@ def create_blob_container():
     client.create_blob_container(container_name=args.container_name)
 
 
-def upload_files():
+def upload_file():
     parser = argparse.ArgumentParser(
         description="Upload files to a blob container"
     )
@@ -361,6 +362,14 @@ def upload_files():
         help="Use federated identity for authentication",
     )
     parser.add_argument(
+        "-s",
+        "--source_path",
+        type=str,
+        required=True,
+        help="Path to the source file",
+    )
+
+    parser.add_argument(
         "-c",
         "--container_name",
         type=str,
@@ -368,17 +377,18 @@ def upload_files():
         help="Name of the blob container to upload files to",
     )
     parser.add_argument(
-        "-s",
-        "--source",
+        "-l",
+        "--local_root_dir",
         type=str,
-        required=True,
-        help="Source file or directory to upload",
+        default=".",
+        required=False,
+        help="Path to the local root directory",
     )
     parser.add_argument(
-        "-d",
-        "--destination",
+        "-loc",
+        "--location_in_blob",
         type=str,
-        default="",
+        default=".",
         help="Destination path in the blob container",
     )
     args = parser.parse_args()
@@ -387,14 +397,15 @@ def upload_files():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    client.upload_files_to_blob_container(
+    client.upload_file(
+        files=args.file_path,
         container_name=args.container_name,
-        source=args.source,
-        destination=args.destination,
+        local_root_dir=args.local_root_dir,
+        location_in_blob=args.location_in_blob,
     )
 
 
-def upload_folders():
+def upload_folder():
     parser = argparse.ArgumentParser(description="Upload folder(s) to Blob")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
@@ -458,7 +469,7 @@ def upload_folders():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    client.upload_folders_to_blob_container(
+    client.upload_folders(
         folder_names=args.folder_names,
         container_name=args.container_name,
         include_extensions=args.include_extensions,
@@ -1047,11 +1058,12 @@ def download_job_stats():
         help="Name of the job to download stats for",
     )
     parser.add_argument(
-        "-c",
-        "--container_name",
+        "-path",
+        "--file_name",
         type=str,
-        required=True,
-        help="Name of the blob container where job stats are stored",
+        default=None,
+        required=False,
+        help="path to the downloaded file",
     )
     args = parser.parse_args()
     client = CloudClient(
@@ -1059,9 +1071,7 @@ def download_job_stats():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    client.download_job_stats(
-        job_name=args.job_name, container_name=args.container_name
-    )
+    client.download_job_stats(job_name=args.job_name, file_name=args.file_name)
 
 
 def download_after_job():
@@ -1120,7 +1130,7 @@ def download_after_job():
     )
     client.download_after_job(
         job_name=args.job_name,
-        blob_name=args.blob_name,
+        blob_paths=args.blob_name,
         target=args.target,
         container_name=args.container_name,
     )
