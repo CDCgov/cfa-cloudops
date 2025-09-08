@@ -761,14 +761,387 @@ def download_file():
         required=True,
         help="Local path to save the downloaded file",
     )
+    parser.add_argument(
+        "-check",
+        "--check_size",
+        action="store_true",
+        help="Check file size before downloading",
+    )
     args = parser.parse_args()
     client = CloudClient(
         dotenv_path=args.dotenv_path,
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    client.download_file_from_blob_container(
+    client.download_file(
+        src_path=args.blob_name,
+        dest_path=args.destination_path,
         container_name=args.container_name,
+        do_check=True,
+        check_size=args.check_size,
+    )
+
+
+def download_folder():
+    parser = argparse.ArgumentParser(
+        description="Download a folder from Blob storage"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-s",
+        "--src_path",
+        type=str,
+        required=True,
+        help="source path",
+    )
+    parser.add_argument(
+        "-d",
+        "--dest_path",
+        type=str,
+        required=True,
+        help="destination path",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to download the folder from",
+    )
+    parser.add_argument(
+        "-i",
+        "--include_extensions",
+        type=list,
+        default=None,
+        help="List of file extensions to include",
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude_extensions",
+        type=list,
+        default=None,
+        help="List of file extensions to exclude",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose output"
+    )
+    parser.add_argument(
+        "-check",
+        "--check_size",
+        action="store_true",
+        help="Check file size before downloading",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.download_folder(  # type: ignore
+        src_path=args.src_path,
+        dest_path=args.dest_path,
+        container_name=args.container_name,
+        include_extensions=args.include_extensions,
+        exclude_extensions=args.exclude_extensions,
+        verbose=args.verbose,
+        check_size=args.check_size,
+    )
+
+
+def delete_pool():
+    parser = argparse.ArgumentParser(description="Delete a resource pool")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-n",
+        "--pool_name",
+        type=str,
+        required=True,
+        help="Name of the resource pool to delete",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.delete_pool(pool_name=args.pool_name)
+
+
+def list_blob_files():
+    parser = argparse.ArgumentParser(
+        description="List files in a blob container"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to list files from",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    files = client.list_blob_files(blob_container=args.container_name)
+    for file in files:
+        print(file)
+
+
+def delete_blob_file():
+    parser = argparse.ArgumentParser(
+        description="Delete a file from a blob container"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to delete the file from",
+    )
+    parser.add_argument(
+        "-b",
+        "--blob_name",
+        type=str,
+        required=True,
+        help="Name of the blob to delete",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.delete_blob_file(
+        container_name=args.container_name, blob_name=args.blob_name
+    )
+
+
+def delete_blob_folder():
+    parser = argparse.ArgumentParser(
+        description="Delete a folder from a blob container"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to delete the folder from",
+    )
+    parser.add_argument(
+        "-b",
+        "--blob_folder_name",
+        type=str,
+        required=True,
+        help="Name of the blob folder to delete",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.delete_blob_folder(
+        container_name=args.container_name, folder_path=args.blob_folder_name
+    )
+
+
+def download_job_stats():
+    parser = argparse.ArgumentParser(
+        description="Download job stats from Blob storage"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-j",
+        "--job_name",
+        type=str,
+        required=True,
+        help="Name of the job to download stats for",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container where job stats are stored",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.download_job_stats(
+        job_name=args.job_name, container_name=args.container_name
+    )
+
+
+def download_after_job():
+    parser = argparse.ArgumentParser(
+        description="Download files from Blob storage after job completion"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-j",
+        "--job_name",
+        type=str,
+        required=True,
+        help="Name of the job to monitor and download files after completion",
+    )
+    parser.add_argument(
+        "-b",
+        "--blob_paths",
+        type=list,
+        required=True,
+        help="Name of the blob to download",
+    )
+    parser.add_argument(
+        "-t",
+        "--target",
+        type=str,
+        required=True,
+        help="Local path to save the downloaded file",
+    )
+    parser.add_argument(
+        "-c",
+        "--container_name",
+        type=str,
+        required=True,
+        help="Name of the blob container to download the file from",
+    )
+
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.download_after_job(
+        job_name=args.job_name,
         blob_name=args.blob_name,
-        destination_path=args.destination_path,
+        target=args.target,
+        container_name=args.container_name,
+    )
+
+
+def add_tasks_from_yaml():
+    parser = argparse.ArgumentParser(
+        description="Add tasks to a job from a YAML file"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
     )
