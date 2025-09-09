@@ -488,7 +488,7 @@ def upload_folder():
         use_federated=args.use_federated,
     )
     client.upload_folders(
-        folder_names=args.folder_names,
+        folder_names=args.folder_name,
         container_name=args.container_name,
         include_extensions=args.include_extensions,
         exclude_extensions=args.exclude_extensions,
