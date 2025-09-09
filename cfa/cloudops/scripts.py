@@ -1,4 +1,5 @@
 import argparse
+import textwrap
 
 from cfa.cloudops import CloudClient
 
@@ -1178,7 +1179,7 @@ def generate_sample_env():
     """
     try:
         with open("cloudops-sample.env", "w") as file:
-            file.write(text.strip() + "\n")
+            file.write(textwrap.dedent(text).strip() + "\n")
         print("Sample .env file 'cloudops-sample.env' created successfully.")
     except Exception as e:
         print(f"Error creating sample .env file: {e}")
