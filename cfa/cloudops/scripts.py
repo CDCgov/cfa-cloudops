@@ -414,7 +414,7 @@ def upload_file():
         use_federated=args.use_federated,
     )
     client.upload_files(
-        files=args.file_path,
+        files=args.source_path,
         container_name=args.container_name,
         local_root_dir=args.local_root_dir,
         location_in_blob=args.location_in_blob,
