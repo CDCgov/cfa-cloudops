@@ -38,7 +38,7 @@ def create_pool():
         help="Name of the resource pool",
     )
     parser.add_argument(
-        "-m", "--mounts", type=list, default=[], help="List of mount points"
+        "-m", "--mounts", nargs="+", help="List of mount points"
     )
     parser.add_argument(
         "-c",
