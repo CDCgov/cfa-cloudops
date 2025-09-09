@@ -413,7 +413,7 @@ def upload_file():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    client.upload_file(
+    client.upload_files(
         files=args.file_path,
         container_name=args.container_name,
         local_root_dir=args.local_root_dir,
