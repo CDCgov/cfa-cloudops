@@ -38,7 +38,12 @@ def create_pool():
         help="Name of the resource pool",
     )
     parser.add_argument(
-        "-m", "--mounts", nargs="+", help="List of mount points"
+        "-m",
+        "--mounts",
+        nargs="+",
+        required=False,
+        default=None,
+        help="List of mount points",
     )
     parser.add_argument(
         "-c",
@@ -105,7 +110,10 @@ def create_pool():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    new_mounts = [(m, m) for m in args.mounts]
+    if args.mounts is None:
+        new_mounts = None
+    else:
+        new_mounts = [(m, m) for m in args.mounts]
     client.create_pool(
         pool_name=args.pool_name,
         mounts=new_mounts,
