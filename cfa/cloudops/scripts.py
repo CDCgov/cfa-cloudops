@@ -47,7 +47,14 @@ def create_pool():
         required=True,
         help="Container image name",
     )
-    parser.add_argument("-v", "--vm_size", type=str, help="VM size")
+    parser.add_argument(
+        "-v",
+        "--vm_size",
+        type=str,
+        required=False,
+        default="standard_d4s_v3",
+        help="VM size",
+    )
     parser.add_argument(
         "-a", "--autoscale", action="store_true", help="Enable autoscaling"
     )
