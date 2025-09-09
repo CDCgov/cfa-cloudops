@@ -275,8 +275,8 @@ def add_task():
     parser.add_argument(
         "-d",
         "--depends_on",
-        type=list,
-        default=[],
+        nargs="+",
+        default=None,
         help="List of task dependencies",
     )
     parser.add_argument(
@@ -440,10 +440,10 @@ def upload_folder():
     )
     parser.add_argument(
         "-n",
-        "--folder_names",
-        type=list,
+        "--folder_name",
+        type=str,
         required=True,
-        help="List of folder names to upload",
+        help="Name of the folder to upload",
     )
     parser.add_argument(
         "-c",
@@ -455,15 +455,17 @@ def upload_folder():
     parser.add_argument(
         "-i",
         "--include_extensions",
-        type=list,
+        nargs="+",
         default=None,
+        required=False,
         help="List of file extensions to include",
     )
     parser.add_argument(
         "-e",
         "--exclude_extensions",
-        type=list,
+        nargs="+",
         default=None,
+        required=False,
         help="List of file extensions to exclude",
     )
     parser.add_argument(
@@ -852,14 +854,16 @@ def download_folder():
     parser.add_argument(
         "-i",
         "--include_extensions",
-        type=list,
+        nargs="+",
+        required=False,
         default=None,
         help="List of file extensions to include",
     )
     parser.add_argument(
         "-e",
         "--exclude_extensions",
-        type=list,
+        nargs="+",
+        required=False,
         default=None,
         help="List of file extensions to exclude",
     )
@@ -1119,7 +1123,7 @@ def download_after_job():
     parser.add_argument(
         "-b",
         "--blob_paths",
-        type=list,
+        nargs="+",
         required=True,
         help="Name of the blob to download",
     )
