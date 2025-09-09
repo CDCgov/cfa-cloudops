@@ -1155,3 +1155,30 @@ def add_tasks_from_yaml():
         action="store_true",
         help="Use federated identity for authentication",
     )
+
+
+def generate_sample_env():
+    text = """
+    # This file is saved as cloudops-sample.env. Rename it to .env (or your desired name) and fill in the values.
+
+    # Azure account info
+    AZURE_BATCH_ACCOUNT="your azure batch account name"
+    AZURE_BATCH_LOCATION="azure batch location"
+    AZURE_USER_ASSIGNED_IDENTITY="/subscriptions/xxxxxxxxx/resourcegroups/xxxxxxxx/Microsoft.ManagedIdentity/userAssignedIdentities/xxxxxxxxxx"
+    AZURE_SUBNET_ID="/subscriptions/xxxxxxxx/resourceGroups/xxxxxxxx/providers/Microsoft.Network/virtualNetworks/xxxxxxxx/subnets/xxxxxxxx"
+    AZURE_SP_CLIENT_ID="your sp client id"
+    AZURE_KEYVAULT_NAME="your keyvault name"
+    AZURE_KEYVAULT_SP_SECRET_ID="your keyvault secret id"
+
+    # Azure Blob storage config
+    AZURE_BLOB_STORAGE_ACCOUNT="your azure blob storage account"
+
+    # Azure container registry config
+    AZURE_CONTAINER_REGISTRY_ACCOUNT="your azure container registry name"
+    """
+    try:
+        with open("cloudops-sample.env", "w") as file:
+            file.write(text.strip() + "\n")
+        print("Sample .env file 'cloudops-sample.env' created successfully.")
+    except Exception as e:
+        print(f"Error creating sample .env file: {e}")
