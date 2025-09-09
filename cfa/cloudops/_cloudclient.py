@@ -651,7 +651,7 @@ class CloudClient:
 
     def upload_folders(
         self,
-        folder_names: list[str],
+        folder_names: str | list[str],
         container_name: str,
         include_extensions: str | list | None = None,
         exclude_extensions: str | list | None = None,
@@ -714,6 +714,8 @@ class CloudClient:
             unnecessary files like temporary files or build artifacts.
         """
         _files = []
+        if isinstance(folder_names, str):
+            folder_names = [folder_names]
         for _folder in folder_names:
             logger.debug(f"Trying to upload folder {_folder}.")
             _uploaded_files = upload_files_in_folder(
