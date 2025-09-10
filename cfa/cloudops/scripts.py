@@ -1150,7 +1150,7 @@ def download_after_job():
     )
     client.download_after_job(
         job_name=args.job_name,
-        blob_paths=args.blob_name,
+        blob_paths=args.blob_paths,
         target=args.target,
         container_name=args.container_name,
     )
