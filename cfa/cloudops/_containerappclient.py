@@ -1,12 +1,14 @@
 import logging
 import os
 
+import dotenv
 from azure.identity import ManagedIdentityCredential
 from azure.mgmt.appcontainers import ContainerAppsAPIClient
 from azure.mgmt.appcontainers.models import (
     JobExecutionContainer,
     JobExecutionTemplate,
 )
+from azure.mgmt.resource import SubscriptionClient
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ class ContainerAppClient:
 
     def __init__(
         self,
+        dotenv_path=None,
         resource_group=None,
         subscription_id=None,
         job_name=None,
@@ -30,13 +33,22 @@ class ContainerAppClient:
         Initialize a ContainerAppClient for Azure Container Apps jobs.
 
         Args:
+            dotenv_path (str, optional): Path to a .env file to load environment variables.
             resource_group (str, optional): Azure resource group name. If None, uses env var AZURE_RESOURCE_GROUP_NAME.
             subscription_id (str, optional): Azure subscription ID. If None, uses env var AZURE_SUBSCRIPTION_ID.
-            job_name (str, optional): Default job name for operations.
+            job_name (str, optional): Job name for Container App Job.
 
         Raises:
             ValueError: If required parameters are missing and not set in environment variables.
         """
+        self.credential = ManagedIdentityCredential()
+        dotenv.load_dotenv(dotenv_path)
+        sub_c = SubscriptionClient(self.credential)
+        # pull in account info and save to environment vars
+        account_info = list(sub_c.subscriptions.list())[0]
+        os.environ["AZURE_SUBSCRIPTION_ID"] = account_info.subscription_id
+        os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
+        os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
         if resource_group is None:
             resource_group = os.getenv("AZURE_RESOURCE_GROUP_NAME")
             if resource_group is None:
@@ -52,14 +64,13 @@ class ContainerAppClient:
                 )
         self.subscription_id = subscription_id
         self.job_name = job_name
-        self.credential = ManagedIdentityCredential()
 
         self.client = ContainerAppsAPIClient(
             credential=self.credential, subscription_id=subscription_id
         )
         logger.debug("client initialized.")
 
-    def get_job_info(self, job_name):
+    def get_job_info(self, job_name: str | None = None):
         """
         Retrieve detailed information about a specific Container App job.
 
@@ -69,12 +80,18 @@ class ContainerAppClient:
         Returns:
             dict: Dictionary containing job details.
         """
+        if job_name is None:
+            if self.job_name is None:
+                raise ValueError("Please specify a job name.")
+            else:
+                job_name = self.job_name
+
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
                 job_info = i
         return job_info.as_dict()
 
-    def get_command_info(self, job_name):
+    def get_command_info(self, job_name: str | None = None):
         """
         Get command, image, and environment details for containers in a job.
 
@@ -84,6 +101,12 @@ class ContainerAppClient:
         Returns:
             list[dict]: List of container info dicts (name, image, command, args, env).
         """
+        if job_name is None:
+            if self.job_name is None:
+                raise ValueError("Please specify a job name.")
+            else:
+                job_name = self.job_name
+
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
                 job_info = i
@@ -115,7 +138,7 @@ class ContainerAppClient:
         ]
         return job_list
 
-    def check_job_exists(self, job_name):
+    def check_job_exists(self, job_name: str):
         """
         Check if a Container App job exists in the resource group.
 
@@ -133,10 +156,10 @@ class ContainerAppClient:
 
     def start_job(
         self,
-        job_name: str = None,
-        command: list[str] = None,
-        args: list[str] = None,
-        env: list[str] = None,
+        job_name: str | None = None,
+        command: list[str] | None = None,
+        args: list[str] | None = None,
+        env: list[str] | None = None,
     ):
         """
         Start a Container App job, optionally overriding command, args, or environment.
@@ -189,8 +212,41 @@ class ContainerAppClient:
                 new_containers.append(container)
             t = JobExecutionTemplate(containers=new_containers)
             logger.debug("submitting job start request.")
-            self.client.jobs.begin_start(
+            try:
+                self.client.jobs.begin_start(
+                    resource_group_name=self.resource_group,
+                    job_name=job_name,
+                    template=t,
+                )
+                print(f"Started job {job_name}.")
+            except Exception as e:
+                logger.error(f"Failed to start job {job_name}: {e}")
+                raise
+
+    def stop_job(self, job_name: str, job_execution_name: str):
+        """
+        Stop a specific execution of an Azure Container App Job.
+
+        Args:
+            job_name (str): Name of the Container App Job.
+            job_execution_name (str): Name of the job execution to stop.
+
+        Returns:
+            Any: Response object from the Azure SDK if successful, or None if an error occurs.
+
+        Raises:
+            Exception: If the stop operation fails.
+        """
+        try:
+            response = self.client.jobs.begin_stop_execution(
                 resource_group_name=self.resource_group,
                 job_name=job_name,
-                template=t,
+                job_execution_name=job_execution_name,
+            ).result()
+            logger.info(
+                f"Job execution '{job_execution_name}' for job '{job_name}' stopped successfully."
             )
+            return response
+        except Exception as e:
+            logger.error(f"Error stopping job execution: {e}")
+            return None

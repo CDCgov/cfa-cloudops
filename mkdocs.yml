@@ -5,6 +5,7 @@ nav:
   - Overview: overview.md
   - Automation: automation.md
   - CloudClient: CloudClient/index.md
+  - ContainerAppClient: ContainerAppClient/index.md
   - Local Execution: local.md
   - Modules: modules.md
   - CLI: cli.md
