@@ -1175,6 +1175,37 @@ def add_tasks_from_yaml():
         action="store_true",
         help="Use federated identity for authentication",
     )
+    parser.add_argument(
+        "-j",
+        "--job_name",
+        type=str,
+        required=True,
+        help="Name of the job to add tasks to",
+    )
+    parser.add_argument(
+        "-c",
+        "--base_cmd",
+        type=str,
+        required=True,
+        help="Base command for the tasks",
+    )
+    parser.add_argument(
+        "-f",
+        "--file_path",
+        type=str,
+        required=True,
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.add_tasks_from_yaml(
+        job_name=args.job_name,
+        base_cmd=args.base_cmd,
+        file_path=args.file_path,
+    )
 
 
 def generate_sample_env():
