@@ -2,23 +2,24 @@ import os
 import sys
 
 # Add the root of the project to PYTHONPATH
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+)
 
 
 # --- PLUGIN DEFINITIONS ---
 
-# Your custom metadata and step decorator
-from examples.metaflow.plugins.metadata_providers.local import LocalMetadataProvider
 from examples.metaflow.azure_batch_decorator import AzureBatchDecorator
 
-# Expose custom plugins using expected global names
-ENABLED_METADATA = {
-    "local": LocalMetadataProvider
-}
+# Your custom metadata and step decorator
+from examples.metaflow.plugins.metadata_providers.local import (
+    LocalMetadataProvider,
+)
 
-ENABLED_STEP_DECORATORS = {
-    "azure_batch": AzureBatchDecorator
-}
+# Expose custom plugins using expected global names
+ENABLED_METADATA = {"local": LocalMetadataProvider}
+
+ENABLED_STEP_DECORATORS = {"azure_batch": AzureBatchDecorator}
 
 # --- DYNAMIC RESOLUTION ---
 

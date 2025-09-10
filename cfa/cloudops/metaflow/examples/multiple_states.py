@@ -1,9 +1,13 @@
 import logging
-from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import CFAAzureBatchDecorator
+
 from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
+from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import (
+    CFAAzureBatchDecorator,
+)
 from metaflow import FlowSpec, step
 
 logger = logging.getLogger(__name__)
+
 
 class MyFlow(FlowSpec):
     @step
@@ -48,7 +52,7 @@ class MyFlow(FlowSpec):
 
     @step
     def end(self):
-        self.batch_pool_service.delete_all_pools()
+        # self.batch_pool_service.delete_all_pools()
         logger.info("Flow completed.")
 
 

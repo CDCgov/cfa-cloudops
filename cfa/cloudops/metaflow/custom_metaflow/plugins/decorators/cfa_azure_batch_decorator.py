@@ -1,3 +1,10 @@
+import datetime
+import logging
+import random
+import string
+import time
+from functools import wraps
+
 from azure.batch import BatchServiceClient
 from azure.batch import models as batch_models
 from azure.batch.models import (
@@ -6,33 +13,29 @@ from azure.batch.models import (
     OnAllTasksComplete,
     OnTaskFailure,
 )
-import datetime
-from functools import wraps
-import logging
 from metaflow.decorators import StepDecorator
-import random
-import string
-import time
+
 from cfa.cloudops import batch_helpers, helpers
 from cfa.cloudops.auth import SPCredentialHandler
 from cfa.cloudops.client import get_batch_management_client
+from cfa.cloudops.defaults import (
+    default_azure_batch_endpoint_subdomain,
+    default_azure_batch_location,
+)
 from cfa.cloudops.job import create_job
 
-from cfa.cloudops.defaults import (
-    default_azure_batch_endpoint_subdomain, 
-    default_azure_batch_location
-)
-
 DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"
-DEFAULT_TASK_INTERVAL = '10' # Default task interval in seconds
+DEFAULT_TASK_INTERVAL = "10"  # Default task interval in seconds
 
 logger = logging.getLogger(__name__)
+
 
 def generate_random_string(length):
     """Generates a random string of specified length using letters and digits."""
     characters = string.ascii_letters + string.digits
-    random_string = ''.join(random.choice(characters) for _ in range(length))
+    random_string = "".join(random.choice(characters) for _ in range(length))
     return random_string
+
 
 class CFAAzureBatchDecorator(StepDecorator):
     """
@@ -51,14 +54,16 @@ class CFAAzureBatchDecorator(StepDecorator):
         "Authentication": None,
         "Batch": None,
         "Container": None,
-        "Storage": None
+        "Storage": None,
     }
 
     def __init__(self, pool_name, attributes, **kwargs):
         super(CFAAzureBatchDecorator, self).__init__()
         self.attributes = self.defaults.copy()
         self.attributes.update(attributes)
-        self.task_interval = int(self.attributes.get("TASK_INTERVAL", DEFAULT_TASK_INTERVAL))
+        self.task_interval = int(
+            self.attributes.get("TASK_INTERVAL", DEFAULT_TASK_INTERVAL)
+        )
 
         self.cred = SPCredentialHandler(
             azure_tenant_id=self.attributes["AZURE_TENANT_ID"],
@@ -66,16 +71,30 @@ class CFAAzureBatchDecorator(StepDecorator):
             azure_sp_client_id=self.attributes["AZURE_SP_CLIENT_ID"],
             azure_client_secret=self.attributes["AZURE_CLIENT_SECRET"],
             azure_keyvault_endpoint=self.attributes["AZURE_KEYVAULT_ENDPOINT"],
-            azure_keyvault_sp_secret_id=self.attributes["AZURE_KEYVAULT_SP_SECRET_ID"]
+            azure_keyvault_sp_secret_id=self.attributes[
+                "AZURE_KEYVAULT_SP_SECRET_ID"
+            ],
         )
-        self.cred.azure_user_assigned_identity = self.attributes.get("AZURE_USER_ASSIGNED_IDENTITY")
-        self.cred.azure_resource_group_name = self.attributes.get("AZURE_RESOURCE_GROUP")
-        self.cred.azure_batch_account = self.attributes.get("AZURE_BATCH_ACCOUNT")
-        self.cred.azure_blob_storage_account = self.attributes.get("AZURE_BLOB_STORAGE_ACCOUNT")
+        self.cred.azure_user_assigned_identity = self.attributes.get(
+            "AZURE_USER_ASSIGNED_IDENTITY"
+        )
+        self.cred.azure_resource_group_name = self.attributes.get(
+            "AZURE_RESOURCE_GROUP"
+        )
+        self.cred.azure_batch_account = self.attributes.get(
+            "AZURE_BATCH_ACCOUNT"
+        )
+        self.cred.azure_blob_storage_account = self.attributes.get(
+            "AZURE_BLOB_STORAGE_ACCOUNT"
+        )
         self.cred.azure_subnet_id = self.attributes.get("AZURE_SUBNET_ID")
-        self.cred.azure_batch_account = self.attributes.get("AZURE_BATCH_ACCOUNT")
+        self.cred.azure_batch_account = self.attributes.get(
+            "AZURE_BATCH_ACCOUNT"
+        )
         self.cred.azure_batch_location = default_azure_batch_location
-        self.cred.azure_batch_endpoint_subdomain = default_azure_batch_endpoint_subdomain
+        self.cred.azure_batch_endpoint_subdomain = (
+            default_azure_batch_endpoint_subdomain
+        )
 
         self.batch_client = BatchServiceClient(
             credentials=self.cred.batch_service_principal_credentials,
@@ -85,7 +104,6 @@ class CFAAzureBatchDecorator(StepDecorator):
         self.pool_name = pool_name
         self.docker_command = kwargs.get("docker_command", "python main.py")
         self.task_parameters = kwargs.get("task_parameters", [])
-
 
     def __create_job(
         self,
@@ -145,7 +163,6 @@ class CFAAzureBatchDecorator(StepDecorator):
             verbose=verbose,
         )
 
-
     def add_task(
         self,
         job_name: str,
@@ -204,7 +221,6 @@ class CFAAzureBatchDecorator(StepDecorator):
         logger.info(f"Added task {tid} to job {job_name}.")
         return tid
 
-
     def fetch_or_create_job(self):
         job_id = self.attributes.get("JOB_ID")
         job_id_prefix = self.attributes.get("JOB_ID_PREFIX")
@@ -214,11 +230,12 @@ class CFAAzureBatchDecorator(StepDecorator):
         if batch_helpers.check_job_exists(job_id, self.batch_client):
             logger.info(f"Existing Azure batch job {job_id} is being reused")
         else:
-            self.__create_job(job_name=job_id, mark_complete_after_tasks_run=True)
+            self.__create_job(
+                job_name=job_id, mark_complete_after_tasks_run=True
+            )
             logger.info(f"Azure Batch Job {job_id} created")
 
         return job_id
-
 
     def __call__(self, func):
         @wraps(func)
@@ -230,13 +247,18 @@ class CFAAzureBatchDecorator(StepDecorator):
                 task_dependencies = parent_tasks.split(",")
             time.sleep(self.task_interval)
             for task_input in self.task_parameters:
-                docker_command = self.docker_command.format(task_input=task_input)
+                docker_command = self.docker_command.format(
+                    task_input=task_input
+                )
                 self.task_id = self.add_task(
-                    job_name=job_id, 
+                    job_name=job_id,
                     command_line=docker_command,
-                    name_suffix=f"{job_id}_task_{generate_random_string(3)}_", 
+                    name_suffix=f"{job_id}_task_{generate_random_string(3)}_",
                     depends_on=task_dependencies,
-                    container_image_name=self.attributes.get("CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME)
+                    container_image_name=self.attributes.get(
+                        "CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME
+                    ),
                 )
             return func(*args, **kwargs)
+
         return wrapper

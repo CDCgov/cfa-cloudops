@@ -1,8 +1,11 @@
-from dotenv import dotenv_values
 import logging
-from metaflow import FlowSpec, step
-from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import CFAAzureBatchDecorator
+
 from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
+from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import (
+    CFAAzureBatchDecorator,
+)
+from dotenv import dotenv_values
+from metaflow import FlowSpec, step
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +24,15 @@ class MyFlow(FlowSpec):
     @step
     def start(self):
         logger.info("Starting the flow...")
-        self.batch_pool_service = CFABatchPoolService(dotenv_path=my_dotenv_path)
+        self.batch_pool_service = CFABatchPoolService(
+            dotenv_path=my_dotenv_path
+        )
         self.batch_pool_service.setup_pools()
         self.attributes = self.batch_pool_service.attributes
-        self.next(self.perform_remote_read_arizona, self.perform_remote_read_california)
+        self.next(
+            self.perform_remote_read_arizona,
+            self.perform_remote_read_california,
+        )
 
     @step
     @CFAAzureBatchDecorator(
@@ -40,7 +48,7 @@ class MyFlow(FlowSpec):
     @CFAAzureBatchDecorator(
         pool_name=attributes["POOL_NAME"],
         attributes=attributes_2,
-        docker_command="python3 main.py"
+        docker_command="python3 main.py",
     )
     def perform_remote_read_california(self):
         print(
