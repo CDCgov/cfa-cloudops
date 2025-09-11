@@ -918,8 +918,9 @@ def get_pool_mounts(
                     ],
                 )
             )
-    except Exception:
+    except Exception as e:
         mounts = None
+        logger.info(f"could not find mounts for pool {pool_name}: {e}")
     return mounts
 
 
