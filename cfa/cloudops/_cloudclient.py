@@ -19,8 +19,8 @@ import cfa.cloudops.defaults as d
 from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
 
 from .auth import (
+    DefaultCredentialHandler,
     EnvCredentialHandler,
-    FederatedCredentialHandler,
     SPCredentialHandler,
 )
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
@@ -51,7 +51,7 @@ class CloudClient:
         **kwargs: Additional keyword arguments passed to the credential handler.
 
     Attributes:
-        cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or FederatedCredentialHandler)
+        cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
         batch_mgmt_client: Azure Batch management client
         compute_mgmt_client: Azure Compute management client
         batch_service_client: Azure Batch service client
@@ -86,14 +86,14 @@ class CloudClient:
         self,
         dotenv_path: str = None,
         use_sp: bool = False,
-        use_federated: bool = False,
+        use_default: bool = False,
         **kwargs,
     ):
         # authenticate to get credentials
-        if not use_sp and not use_federated:
+        if not use_sp and not use_default:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
-        elif use_federated:
-            self.cred = FederatedCredentialHandler(
+        elif use_default:
+            self.cred = DefaultCredentialHandler(
                 dotenv_path=dotenv_path, **kwargs
             )
         else:

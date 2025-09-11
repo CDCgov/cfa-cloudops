@@ -50,9 +50,9 @@ def get_batch_management_client(
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return BatchManagementClient(
-            credential=ch.federated_credential,
+            credential=ch.default_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -99,9 +99,9 @@ def get_compute_management_client(
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return ComputeManagementClient(
-            credential=ch.federated_credential,
+            credential=ch.default_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -148,9 +148,9 @@ def get_batch_service_client(
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return BatchServiceClient(
-            credential=ch.federated_credential,
+            credential=ch.default_credential,
             subscription_id=ch.azure_batch_endpoint,
             **kwargs,
         )
@@ -197,9 +197,9 @@ def get_blob_service_client(
             credential=ch.client_secret_credential,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return BlobServiceClient(
-            credential=ch.federated_credential,
+            credential=ch.default_credential,
             account_url=ch.azure_blob_storage_endpoint,
             **kwargs,
         )
