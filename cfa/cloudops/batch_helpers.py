@@ -905,16 +905,22 @@ def get_pool_mounts(
         print(f"could not retrieve pool info for {pool_name}.")
         return None
     mounts = []
-    mc = pool_info.as_dict()["mount_configuration"]
-    for m in mc:
-        mounts.append(
-            (
-                m["azure_blob_file_system_configuration"]["container_name"],
-                m["azure_blob_file_system_configuration"][
-                    "relative_mount_path"
-                ],
+    try:
+        mc = pool_info.as_dict()["mount_configuration"]
+        for m in mc:
+            mounts.append(
+                (
+                    m["azure_blob_file_system_configuration"][
+                        "container_name"
+                    ],
+                    m["azure_blob_file_system_configuration"][
+                        "relative_mount_path"
+                    ],
+                )
             )
-        )
+    except Exception as e:
+        mounts = None
+        logger.info(f"could not find mounts for pool {pool_name}: {e}")
     return mounts
 
 

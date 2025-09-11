@@ -1,4 +1,5 @@
-![Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FCDCgov%2Fcfa-cloudops%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml&query=%24.tool.poetry.version&style=plastic&label=version&color=lightgray)
+![Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FCDCgov%2Fcfa-cloudops%2Frefs%2Fheads%2Fmain%2Fpyproject.toml&query=project.version&style=plastic&logoColor=lightGray&label=version)
+
 ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&style=plastic&link=https://raw.githubusercontent.com/CDCgov/cfa_azure/refs/heads/master/.pre-commit-config.yaml)
 ![pre-commit](https://github.com/CDCgov/cfa_azure/workflows/pre-commit/badge.svg?style=plastic&link=https://github.com/CDCgov/cfa-cloudops/actions/workflows/pre-commit.yaml)
 ![CI](https://github.com/CDCgov/cfa_azure/workflows/Python%20Unit%20Tests%20with%20Coverage/badge.svg?style=plastic&link=https://github.com/CDCgov/cfa-cloudops/actions/workflows/pre-commit.yaml&link=https://github.com/CDCgov/cfa-cloudops/actions/workflows/ci.yaml)
