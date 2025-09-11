@@ -524,7 +524,7 @@ class CloudClient:
         if self.save_logs_to_blob:
             rel_mnt_path = batch_helpers.get_rel_mnt_path(
                 blob_name=self.save_logs_to_blob,
-                pool_name=self.pool_name,
+                pool_name=pool_name,
                 resource_group_name=self.cred.azure_resource_group_name,
                 account_name=self.cred.azure_batch_account,
                 batch_mgmt_client=self.batch_mgmt_client,
@@ -538,7 +538,7 @@ class CloudClient:
 
         # get all mounts from pool info
         self.mounts = batch_helpers.get_pool_mounts(
-            self.pool_name,
+            pool_name,
             self.cred.azure_resource_group_name,
             self.cred.azure_batch_account,
             self.batch_mgmt_client,
@@ -651,7 +651,7 @@ class CloudClient:
 
     def upload_folders(
         self,
-        folder_names: list[str],
+        folder_names: str | list[str],
         container_name: str,
         include_extensions: str | list | None = None,
         exclude_extensions: str | list | None = None,
@@ -714,6 +714,8 @@ class CloudClient:
             unnecessary files like temporary files or build artifacts.
         """
         _files = []
+        if isinstance(folder_names, str):
+            folder_names = [folder_names]
         for _folder in folder_names:
             logger.debug(f"Trying to upload folder {_folder}.")
             _uploaded_files = upload_files_in_folder(

@@ -62,7 +62,7 @@ t2.after(t1)
 t3.before(t4)
 t5.after([t3, t4])
 
-client.add_job("dag_job_example")
+client.create_job("dag_job_example", pool_name = "example_pool")
 client.run_dag(t1, t2, t3, t4, t5, job_id = "dag_job_example")
 ```
 

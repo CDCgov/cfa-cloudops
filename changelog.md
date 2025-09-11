@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.0.3
+- Added CLI capabilities
 
 ## v0.0.2
 
