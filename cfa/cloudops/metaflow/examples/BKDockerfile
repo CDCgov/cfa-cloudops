@@ -1,0 +1,10 @@
+FROM python:3.10.17-slim-buster
+
+WORKDIR /app
+
+COPY bk_algorithm.py .
+COPY bk_requirements.txt .
+
+RUN pip install -r bk_requirements.txt
+
+CMD python -m cProfile -o output.prof bk_algorithm.py
