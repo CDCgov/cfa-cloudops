@@ -1,6 +1,6 @@
 import logging
-import random
 
+import numpy as np
 from custom_metaflow.cfa_batch_pool_service import CFABatchPoolService
 from custom_metaflow.plugins.decorators.cfa_azure_batch_decorator import (
     CFAAzureBatchDecorator,
@@ -10,23 +10,19 @@ from metaflow import FlowSpec, step
 logger = logging.getLogger(__name__)
 
 
-class FindCliquesFlow(FlowSpec):
+class CliqueFlow(FlowSpec):
     @step
     def start(self):
-        logger.info("Starting the clique computation flow...")
-        # Generate a set of 10 experiments with random number of nodes (100-500)
-        total_experiments = 10
-        experiments = [
-            random.randint(100, 500) for x in range(total_experiments)
-        ]
+        logger.info("Starting the flow...")
         self.batch_pool_service = CFABatchPoolService(
-            dotenv_path="metaflow.env"
+            dotenv_path="cliques.env"
         )
+        node_sizes = np.random.randint(30, 100, size=5)
         self.batch_pool_service.setup_pools()
-        self.split_lists = self.batch_pool_service.setup_step_parameters(
-            experiments, "job.toml"
+        self.split_nodes = self.batch_pool_service.setup_step_parameters(
+            node_sizes, "bk_job.toml"
         )
-        self.next(self.process_state, foreach="split_lists")
+        self.next(self.process_state, foreach="split_nodes")
 
     @step
     def process_state(self):
@@ -60,4 +56,4 @@ class FindCliquesFlow(FlowSpec):
 
 
 if __name__ == "__main__":
-    FindCliquesFlow()
+    CliqueFlow()
