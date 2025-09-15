@@ -6,7 +6,21 @@ import string
 import matplotlib.pyplot as plt
 import networkx as nx
 
+
+def generate_random_string(length):
+    """Generates a random string of specified length using letters and digits."""
+    characters = string.ascii_letters + string.digits
+    random_string = "".join(random.choice(characters) for _ in range(length))
+    return random_string
+
+
+SUFFIX = generate_random_string(5)
+
+fh = logging.FileHandler(f"cliques/clique_app_{SUFFIX}.log")
+fh.setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
+logger.addHandler(fh)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -15,13 +29,6 @@ parser.add_argument(
     type=int,
     help="number of nodes",
 )
-
-
-def generate_random_string(length):
-    """Generates a random string of specified length using letters and digits."""
-    characters = string.ascii_letters + string.digits
-    random_string = "".join(random.choice(characters) for _ in range(length))
-    return random_string
 
 
 def generate_random_graph(total_nodes):
@@ -52,7 +59,7 @@ def save_plot(random_graph, plot_caption):
     plt.figure(figsize=(10, 10))
     nx.draw(random_graph, node_size=10, width=0.1)
     plt.suptitle(plot_caption)
-    plt.savefig(f"my_plot_{generate_random_string(5)}.png")
+    plt.savefig(f"cliques/my_plot_{SUFFIX}.png")
 
 
 if __name__ == "__main__":
