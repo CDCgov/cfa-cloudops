@@ -150,7 +150,7 @@ def get_batch_service_client(
         )
     elif ch.method == "default":
         return BatchServiceClient(
-            credential=ch.default_credential,
+            credentials=ch.default_credential,
             subscription_id=ch.azure_batch_endpoint,
             **kwargs,
         )
