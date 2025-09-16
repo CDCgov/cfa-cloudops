@@ -92,14 +92,17 @@ class CloudClient:
         # authenticate to get credentials
         if not use_sp and not use_default:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.method = "env"
             print("Using environment-based credentials.")
         elif use_default:
             self.cred = DefaultCredentialHandler(
                 dotenv_path=dotenv_path, **kwargs
             )
+            self.method = "default"
             print("Using default credentials.")
         else:
             self.cred = SPCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.method = "sp"
             print("Using service principal credentials.")
         # get clients
 
