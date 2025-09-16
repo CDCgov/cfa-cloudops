@@ -404,12 +404,12 @@ class EnvCredentialHandler(CredentialHandler):
                 If None, uses default .env file discovery.
             **kwargs: Additional keyword arguments to override specific credential attributes.
         """
-        self.__setattr__("method", "env")
         load_env_vars(dotenv_path=dotenv_path)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        self.__setattr__("method", "env")
 
 
 def load_env_vars(dotenv_path=None):
@@ -492,7 +492,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-        self.__setattr__("method", "sp")
+
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -543,6 +543,7 @@ class SPCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        self.__setattr__("method", "sp")
 
 
 class DefaultCredentialHandler(CredentialHandler):
@@ -551,7 +552,6 @@ class DefaultCredentialHandler(CredentialHandler):
         dotenv_path: str | None = None,
         **kwargs,
     ) -> None:
-        self.__setattr__("method", "default")
         load_dotenv(dotenv_path=dotenv_path)
         d.set_env_vars()
 
@@ -559,6 +559,7 @@ class DefaultCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        self.__setattr__("method", "default")
 
 
 def get_sp_secret(
