@@ -404,7 +404,7 @@ class EnvCredentialHandler(CredentialHandler):
                 If None, uses default .env file discovery.
             **kwargs: Additional keyword arguments to override specific credential attributes.
         """
-        self.method = "env"
+        self.__setattr__("method", "env")
         load_env_vars(dotenv_path=dotenv_path)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
@@ -492,7 +492,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-        self.method = "sp"
+        self.__setattr__("method", "sp")
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -551,7 +551,7 @@ class DefaultCredentialHandler(CredentialHandler):
         dotenv_path: str | None = None,
         **kwargs,
     ) -> None:
-        self.method = "default"
+        self.__setattr__("method", "default")
         load_dotenv(dotenv_path=dotenv_path)
         d.set_env_vars()
 
