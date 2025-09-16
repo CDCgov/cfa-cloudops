@@ -213,11 +213,16 @@ class CredentialHandler:
             ["azure_keyvault_endpoint", "azure_keyvault_sp_secret_id"],
             goal="service_principal_secret",
         )
-
+        if self.method == "default":
+            cred = self.default_credential
+        elif self.method == "sp":
+            cred = self.client_secret_sp_credential
+        else:
+            cred = self.user_credential
         return get_sp_secret(
             self.azure_keyvault_endpoint,
             self.azure_keyvault_sp_secret_id,
-            self.user_credential,
+            cred,
         )
 
     @cached_property
