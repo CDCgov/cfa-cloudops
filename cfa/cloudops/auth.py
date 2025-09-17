@@ -408,7 +408,9 @@ class DefaultCredential(BasicTokenAuthentication):
 
     def get_token(self, *scopes, **kwargs):
         # Pass get_token call to credential
-        return self.credential.get_token(*scopes, **kwargs)
+        return self.credential.get_token(
+            "https://batch.core.windows.net/.default", **kwargs
+        )
 
     def signed_session(self, session=None):
         self.set_token()
