@@ -3,11 +3,22 @@ RUN apt-get update -y --fix-missing && apt-get install git -y
 
 WORKDIR /app
 
-COPY bk_algorithm.py .
-COPY bk_requirements.txt .
-COPY script.sh .
-COPY upload_files.py .
+COPY bk_algorithm.py /app
+COPY bk_requirements.txt /app
+COPY script.sh /app
+COPY upload_files.py /app
 
 RUN chmod +x /app/script.sh && mkdir -p /app/cliques && pip install --upgrade pip && pip install -r bk_requirements.txt
 
-ENTRYPOINT ["/app/script.sh", "10"]
+ENV AZURE_CLIENT_SECRET="REPLACE_WITH_SP_CLIENT_SECRET"  # pragma: allowlist secret
+ENV AZURE_TENANT_ID="REPLACE_WITH_TENANT_ID"
+ENV AZURE_SUBSCRIPTION_ID="REPLACE_WITH_SUBSCRIPTION_ID"
+ENV AZURE_SP_CLIENT_ID="REPLACE_WITH_SP_CLIENT_ID"
+ENV AZURE_KEYVAULT_NAME="REPLACE_WITH_KEYVAULT_NAME"
+ENV AZURE_KEYVAULT_SP_SECRET_ID="REPLACE_WITH_KEYVAULT_SP_SECRET_ID"
+ENV AZURE_RESOURCE_GROUP="REPLACE_WITH_RESOURCE_GROUP"
+ENV AZURE_SUBNET_ID="REPLACE_WITH_SUBNET_ID"
+ENV AZURE_USER_ASSIGNED_IDENTITY="REPLACE_WITH_USER_ASSIGNED_IDENTITY"
+ENV AZURE_BLOB_STORAGE_ACCOUNT="REPLACE_WITH_BLOB_STORAGE_ACCOUNT"
+
+CMD ["/app/script.sh", "10"]
