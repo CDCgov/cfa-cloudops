@@ -10,8 +10,8 @@ from functools import cached_property, partial
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.identity import (
-    AzureCliCredential,
     ClientSecretCredential,
+    DefaultAzureCredential,
     ManagedIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
@@ -226,8 +226,8 @@ class CredentialHandler:
         )
 
     @cached_property
-    def default_credential(self) -> AzureCliCredential:
-        return AzureCliCredential()
+    def default_credential(self) -> DefaultAzureCredential:
+        return DefaultAzureCredential()
 
     @cached_property
     def batch_service_principal_credentials(self):
