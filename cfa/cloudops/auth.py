@@ -9,6 +9,9 @@ from functools import cached_property, partial
 
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
+from azure.core.pipeline import PipelineContext, PipelineRequest
+from azure.core.pipeline.policies import BearerTokenCredentialPolicy
+from azure.core.pipeline.transport import HttpRequest
 from azure.identity import (
     ClientSecretCredential,
     DefaultAzureCredential,
@@ -17,6 +20,7 @@ from azure.identity import (
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.resource import SubscriptionClient
 from dotenv import load_dotenv
+from msrest.authentication import BasicTokenAuthentication
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops.config import get_config_val
@@ -214,7 +218,7 @@ class CredentialHandler:
             goal="service_principal_secret",
         )
         if self.method == "default":
-            cred = DefaultAzureCredential()
+            cred = DefaultCredential()
         elif self.method == "sp":
             cred = self.client_secret_sp_credential
         else:
@@ -226,8 +230,8 @@ class CredentialHandler:
         )
 
     @cached_property
-    def default_credential(self) -> DefaultAzureCredential:
-        return DefaultAzureCredential()
+    def default_credential(self):
+        return DefaultCredential()
 
     @cached_property
     def batch_service_principal_credentials(self):
@@ -367,6 +371,48 @@ class CredentialHandler:
             registry_server=self.azure_container_registry_endpoint,
             identity_reference=self.compute_node_identity_reference,
         )
+
+
+class DefaultCredential(BasicTokenAuthentication):
+    def __init__(
+        self,
+        credential=None,
+        resource_id="https://management.azure.com/.default",
+        **kwargs,
+    ):
+        super(DefaultCredential, self).__init__(None)
+        if credential is None:
+            credential = DefaultAzureCredential()
+        self.credential = credential
+        self._policy = BearerTokenCredentialPolicy(
+            credential, resource_id, **kwargs
+        )
+
+    def _make_request(self):
+        return PipelineRequest(
+            HttpRequest("CredentialWrapper", "https://fakeurl"),
+            PipelineContext(None),
+        )
+
+    def set_token(self):
+        """Ask the azure-core BearerTokenCredentialPolicy policy to get a token.
+        Using the policy gives us for free the caching system of azure-core.
+        We could make this code simpler by using private method, but by definition
+        I can't assure they will be there forever, so mocking a fake call to the policy
+        to extract the token, using 100% public API."""
+        request = self._make_request()
+        self._policy.on_request(request)
+        # Read Authorization, and get the second part after Bearer
+        token = request.http_request.headers["Authorization"].split(" ", 1)[1]
+        self.token = {"access_token": token}
+
+    def get_token(self, *scopes, **kwargs):
+        # Pass get_token call to credential
+        return self.credential.get_token(*scopes, **kwargs)
+
+    def signed_session(self, session=None):
+        self.set_token()
+        return super(DefaultCredential, self).signed_session(session)
 
 
 class EnvCredentialHandler(CredentialHandler):

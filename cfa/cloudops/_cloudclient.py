@@ -469,7 +469,7 @@ class CloudClient:
 
         # Create the job
         create_job(
-            get_batch_service_client(self.cred),
+            self.batch_service_client,
             job,
             exist_ok=exist_ok,
             verify_pool=verify_pool,
