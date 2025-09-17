@@ -377,7 +377,7 @@ class DefaultCredential(BasicTokenAuthentication):
     def __init__(
         self,
         credential=None,
-        resource_id="https://management.azure.com/.default",
+        resource_id="https://batch.core.windows.net/.default",
         **kwargs,
     ):
         super(DefaultCredential, self).__init__(None)
