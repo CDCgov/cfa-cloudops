@@ -121,7 +121,6 @@ class CredentialHandler:
             [
                 "azure_batch_account",
                 "azure_batch_endpoint_subdomain",
-                "azure_batch_location",
             ],
             goal="Azure batch endpoint URL",
         )
