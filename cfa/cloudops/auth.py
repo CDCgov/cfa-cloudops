@@ -56,7 +56,7 @@ class CredentialHandler:
         d.default_azure_batch_endpoint_subdomain
     )
     azure_batch_account: str = None
-    azure_batch_location: str = "eastus"
+    azure_batch_location: str = d.default_azure_batch_location
     azure_batch_resource_url: str = d.default_azure_batch_resource_url
     azure_blob_storage_endpoint_subdomain: str = (
         d.default_azure_blob_storage_endpoint_subdomain
@@ -121,6 +121,7 @@ class CredentialHandler:
             [
                 "azure_batch_account",
                 "azure_batch_endpoint_subdomain",
+                "azure_batch_location",
             ],
             goal="Azure batch endpoint URL",
         )
