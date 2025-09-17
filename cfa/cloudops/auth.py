@@ -214,7 +214,7 @@ class CredentialHandler:
             goal="service_principal_secret",
         )
         if self.method == "default":
-            cred = self.default_credential
+            cred = DefaultAzureCredential()
         elif self.method == "sp":
             cred = self.client_secret_sp_credential
         else:
