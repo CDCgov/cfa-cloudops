@@ -390,7 +390,7 @@ class DefaultCredential(BasicTokenAuthentication):
 
     def _make_request(self):
         return PipelineRequest(
-            HttpRequest("CredentialWrapper", "https://fakeurl"),
+            HttpRequest("CredentialWrapper", "https://batch.core.windows.net"),
             PipelineContext(None),
         )
 
@@ -406,10 +406,10 @@ class DefaultCredential(BasicTokenAuthentication):
         token = request.http_request.headers["Authorization"].split(" ", 1)[1]
         self.token = {"access_token": token}
 
-    def get_token(self, *scopes, **kwargs):
+    def get_token(self):
         # Pass get_token call to credential
         return self.credential.get_token(
-            "https://batch.core.windows.net/.default", **kwargs
+            "https://batch.core.windows.net/.default"
         )
 
     def signed_session(self, session=None):
