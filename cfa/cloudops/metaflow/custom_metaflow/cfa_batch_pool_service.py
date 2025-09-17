@@ -37,6 +37,9 @@ class CFABatchPoolService:
                 "AZURE_KEYVAULT_SP_SECRET_ID"
             ],
         )
+        self.cred.azure_container_registry_account = self.attributes.get(
+            "AZURE_CONTAINER_REGISTRY_ACCOUNT"
+        )
         self.cred.azure_user_assigned_identity = self.attributes.get(
             "AZURE_USER_ASSIGNED_IDENTITY"
         )
@@ -96,8 +99,8 @@ class CFABatchPoolService:
     def __create_containers(self):
         storage_containers = []
         mount_names = []
-        input_mount_name = self.attributes.get("INPUT_MOUNT", "input")
-        output_mount_name = self.attributes.get("OUTPUT_MOUNT", "output")
+        input_mount_name = self.attributes.get("INPUT_MOUNT", "input-test")
+        output_mount_name = self.attributes.get("OUTPUT_MOUNT", "output-test")
         mounts = [(input_mount_name, "input"), (output_mount_name, "output")]
         for mount in mounts:
             storage_containers.append(mount[0])
@@ -138,9 +141,7 @@ class CFABatchPoolService:
         container_config = models.ContainerConfiguration(
             type="dockerCompatible",
             container_image_names=[
-                self.attributes.get(
-                    "CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME
-                )
+                self.attributes.get("CONTAINER_IMAGE_NAME")
             ],
         )
 
