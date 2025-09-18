@@ -218,7 +218,7 @@ class CredentialHandler:
             goal="service_principal_secret",
         )
         if self.method == "default":
-            cred = DefaultCredential()
+            cred = self.default_credential
         elif self.method == "sp":
             cred = self.client_secret_sp_credential
         else:
