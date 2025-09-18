@@ -64,14 +64,22 @@ def create_job(
     """
     if verify_pool:
         pool_id = job.pool_info.pool_id
-        if not client.pool.exists(pool_id):
-            raise ValueError(
-                f"Attempt to create job {job.id} on "
-                f"pool {pool_id}, but could not find "
-                "the requested pool. Check that this "
-                "pool id is correct and that a pool "
-                "with that id exists"
-            )
+        try:
+            if not client.pool.exists(pool_id):
+                raise ValueError(
+                    f"Attempt to create job {job.id} on "
+                    f"pool {pool_id}, but could not find "
+                    "the requested pool. Check that this "
+                    "pool id is correct and that a pool "
+                    "with that id exists"
+                )
+        except models.BatchErrorException as ex:
+            print("BatchErrorException caught:")
+            print(f"Code: {getattr(ex, 'code', None)}")
+            print(f"Message: {getattr(ex, 'message', None)}")
+            # Log additional details for debugging
+        except Exception as e:
+            print(f"General exception: {e}")
     try:
         client.job.add(job, **kwargs)
         if verbose:
