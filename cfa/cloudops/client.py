@@ -202,7 +202,7 @@ def get_blob_service_client(
         )
     elif ch.method == "default":
         return BlobServiceClient(
-            credential=ch.batch_service_principal_credentials,
+            credential=ch.default_credential,
             account_url=ch.azure_blob_storage_endpoint,
             **kwargs,
         )
