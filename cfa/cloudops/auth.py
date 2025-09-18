@@ -51,7 +51,7 @@ class CredentialHandler:
     azure_keyvault_endpoint: str = None
     azure_keyvault_sp_secret_id: str = None
     azure_tenant_id: str = None
-    azure_sp_client_id: str = None
+    azure_client_id: str = None
     azure_batch_endpoint_subdomain: str = (
         d.default_azure_batch_endpoint_subdomain
     )
@@ -249,13 +249,13 @@ class CredentialHandler:
         self.require_attr(
             [
                 "azure_tenant_id",
-                "azure_sp_client_id",
+                "azure_client_id",
                 "azure_batch_resource_url",
             ],
             goal="batch_service_principal_credentials",
         )
         return ServicePrincipalCredentials(
-            client_id=self.azure_sp_client_id,
+            client_id=self.azure_client_id,
             tenant=self.azure_tenant_id,
             secret=self.service_principal_secret,
             resource=self.azure_batch_resource_url,
@@ -274,11 +274,11 @@ class CredentialHandler:
             >>> credential = handler.client_secret_sp_credential
             >>> # Use with Azure SDK clients
         """
-        self.require_attr(["azure_tenant_id", "azure_sp_client_id"])
+        self.require_attr(["azure_tenant_id", "azure_client_id"])
         return ClientSecretCredential(
             tenant_id=self.azure_tenant_id,
             client_secret=self.service_principal_secret,
-            client_id=self.azure_sp_client_id,
+            client_id=self.azure_client_id,
         )
 
     @cached_property
@@ -291,21 +291,21 @@ class CredentialHandler:
         Example:
             >>> handler = CredentialHandler()
             >>> handler.azure_tenant_id = "tenant-id"
-            >>> handler.azure_sp_client_id = "client-id"
+            >>> handler.azure_client_id = "client-id"
             >>> handler.azure_client_secret = "client-secret" #pragma: allowlist secret
             >>> credential = handler.client_secret_credential
         """
         self.require_attr(
             [
                 "azure_tenant_id",
-                "azure_sp_client_id",
+                "azure_client_id",
                 "azure_client_secret",
             ]
         )
         return ClientSecretCredential(
             tenant_id=self.azure_tenant_id,
             client_secret=self.azure_client_secret,
-            client_id=self.azure_sp_client_id,
+            client_id=self.azure_client_id,
         )
 
     @cached_property
@@ -491,7 +491,7 @@ class SPCredentialHandler(CredentialHandler):
         self,
         azure_tenant_id: str = None,
         azure_subscription_id: str = None,
-        azure_sp_client_id: str = None,
+        azure_client_id: str = None,
         azure_client_secret: str = None,
         dotenv_path: str = None,
         **kwargs,
@@ -508,7 +508,7 @@ class SPCredentialHandler(CredentialHandler):
                 to load from AZURE_TENANT_ID environment variable.
             azure_subscription_id: Azure subscription ID. If None, will attempt
                 to load from AZURE_SUBSCRIPTION_ID environment variable.
-            azure_sp_client_id: Azure Service Principal client ID (application ID).
+            azure_client_id: Azure Service Principal client ID (application ID).
                 If None, will attempt to load from AZURE_SP_CLIENT_ID environment variable.
             azure_client_secret: Azure Service Principal client secret. If None, will
                 attempt to load from AZURE_CLIENT_SECRET environment variable.
@@ -530,7 +530,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> handler = SPCredentialHandler(
             ...     azure_tenant_id="12345678-1234-1234-1234-123456789012",
             ...     azure_subscription_id="87654321-4321-4321-4321-210987654321",
-            ...     azure_sp_client_id="abcdef12-3456-7890-abcd-ef1234567890",
+            ...     azure_client_id="abcdef12-3456-7890-abcd-ef1234567890",
             ...     azure_client_secret="your-secret-here" #pragma: allowlist secret
             ... )
 
@@ -554,9 +554,9 @@ class SPCredentialHandler(CredentialHandler):
             if azure_subscription_id is not None
             else os.environ["AZURE_SUBSCRIPTION_ID"]
         )
-        self.azure_sp_client_id = (
-            azure_sp_client_id
-            if azure_sp_client_id is not None
+        self.azure_client_id = (
+            azure_client_id
+            if azure_client_id is not None
             else os.environ["AZURE_SP_CLIENT_ID"]
         )
         self.azure_client_secret = (
@@ -577,7 +577,7 @@ class SPCredentialHandler(CredentialHandler):
             raise ValueError(
                 "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
             )
-        if "AZURE_SP_CLIENT_ID" not in os.environ and not azure_sp_client_id:
+        if "AZURE_CLIENT_ID" not in os.environ and not azure_client_id:
             raise ValueError(
                 "AZURE_SP_CLIENT_ID not found in env variables and not provided."
             )
