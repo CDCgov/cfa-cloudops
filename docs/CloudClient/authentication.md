@@ -40,7 +40,7 @@ client = CloudClient()
 
 ### Service Principal
 
-Sometimes there are cases when a Managed Identity won't work or is not ideal. In this situation it is possible to authenticate with a Service Principal. If this is the case, set the `use_sp` parameter to `True` when instantiating the `CloudClient`. This method requires the existence of AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_SP_CLIENT_ID, and AZURE_CLIENT_SECRET to exist in the local environment variables or .env file, or these can be passed in to the `CloudClient` as lowercase parameters of the same name.
+Sometimes there are cases when a Managed Identity won't work or is not ideal. In this situation it is possible to authenticate with a Service Principal. If this is the case, set the `use_sp` parameter to `True` when instantiating the `CloudClient`. This method requires the existence of AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET to exist in the local environment variables or .env file, or these can be passed in to the `CloudClient` as lowercase parameters of the same name.
 
 Check [here](../files/sp_sample.env) for an example .env to be used with a service principal.
 
@@ -55,21 +55,20 @@ client = CloudClient(
     use_sp = True,
     azure_tenant_id = "my_tenant_id",
     azure_subscription_id = "my_subscription_id",
-    azure_sp_client_id = "my_client_id",
+    azure_client_id = "my_client_id",
     azure_client_secret = "my_sp_secret" #pragma: allowlist secret
 )
 ```
 
 ### Federated Tokens
 
-Federated token credentials are useful for interacting with Azure from GitHub Actions. Because you have to be signed into GitHub to authorize Actions, that authorization can be passed along to Azure with the right permissions configured in Azure. Federated token credentials can be used by setting the `use_federated` parameter to `True` when instantiating the `CloudClient`. Similar to the Service Principal authentication, the following additional environment variables or parameters are needed: AZURE_TENANT_ID, AZURE_SP_CLIENT_ID, AZURE_FEDERATED_TOKEN_FILE (all lowercase if passed as a parameter.)
+Federated token credentials are useful for interacting with Azure from GitHub Actions. Because you have to be signed into GitHub to authorize Actions, that authorization can be passed along to Azure with the right permissions configured in Azure. Federated token credentials can be used by setting the `use_federated` parameter to `True` when instantiating the `CloudClient`. Similar to the Service Principal authentication, the following additional environment variables or parameters are needed: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_SUBSCRIPTION_ID (all lowercase if passed as a parameter.)
 
 The following is an example of including the values as parameters in the instantiation:
 ```python
 client = CloudClient(
     use_federated = True,
     azure_tenant_id = "my_tenant_id",
-    azure_sp_client_id = "my_client_id",
-    azure_federated_token_file = "token_file"
+    azure_client_id = "my_client_id"
 )
 ```
