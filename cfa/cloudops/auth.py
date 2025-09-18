@@ -406,11 +406,9 @@ class DefaultCredential(BasicTokenAuthentication):
         token = request.http_request.headers["Authorization"].split(" ", 1)[1]
         self.token = {"access_token": token}
 
-    def get_token(self):
+    def get_token(self, *scopes, **kwargs):
         # Pass get_token call to credential
-        return self.credential.get_token(
-            "https://batch.core.windows.net/.default"
-        )
+        return self.credential.get_token(*scopes, **kwargs)
 
     def signed_session(self, session=None):
         self.set_token()
