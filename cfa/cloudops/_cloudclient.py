@@ -86,15 +86,15 @@ class CloudClient:
         self,
         dotenv_path: str = None,
         use_sp: bool = False,
-        use_default: bool = False,
+        use_federated: bool = False,
         **kwargs,
     ):
         # authenticate to get credentials
-        if not use_sp and not use_default:
+        if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
             self.method = "env"
             print("Using environment-based credentials.")
-        elif use_default:
+        elif use_federated:
             self.cred = DefaultCredentialHandler(
                 dotenv_path=dotenv_path, **kwargs
             )
