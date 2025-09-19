@@ -599,6 +599,26 @@ class DefaultCredentialHandler(CredentialHandler):
         **kwargs,
     ) -> None:
         load_dotenv(dotenv_path=dotenv_path)
+        d_cred = DefaultCredential()
+        sub_c = SubscriptionClient(d_cred)
+        my_sub_id = os.environ.get("AZURE_SUBSCRIPTION_ID", None)
+        if my_sub_id is None:
+            raise ValueError(
+                "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
+            )
+        subscription = [
+            sub
+            for sub in sub_c.subscriptions.list()
+            if sub.subscription_id == my_sub_id
+        ]
+        # pull info if sub exists
+        if subscription:
+            subscription = subscription[0]
+            os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
+
+        else:
+            raise ValueError("Subscription ID not found.")
+
         d.set_env_vars()
 
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
