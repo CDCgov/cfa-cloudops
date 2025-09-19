@@ -455,7 +455,13 @@ class EnvCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        # set method to "env"
         self.__setattr__("method", "env")
+        # check for azure batch location
+        if self.__getattribute__("azure_batch_location") is None:
+            self.__setattr__(
+                "azure_batch_location", d.default_azure_batch_location
+            )
 
 
 def load_env_vars(dotenv_path=None):
@@ -589,7 +595,13 @@ class SPCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        # set method to "sp"
         self.__setattr__("method", "sp")
+        # check for azure batch location
+        if self.__getattribute__("azure_batch_location") is None:
+            self.__setattr__(
+                "azure_batch_location", d.default_azure_batch_location
+            )
 
 
 class DefaultCredentialHandler(CredentialHandler):
@@ -625,7 +637,13 @@ class DefaultCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        # set method to "default"
         self.__setattr__("method", "default")
+        # check for azure batch location
+        if self.__getattribute__("azure_batch_location") is None:
+            self.__setattr__(
+                "azure_batch_location", d.default_azure_batch_location
+            )
 
 
 def get_sp_secret(
