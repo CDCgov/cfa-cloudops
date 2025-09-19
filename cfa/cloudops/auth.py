@@ -583,7 +583,7 @@ class SPCredentialHandler(CredentialHandler):
             )
         if "AZURE_CLIENT_ID" not in os.environ and not azure_client_id:
             raise ValueError(
-                "AZURE_SP_CLIENT_ID not found in env variables and not provided."
+                "AZURE_CLIENT_ID not found in env variables and not provided."
             )
         if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
             raise ValueError(
