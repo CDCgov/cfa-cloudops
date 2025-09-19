@@ -62,13 +62,16 @@ client = CloudClient(
 
 ### Federated Tokens
 
-Federated token credentials are useful for interacting with Azure from GitHub Actions. Because you have to be signed into GitHub to authorize Actions, that authorization can be passed along to Azure with the right permissions configured in Azure. Federated token credentials can be used by setting the `use_federated` parameter to `True` when instantiating the `CloudClient`. Similar to the Service Principal authentication, the following additional environment variables or parameters are needed: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_SUBSCRIPTION_ID (all lowercase if passed as a parameter.)
+Federated token credentials are useful for interacting with Azure from GitHub Actions. Because you have to be signed into GitHub to authorize Actions, that authorization can be passed along to Azure with the right permissions configured in Azure. Federated token credentials can be passed to the `CloudClient` by setting the `use_federated` parameter to `True` when instantiating the `CloudClient`.
 
 The following is an example of including the values as parameters in the instantiation:
 ```python
 client = CloudClient(
-    use_federated = True,
-    azure_tenant_id = "my_tenant_id",
-    azure_client_id = "my_client_id"
+    use_federated = True
 )
 ```
+
+#### Example
+In practicality, there are a few steps required for using the CloudClient in GitHub Actions. In your repo, create a workflow file that contains the steps for your workflow. The workflow will need to run on a self-hosted runner with access to Azure in order to pull information from Azure back to the runner. We also need to use OIDC Federated login using the azure/login@v2 action. Secrets typically found in your .env file will need to be added as secrets to your GitHub repository, especially AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_SUBSCRIPTION_ID. In each of the action steps, the appropriate environment variables will need to loaded in the `env:` section of th action. Then the correct python version and requirements can be loaded. Lastly, you can then run a python script using `cfa-cloudops` and the `use_federated` parameter mentioned above.
+
+For a specific example, check [here](https://github.com/cdcent/cfa-cloudops-example).
