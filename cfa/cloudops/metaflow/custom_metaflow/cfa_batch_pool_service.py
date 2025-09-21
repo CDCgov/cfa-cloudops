@@ -18,6 +18,7 @@ from cfa.cloudops.defaults import (
 )
 
 DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"
+DEFAULT_POOL_LIMIT = "1"
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,13 @@ logger = logging.getLogger(__name__)
 class CFABatchPoolService:
     def __init__(self, dotenv_path, job_config_file="job.toml"):
         self.batch_pools = []
-        self.parallel_pool_limit = 1
         self.attributes = dotenv_values(dotenv_path)
         self.job_configuration = toml.load(job_config_file)
+        self.parallel_pool_limit = int(
+            self.job_configuration["Pool"].get(
+                "parallel_pool_limit", DEFAULT_POOL_LIMIT
+            )
+        )
         self.__setup_credentials()
         self.batch_mgmt_client = get_batch_management_client(self.cred)
 
@@ -90,9 +95,6 @@ class CFABatchPoolService:
             for pool_name in pools:
                 self.__setup_pool(pool_name)
         else:
-            self.parallel_pool_limit = int(
-                self.job_configuration["Pool"].get("parallel_pool_limit", "1")
-            )
             pool_name_prefix = self.job_configuration["Pool"].get(
                 "pool_name_prefix", "cfa_pool_"
             )
