@@ -1,3 +1,18 @@
 [Job]
-docker_command="/app/script.sh {arg_1}"
 arg_1="{task_input}"
+docker_command="/app/script.sh {arg_1}"
+job_id_prefix="my_clique2_"
+task_interval="10"
+
+[Pool]
+autoscale="True"
+container_image_name="cfaprdbatchcr.azurecr.io/cfa-metaflow:latest"
+dedicated_nodes="5"
+input_mount="input-test"
+low_priority_nodes="5"
+max_autoscale_nodes="5"
+output_mount="output-test"
+parallel_pool_limit="3"
+pool_name_prefix="my_clique_exp2_"
+task_slots_per_node="1"
+vm_size="STANDARD_D4d_V5"

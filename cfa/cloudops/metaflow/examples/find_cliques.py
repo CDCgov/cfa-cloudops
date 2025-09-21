@@ -15,14 +15,15 @@ class CliqueFlow(FlowSpec):
     def start(self):
         logger.info("Starting the flow...")
         self.batch_pool_service = CFABatchPoolService(
-            dotenv_path="cliques.env"
+            dotenv_path="cliques.env", job_config_file="bk_job.toml"
         )
-        node_sizes = np.random.randint(30, 100, size=5)
+        node_sizes = np.random.randint(30, 100, size=3)
         self.batch_pool_service.setup_pools()
         self.split_nodes = self.batch_pool_service.setup_step_parameters(
-            node_sizes, "bk_job.toml"
+            node_sizes
         )
         self.next(self.process_state, foreach="split_nodes")
+        # self.next(self.end)
 
     @step
     def process_state(self):
@@ -30,6 +31,7 @@ class CliqueFlow(FlowSpec):
         decorator = CFAAzureBatchDecorator(
             pool_name=self.input["pool_name"],
             attributes=self.input["attributes"],
+            job_configuration=self.input["job_configuration"],
             task_parameters=self.input["task_parameters"],
             docker_command=self.input["docker_command"],
         )
