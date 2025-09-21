@@ -5,10 +5,15 @@ import random
 import matplotlib.pyplot as plt
 import networkx as nx
 
-fh = logging.FileHandler("cliques/clique_app.log", mode="a")
-fh.setLevel(logging.INFO)
-
 logger = logging.getLogger(__name__)
+
+fh = logging.FileHandler("/app/cliques/clique_app.log", mode="a")
+fh.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+fh.setFormatter(formatter)
+
 logger.addHandler(fh)
 
 parser = argparse.ArgumentParser()
@@ -48,7 +53,7 @@ def save_plot(random_graph, n_index, plot_caption):
     plt.figure(figsize=(10, 10))
     nx.draw(random_graph, node_size=10, width=0.1)
     plt.suptitle(plot_caption)
-    plt.savefig(f"cliques/my_plot_{n_index}.png")
+    plt.savefig(f"/app/cliques/my_plot_{n_index}.png")
 
 
 if __name__ == "__main__":
@@ -64,7 +69,7 @@ if __name__ == "__main__":
         logger.info(plot_title)
         sorted_cliques = generate_cliques(random_graph)
         clique_count_msg = (
-            f"Found {len(sorted_cliques)} maximal cliques."
+            f"Found {len(sorted_cliques)} cliques."
             + save_statistics(sorted_cliques)
         )
         logger.info(clique_count_msg)
