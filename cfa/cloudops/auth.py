@@ -627,7 +627,7 @@ class DefaultCredentialHandler(CredentialHandler):
             os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
         else:
             raise ValueError(
-                "Subscription matching AZURE_TENANT_ID not found."
+                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
             )
 
         d.set_env_vars()
