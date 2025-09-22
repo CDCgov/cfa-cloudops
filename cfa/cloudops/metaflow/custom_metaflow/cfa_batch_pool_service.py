@@ -124,14 +124,22 @@ class CFABatchPoolService:
         )
         return mount_config
 
-    def __create_pool_configuration(self, pool_name, mount_config):
-        pool_config = get_default_pool_config(
-            pool_name=pool_name,
-            subnet_id=self.cred.azure_subnet_id,
-            user_assigned_identity=self.cred.azure_user_assigned_identity,
-            mount_configuration=mount_config,
-            vm_size=self.job_configuration["Pool"].get("vm_size"),
+    def __setup_fixedscale_configuration(self, pool_config):
+        pool_config.scale_settings = models.ScaleSettings(
+            fixed_scale=models.FixedScaleSettings(
+                target_dedicated_nodes=int(
+                    self.job_configuration["Pool"].get("dedicated_nodes", "3")
+                ),
+                target_low_priority_nodes=int(
+                    self.job_configuration["Pool"].get(
+                        "low_priority_nodes", "3"
+                    )
+                ),
+            )
         )
+        return pool_config
+
+    def __setup_autoscaled_configuration(self, pool_config):
         formula = remaining_task_autoscale_formula(
             task_sample_interval_minutes=15,
             max_number_vms=int(
@@ -144,10 +152,25 @@ class CFABatchPoolService:
                 evaluation_interval="PT5M",  # Evaluate every 5 minutes
             )
         )
+        return pool_config
+
+    def __create_pool_configuration(self, pool_name, mount_config):
+        pool_config = get_default_pool_config(
+            pool_name=pool_name,
+            subnet_id=self.cred.azure_subnet_id,
+            user_assigned_identity=self.cred.azure_user_assigned_identity,
+            mount_configuration=mount_config,
+            vm_size=self.job_configuration["Pool"].get("vm_size"),
+        )
+        autoscale = self.job_configuration["Pool"].get("autoscale", "True")
+        if autoscale.lower() == "true":
+            pool_config = self.__setup_autoscaled_configuration(pool_config)
+        else:
+            pool_config = self.__setup_fixedscale_configuration(pool_config)
+
         pool_config.task_slots_per_node = int(
             self.job_configuration["Pool"].get("task_slots_per_node", "1")
         )
-
         container_config = models.ContainerConfiguration(
             type="dockerCompatible",
             container_image_names=[
@@ -181,17 +204,10 @@ class CFABatchPoolService:
             raise RuntimeError(error_msg)
 
     def setup_step_parameters(self, items, pools: list[str] = None):
-        docker_command_formatted = None
         if "Job" in self.job_configuration:
             docker_command = self.job_configuration["Job"].get(
                 "docker_command", "python main.py"
             )
-            arguments = {
-                k: v
-                for k, v in self.job_configuration["Job"].items()
-                if k.lower().startswith("arg")
-            }
-            docker_command_formatted = docker_command.format(**arguments)
         if pools:
             item_chunks = np.array_split(items, len(pools))
         else:
@@ -207,7 +223,7 @@ class CFABatchPoolService:
                     "attributes": self.attributes,
                     "job_configuration": self.job_configuration,
                     "task_parameters": item_chunks[i],
-                    "docker_command": docker_command_formatted,
+                    "docker_command": docker_command,
                 }
             )
         return step_parameters

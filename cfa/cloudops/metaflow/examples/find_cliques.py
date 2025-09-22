@@ -18,8 +18,7 @@ class CliqueFlow(FlowSpec):
             dotenv_path="cliques.env", job_config_file="bk_job.toml"
         )
         random_integers_list = [
-            np.random.randint(2000, 3000)
-            for _ in range(self.parallel_pool_limit)
+            np.random.randint(2000, 3000) for _ in range(50)
         ]
         self.batch_pool_service.setup_pools()
         self.split_nodes = self.batch_pool_service.setup_step_parameters(
