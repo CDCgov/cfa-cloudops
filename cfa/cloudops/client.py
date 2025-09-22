@@ -145,7 +145,7 @@ def get_batch_service_client(
     if ch.method == "sp":
         print("Using service principal credentials for BatchServiceClient")
         return BatchServiceClient(
-            credentials=ch.client_secret_credential,
+            credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )

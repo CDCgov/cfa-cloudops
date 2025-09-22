@@ -220,7 +220,7 @@ class CredentialHandler:
         if self.method == "default":
             cred = self.default_credential
         elif self.method == "sp":
-            cred = self.client_secret_sp_credential
+            return self.azure_client_secret
         else:
             cred = self.user_credential
         return get_sp_secret(
