@@ -513,7 +513,7 @@ class SPCredentialHandler(CredentialHandler):
             azure_subscription_id: Azure subscription ID. If None, will attempt
                 to load from AZURE_SUBSCRIPTION_ID environment variable.
             azure_client_id: Azure Service Principal client ID (application ID).
-                If None, will attempt to load from AZURE_SP_CLIENT_ID environment variable.
+                If None, will attempt to load from AZURE_CLIENT_ID environment variable.
             azure_client_secret: Azure Service Principal client secret. If None, will
                 attempt to load from AZURE_CLIENT_SECRET environment variable.
             dotenv_path: Path to .env file to load environment variables from.
@@ -561,7 +561,7 @@ class SPCredentialHandler(CredentialHandler):
         self.azure_client_id = (
             azure_client_id
             if azure_client_id is not None
-            else os.environ["AZURE_SP_CLIENT_ID"]
+            else os.environ["AZURE_CLIENT_ID"]
         )
         self.azure_client_secret = (
             azure_client_secret
@@ -615,7 +615,9 @@ class DefaultCredentialHandler(CredentialHandler):
         sub_c = SubscriptionClient(d_cred)
         sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
         if sub_id is None:
-            raise ValueError("AZURE_TENANT_ID not found in env variables.")
+            raise ValueError(
+                "AZURE_SUBSCRIPTION_ID not found in env variables."
+            )
         subscription = [
             sub
             for sub in sub_c.subscriptions.list()

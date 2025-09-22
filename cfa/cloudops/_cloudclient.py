@@ -93,17 +93,17 @@ class CloudClient:
         if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
             self.method = "env"
-            print("Using environment-based credentials.")
+            logger.info("Using environment-based credentials.")
         elif use_federated:
             self.cred = DefaultCredentialHandler(
                 dotenv_path=dotenv_path, **kwargs
             )
             self.method = "default"
-            print("Using default credentials.")
+            logger.info("Using default credentials.")
         else:
             self.cred = SPCredentialHandler(dotenv_path=dotenv_path, **kwargs)
             self.method = "sp"
-            print("Using service principal credentials.")
+            logger.info("Using service principal credentials.")
         # get clients
 
         self.batch_mgmt_client = get_batch_management_client(self.cred)

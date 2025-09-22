@@ -150,14 +150,14 @@ def get_batch_service_client(
             **kwargs,
         )
     elif ch.method == "default":
-        print("Using default credentials for BatchServiceClient")
+        logger.info("Using default credentials for BatchServiceClient")
         return BatchServiceClient(
             credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
     else:
-        print("Using user credentials for BatchServiceClient")
+        logger.info("Using user credentials for BatchServiceClient")
         return BatchServiceClient(
             credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
