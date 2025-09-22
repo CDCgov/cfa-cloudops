@@ -524,7 +524,7 @@ class SPCredentialHandler(CredentialHandler):
                 and not provided as parameter.
             ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables
                 and not provided as parameter.
-            ValueError: If AZURE_SP_CLIENT_ID is not found in environment variables
+            ValueError: If AZURE_CLIENT_ID is not found in environment variables
                 and not provided as parameter.
             ValueError: If AZURE_CLIENT_SECRET is not found in environment variables
                 and not provided as parameter.
