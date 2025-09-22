@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.0.4
+- Added ability to use federated credentials
+- Fixed SP authentication
+
 ## v0.0.3
 - Added CLI capabilities
 

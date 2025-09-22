@@ -9,14 +9,18 @@ from functools import cached_property, partial
 
 from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
+from azure.core.pipeline import PipelineContext, PipelineRequest
+from azure.core.pipeline.policies import BearerTokenCredentialPolicy
+from azure.core.pipeline.transport import HttpRequest
 from azure.identity import (
     ClientSecretCredential,
+    DefaultAzureCredential,
     ManagedIdentityCredential,
-    WorkloadIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.resource import SubscriptionClient
 from dotenv import load_dotenv
+from msrest.authentication import BasicTokenAuthentication
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops.config import get_config_val
@@ -47,12 +51,12 @@ class CredentialHandler:
     azure_keyvault_endpoint: str = None
     azure_keyvault_sp_secret_id: str = None
     azure_tenant_id: str = None
-    azure_sp_client_id: str = None
+    azure_client_id: str = None
     azure_batch_endpoint_subdomain: str = (
         d.default_azure_batch_endpoint_subdomain
     )
     azure_batch_account: str = None
-    azure_batch_location: str = "eastus"
+    azure_batch_location: str = d.default_azure_batch_location
     azure_batch_resource_url: str = d.default_azure_batch_resource_url
     azure_blob_storage_endpoint_subdomain: str = (
         d.default_azure_blob_storage_endpoint_subdomain
@@ -63,7 +67,6 @@ class CredentialHandler:
     azure_container_registry_domain: str = (
         d.default_azure_container_registry_domain
     )
-    azure_federated_token_file: str = None
     method: str = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
@@ -214,27 +217,21 @@ class CredentialHandler:
             ["azure_keyvault_endpoint", "azure_keyvault_sp_secret_id"],
             goal="service_principal_secret",
         )
-
+        if self.method == "default":
+            cred = self.default_credential
+        elif self.method == "sp":
+            return self.azure_client_secret
+        else:
+            cred = self.user_credential
         return get_sp_secret(
             self.azure_keyvault_endpoint,
             self.azure_keyvault_sp_secret_id,
-            self.user_credential,
+            cred,
         )
 
     @cached_property
-    def federated_credential(self) -> WorkloadIdentityCredential:
-        self.require_attr(
-            [
-                "azure_tenant_id",
-                "azure_sp_client_id",
-                "azure_federated_token_file",
-            ]
-        )
-        return WorkloadIdentityCredential(
-            tenant_id=self.azure_tenant_id,
-            client_id=self.azure_sp_client_id,
-            token_file_path=self.azure_federated_token_file,
-        )
+    def default_credential(self):
+        return DefaultCredential()
 
     @cached_property
     def batch_service_principal_credentials(self):
@@ -252,13 +249,13 @@ class CredentialHandler:
         self.require_attr(
             [
                 "azure_tenant_id",
-                "azure_sp_client_id",
+                "azure_client_id",
                 "azure_batch_resource_url",
             ],
             goal="batch_service_principal_credentials",
         )
         return ServicePrincipalCredentials(
-            client_id=self.azure_sp_client_id,
+            client_id=self.azure_client_id,
             tenant=self.azure_tenant_id,
             secret=self.service_principal_secret,
             resource=self.azure_batch_resource_url,
@@ -277,11 +274,11 @@ class CredentialHandler:
             >>> credential = handler.client_secret_sp_credential
             >>> # Use with Azure SDK clients
         """
-        self.require_attr(["azure_tenant_id", "azure_sp_client_id"])
+        self.require_attr(["azure_tenant_id", "azure_client_id"])
         return ClientSecretCredential(
             tenant_id=self.azure_tenant_id,
             client_secret=self.service_principal_secret,
-            client_id=self.azure_sp_client_id,
+            client_id=self.azure_client_id,
         )
 
     @cached_property
@@ -294,21 +291,21 @@ class CredentialHandler:
         Example:
             >>> handler = CredentialHandler()
             >>> handler.azure_tenant_id = "tenant-id"
-            >>> handler.azure_sp_client_id = "client-id"
+            >>> handler.azure_client_id = "client-id"
             >>> handler.azure_client_secret = "client-secret" #pragma: allowlist secret
             >>> credential = handler.client_secret_credential
         """
         self.require_attr(
             [
                 "azure_tenant_id",
-                "azure_sp_client_id",
+                "azure_client_id",
                 "azure_client_secret",
             ]
         )
         return ClientSecretCredential(
             tenant_id=self.azure_tenant_id,
             client_secret=self.azure_client_secret,
-            client_id=self.azure_sp_client_id,
+            client_id=self.azure_client_id,
         )
 
     @cached_property
@@ -376,6 +373,48 @@ class CredentialHandler:
         )
 
 
+class DefaultCredential(BasicTokenAuthentication):
+    def __init__(
+        self,
+        credential=None,
+        resource_id="https://batch.core.windows.net/.default",
+        **kwargs,
+    ):
+        super(DefaultCredential, self).__init__(None)
+        if credential is None:
+            credential = DefaultAzureCredential()
+        self.credential = credential
+        self._policy = BearerTokenCredentialPolicy(
+            credential, resource_id, **kwargs
+        )
+
+    def _make_request(self):
+        return PipelineRequest(
+            HttpRequest("CredentialWrapper", "https://batch.core.windows.net"),
+            PipelineContext(None),
+        )
+
+    def set_token(self):
+        """Ask the azure-core BearerTokenCredentialPolicy policy to get a token.
+        Using the policy gives us for free the caching system of azure-core.
+        We could make this code simpler by using private method, but by definition
+        I can't assure they will be there forever, so mocking a fake call to the policy
+        to extract the token, using 100% public API."""
+        request = self._make_request()
+        self._policy.on_request(request)
+        # Read Authorization, and get the second part after Bearer
+        token = request.http_request.headers["Authorization"].split(" ", 1)[1]
+        self.token = {"access_token": token}
+
+    def get_token(self, *scopes, **kwargs):
+        # Pass get_token call to credential
+        return self.credential.get_token(*scopes, **kwargs)
+
+    def signed_session(self, session=None):
+        self.set_token()
+        return super(DefaultCredential, self).signed_session(session)
+
+
 class EnvCredentialHandler(CredentialHandler):
     """Azure Credentials populated from available environment variables.
 
@@ -416,6 +455,13 @@ class EnvCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        # set method to "env"
+        self.__setattr__("method", "env")
+        # check for azure batch location
+        if self.__getattribute__("azure_batch_location") is None:
+            self.__setattr__(
+                "azure_batch_location", d.default_azure_batch_location
+            )
 
 
 def load_env_vars(dotenv_path=None):
@@ -449,7 +495,7 @@ class SPCredentialHandler(CredentialHandler):
         self,
         azure_tenant_id: str = None,
         azure_subscription_id: str = None,
-        azure_sp_client_id: str = None,
+        azure_client_id: str = None,
         azure_client_secret: str = None,
         dotenv_path: str = None,
         **kwargs,
@@ -466,8 +512,8 @@ class SPCredentialHandler(CredentialHandler):
                 to load from AZURE_TENANT_ID environment variable.
             azure_subscription_id: Azure subscription ID. If None, will attempt
                 to load from AZURE_SUBSCRIPTION_ID environment variable.
-            azure_sp_client_id: Azure Service Principal client ID (application ID).
-                If None, will attempt to load from AZURE_SP_CLIENT_ID environment variable.
+            azure_client_id: Azure Service Principal client ID (application ID).
+                If None, will attempt to load from AZURE_CLIENT_ID environment variable.
             azure_client_secret: Azure Service Principal client secret. If None, will
                 attempt to load from AZURE_CLIENT_SECRET environment variable.
             dotenv_path: Path to .env file to load environment variables from.
@@ -478,7 +524,7 @@ class SPCredentialHandler(CredentialHandler):
                 and not provided as parameter.
             ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables
                 and not provided as parameter.
-            ValueError: If AZURE_SP_CLIENT_ID is not found in environment variables
+            ValueError: If AZURE_CLIENT_ID is not found in environment variables
                 and not provided as parameter.
             ValueError: If AZURE_CLIENT_SECRET is not found in environment variables
                 and not provided as parameter.
@@ -488,7 +534,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> handler = SPCredentialHandler(
             ...     azure_tenant_id="12345678-1234-1234-1234-123456789012",
             ...     azure_subscription_id="87654321-4321-4321-4321-210987654321",
-            ...     azure_sp_client_id="abcdef12-3456-7890-abcd-ef1234567890",
+            ...     azure_client_id="abcdef12-3456-7890-abcd-ef1234567890",
             ...     azure_client_secret="your-secret-here" #pragma: allowlist secret
             ... )
 
@@ -498,7 +544,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-        self.method = "sp"
+
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -512,10 +558,10 @@ class SPCredentialHandler(CredentialHandler):
             if azure_subscription_id is not None
             else os.environ["AZURE_SUBSCRIPTION_ID"]
         )
-        self.azure_sp_client_id = (
-            azure_sp_client_id
-            if azure_sp_client_id is not None
-            else os.environ["AZURE_SP_CLIENT_ID"]
+        self.azure_client_id = (
+            azure_client_id
+            if azure_client_id is not None
+            else os.environ["AZURE_CLIENT_ID"]
         )
         self.azure_client_secret = (
             azure_client_secret
@@ -535,9 +581,9 @@ class SPCredentialHandler(CredentialHandler):
             raise ValueError(
                 "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
             )
-        if "AZURE_SP_CLIENT_ID" not in os.environ and not azure_sp_client_id:
+        if "AZURE_CLIENT_ID" not in os.environ and not azure_client_id:
             raise ValueError(
-                "AZURE_SP_CLIENT_ID not found in env variables and not provided."
+                "AZURE_CLIENT_ID not found in env variables and not provided."
             )
         if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
             raise ValueError(
@@ -549,41 +595,56 @@ class SPCredentialHandler(CredentialHandler):
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        # set method to "sp"
+        self.__setattr__("method", "sp")
+        # check for azure batch location
+        if self.__getattribute__("azure_batch_location") is None:
+            self.__setattr__(
+                "azure_batch_location", d.default_azure_batch_location
+            )
 
 
-class FederatedCredentialHandler(CredentialHandler):
+class DefaultCredentialHandler(CredentialHandler):
     def __init__(
         self,
-        azure_tenant_id: str | None = None,
-        azure_sp_client_id: str | None = None,
-        azure_federated_token_file: str | None = None,
         dotenv_path: str | None = None,
         **kwargs,
     ) -> None:
-        self.method = "fc"
-        load_env_vars(dotenv_path=dotenv_path)
+        load_dotenv(dotenv_path=dotenv_path)
+        d_cred = DefaultCredential()
+        sub_c = SubscriptionClient(d_cred)
+        sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
+        if sub_id is None:
+            raise ValueError(
+                "AZURE_SUBSCRIPTION_ID not found in env variables."
+            )
+        subscription = [
+            sub
+            for sub in sub_c.subscriptions.list()
+            if sub.subscription_id == sub_id
+        ]
+        # pull info if sub exists
+        if subscription:
+            subscription = subscription[0]
+            os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
+        else:
+            raise ValueError(
+                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+            )
 
-        if "AZURE_TENANT_ID" not in os.environ and not azure_tenant_id:
-            raise ValueError(
-                "AZURE_TENANT_ID not found in env variables and not provided."
-            )
-        if "AZURE_SP_CLIENT_ID" not in os.environ and not azure_sp_client_id:
-            raise ValueError(
-                "AZURE_SP_CLIENT_ID not found in env variables and not provided."
-            )
-        if (
-            "AZURE_FEDERATED_TOKEN_FILE" not in os.environ
-            and not azure_federated_token_file
-        ):
-            raise ValueError(
-                "AZURE_FEDERATED_TOKEN_FILE not found in env variables and not provided."
-            )
         d.set_env_vars()
 
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
         for key in self.__dataclass_fields__.keys():
             self.__setattr__(key, get_conf(key))
+        # set method to "default"
+        self.__setattr__("method", "default")
+        # check for azure batch location
+        if self.__getattribute__("azure_batch_location") is None:
+            self.__setattr__(
+                "azure_batch_location", d.default_azure_batch_location
+            )
 
 
 def get_sp_secret(

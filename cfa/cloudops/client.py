@@ -50,9 +50,9 @@ def get_batch_management_client(
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return BatchManagementClient(
-            credential=ch.federated_credential,
+            credential=ch.client_secret_sp_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -99,9 +99,9 @@ def get_compute_management_client(
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return ComputeManagementClient(
-            credential=ch.federated_credential,
+            credential=ch.client_secret_sp_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -143,18 +143,23 @@ def get_batch_service_client(
     if ch is None:
         ch = EnvCredentialHandler()
     if ch.method == "sp":
+        logger.info(
+            "Using service principal credentials for BatchServiceClient"
+        )
         return BatchServiceClient(
-            credentials=ch.client_secret_credential,
+            credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
+        logger.info("Using default credentials for BatchServiceClient")
         return BatchServiceClient(
-            credential=ch.federated_credential,
-            subscription_id=ch.azure_batch_endpoint,
+            credentials=ch.batch_service_principal_credentials,
+            batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
     else:
+        logger.info("Using user credentials for BatchServiceClient")
         return BatchServiceClient(
             credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
@@ -197,9 +202,9 @@ def get_blob_service_client(
             credential=ch.client_secret_credential,
             **kwargs,
         )
-    elif ch.method == "fc":
+    elif ch.method == "default":
         return BlobServiceClient(
-            credential=ch.federated_credential,
+            credential=ch.client_secret_sp_credential,
             account_url=ch.azure_blob_storage_endpoint,
             **kwargs,
         )

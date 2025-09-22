@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.0.3"
+version = "0.0.4"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -10,16 +10,16 @@ requires-python = ">=3.10,<3.13"
 dependencies = [
     "tomli (>=2.2.1,<3.0.0)",
     "tqdm (>=4.67.1,<5.0.0)",
-    "pandas (>=2.2.3)",
-    "polars (>=1.26.0)",
-    "azure-core (>=1.35.0)",
+    "pandas (>=2.3.2)",
+    "polars (>=1.33.1)",
+    "azure-core (>=1.35.1)",
     "azure-mgmt-batch (>=18.0.0)",
     "azure-storage-blob (>=12.26.0)",
-    "azure-identity (>=1.23.0)",
+    "azure-identity (>=1.25.0)",
     "msrest (>=0.7.1)",
     "msrestazure (>=0.6.4.post1)",
     "azure-keyvault (>=4.2.0)",
-    "azure-mgmt-compute (>=35.0.0)",
+    "azure-mgmt-compute (>=36.0.0)",
     "azure-batch (>=14.2.0)",
     "azure-mgmt-resource (>=24.0.0)",
     "azure-mgmt-appcontainers (>=3.2.0)",
@@ -29,7 +29,7 @@ dependencies = [
     "docker (>=7.1.0)",
     "pyyaml (>=6.0.2)",
     "griddler @ git+https://github.com/CDCgov/pygriddler.git",
-    "humanize (>=4.12.3)",
+    "humanize (>=4.13.0)",
     "toml (>=0.10.2)"
 ]
 
