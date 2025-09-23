@@ -2,11 +2,15 @@
 Functions for interacting with Azure Blob Storage.
 """
 
+import fnmatch
 import logging
 import os
+from pathlib import Path
 
+import anyio
 from azure.batch import models
-from azure.storage.blob import BlobServiceClient
+from azure.identity import ManagedIdentityCredential
+from azure.storage.blob import BlobServiceClient, ContainerClient
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -323,3 +327,429 @@ def get_node_mount_config(
             identity_references,
         )
     ]
+
+
+def _blob_matches_pattern(blob_name: str, include_pattern: str) -> bool:
+    """
+    Check if a blob name matches the given glob pattern.
+
+    This function handles the specific logic for matching blob names against glob patterns,
+    including the special case for patterns starting with "**/" which should also match
+    the pattern without the "**/".
+
+    Args:
+        blob_name: The name/path of the blob to check
+        include_pattern: The glob pattern to match against
+
+    Returns:
+        True if the blob matches the pattern, False otherwise
+
+    Examples:
+        >>> _blob_matches_pattern("file.txt", "*.txt")
+        True
+        >>> _blob_matches_pattern("dir/file.txt", "**/*.txt")
+        True
+        >>> _blob_matches_pattern("file.txt", "**/*.txt")
+        True
+        >>> _blob_matches_pattern("file.bin", "*.txt")
+        False
+    """
+    # Handle edge cases
+    if not include_pattern:
+        return False
+    if not blob_name:
+        return False
+
+    try:
+        # Standard pattern matching using fnmatch for more complete glob support
+        if fnmatch.fnmatch(blob_name, include_pattern):
+            return True
+
+        # Special case: if pattern starts with "**/" also try matching without it
+        # This handles cases where "**/*.txt" should match both "file.txt" and "dir/file.txt"
+        if include_pattern.startswith("**/"):
+            pattern_without_prefix = include_pattern[3:]
+            if pattern_without_prefix and fnmatch.fnmatch(
+                blob_name, pattern_without_prefix
+            ):
+                return True
+
+        return False
+
+    except (ValueError, TypeError):
+        # Fallback to False if pattern matching fails
+        return False
+
+
+async def _async_download_blob_to_file(
+    container_client: ContainerClient,
+    blob_name: str,
+    local_file_path: anyio.Path,
+    semaphore: anyio.Semaphore,
+):
+    """
+    Download a single blob to a local file asynchronously with streaming.
+
+    Streams blob content in chunks to avoid high memory usage and uses anyio for
+    non-blocking file I/O. Concurrency is controlled by the provided semaphore.
+
+    Parameters
+    ----------
+    container_client : ContainerClient
+        Azure container client providing authentication and transport.
+    blob_name : str
+        Name (path) of the blob within the container.
+    local_file_path : anyio.Path
+        Local filesystem path where the blob will be written. Parent directories
+        are created automatically.
+    semaphore : anyio.Semaphore
+        Semaphore to limit total concurrent downloads.
+
+    Notes
+    -----
+    - Uses streaming to keep memory bounded to roughly one chunk per download
+    - Network/service errors bubble up as SDK exceptions for caller handling
+    - Designed for use with anyio TaskGroup for higher-level concurrency control
+    """
+    # The semaphore helps us limit the total number of concurrent downloads to avoid
+    # overwhelming the system with too many simultaneous I/O operations.
+    # The total number is limited by the number passed in when the semaphore is created.
+    async with semaphore:
+        try:
+            blob_client = container_client.get_blob_client(blob_name)
+            await local_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            download_stream = await blob_client.download_blob()
+            async with await local_file_path.open("wb") as f:
+                # Streams in manageable pieces to avoid overwhelming RAM
+                async for chunk in download_stream.chunks():
+                    await f.write(chunk)
+        except Exception as e:
+            # Clean up partial file on failure
+            if await local_file_path.exists():
+                await local_file_path.unlink()
+            logger.error(
+                f"Failed to download blob {blob_name} to {local_file_path}: {e}"
+            )
+
+
+async def _async_upload_file_to_blob(
+    container_client: ContainerClient,
+    local_file_path: anyio.Path,
+    blob_name: str,
+    semaphore: anyio.Semaphore,
+):
+    """
+    Upload a single file to a blob asynchronously, respecting a concurrency limit.
+
+    Parameters
+    ----------
+    container_client : ContainerClient
+        Azure container client for the destination container.
+    local_file_path : anyio.Path
+        Local file path to upload.
+    blob_name : str
+        Name of the blob in the container.
+    semaphore : anyio.Semaphore
+        Semaphore to limit concurrent uploads.
+
+    Notes
+    -----
+    - Uses a semaphore to control concurrency.
+    - Logs errors if upload fails.
+    """
+    async with semaphore:
+        try:
+            blob_client = container_client.get_blob_client(blob_name)
+            async with await local_file_path.open("rb") as f:
+                await blob_client.upload_blob(f, overwrite=True)
+        except Exception as e:
+            logger.error(
+                f"Failed to upload file {local_file_path} to blob {blob_name}: {e}"
+            )
+
+
+async def _async_download_blob_folder(
+    container_client: ContainerClient,
+    local_folder: anyio.Path,
+    max_concurrent_downloads: int,
+    name_starts_with: str | None = None,
+    include_pattern: str | None = None,
+):
+    """
+    Download all matching blobs from a container to a local folder asynchronously.
+
+    Lists blobs in the container and schedules concurrent downloads while preserving
+    the blob folder structure in the local directory.
+
+    Parameters
+    ----------
+    container_client : azure.storage.blob.aio.ContainerClient
+        Azure container client for the source container.
+    local_folder : anyio.Path
+        Local directory path where blobs will be downloaded.
+    max_concurrent_downloads : int
+        Maximum number of simultaneous downloads allowed.
+    name_starts_with : str, optional
+        Filter blobs to only those with names starting with this prefix.
+    include_pattern : str, optional
+        Glob pattern to filter blob names (e.g., "*.txt", "**/*.json").
+
+    Notes
+    -----
+    - Uses anyio TaskGroup to manage concurrent downloads
+    - Blob folder structure is preserved in the local directory
+    - Blobs not matching the pattern are skipped with logged messages
+    """
+    semaphore = anyio.Semaphore(max_concurrent_downloads)
+
+    # A TaskGroup ensures that all spawned tasks are awaited before the block is exited.
+    async with anyio.create_task_group() as tg:
+        logger.info(
+            f"Searching for blobs in container '{container_client.url}'..."
+        )
+
+        # list_blob_names returns an async iterator.
+        async for blob in container_client.list_blob_names(
+            name_starts_with=name_starts_with
+        ):
+            # If a glob pattern is provided, skip blobs that don't match.
+            if include_pattern is not None:
+                if not _blob_matches_pattern(blob, include_pattern):
+                    continue
+            # Preserve the blob's folder structure within the local directory
+            local_file_path = local_folder / blob
+
+            # Schedule the download function to run in the background.
+            # The TaskGroup manages the concurrent execution.
+            tg.start_soon(
+                _async_download_blob_to_file,
+                container_client,
+                blob,
+                local_file_path,
+                semaphore,
+            )
+    logger.info("All download tasks have been scheduled.")
+
+
+async def _async_upload_blob_folder(
+    container_client: ContainerClient,
+    local_folder: anyio.Path,
+    max_concurrent_uploads: int,
+    name_starts_with: str | None = None,
+    include_pattern: str | None = None,
+):
+    """
+    Upload all matching files from a local folder to a blob container asynchronously.
+
+    Recursively walks the local folder and schedules concurrent uploads while preserving
+    the folder structure in the blob container.
+
+    Parameters
+    ----------
+    container_client : ContainerClient
+        Azure container client for the destination container.
+    local_folder : anyio.Path
+        Local directory path whose files will be uploaded.
+    max_concurrent_uploads : int
+        Maximum number of simultaneous uploads allowed.
+    name_starts_with : str, optional
+        Only upload files whose relative path starts with this prefix.
+    include_pattern : str, optional
+        Glob pattern to filter file names (e.g., "*.txt", "**/*.json").
+
+    Notes
+    -----
+    - Uses anyio TaskGroup to manage concurrent uploads
+    - Folder structure is preserved in the blob container
+    - Files not matching the pattern are skipped with logged messages
+    """
+    semaphore = anyio.Semaphore(max_concurrent_uploads)
+
+    async def walk_files(base: anyio.Path):
+        # Recursively yield all files under base as (relative_path, absolute_path)
+        async for entry in base.iterdir():
+            if await entry.is_dir():
+                async for sub in walk_files(entry):
+                    yield sub
+            elif await entry.is_file():
+                rel_path = entry.relative_to(local_folder)
+                yield str(rel_path), entry
+
+    async with anyio.create_task_group() as tg:
+        logger.info(f"Searching for files in local folder '{local_folder}'...")
+
+        async for rel_path, abs_path in walk_files(local_folder):
+            # Optionally filter by prefix
+            if name_starts_with and not str(rel_path).startswith(
+                name_starts_with
+            ):
+                continue
+            # Optionally filter by glob pattern
+            if include_pattern is not None:
+                if not _blob_matches_pattern(str(rel_path), include_pattern):
+                    continue
+            # Schedule the upload function to run in the background.
+            tg.start_soon(
+                _async_upload_file_to_blob,
+                container_client,
+                abs_path,
+                str(rel_path),
+                semaphore,
+            )
+    logger.info("All upload tasks have been scheduled.")
+
+
+def async_download_blob_folder(
+    container_name: str,
+    local_folder: Path,
+    storage_account_url: str,
+    name_starts_with: str | None = None,
+    include_extensions: str | list | None = None,
+    exclued_extensions: str | list | None = None,
+    max_concurrent_downloads: int = 20,
+    credential: any = None,
+) -> None:
+    """
+    Download blobs from an Azure container to a local folder asynchronously.
+
+    This is the main entry point for downloading blobs. It sets up Azure credentials,
+    creates the necessary clients, and runs the async download process.
+
+    Parameters
+    ----------
+    container_name : str
+        Name of the Azure Storage container to download from.
+    local_folder : Path
+        Local directory path where blobs will be downloaded.
+    storage_account_url : str
+        URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
+    name_starts_with : str, optional
+        Filter blobs to only those with names starting with this prefix.
+    include_pattern : str, optional
+        Glob pattern to filter blob names (e.g., "*.txt", "**/*.json").
+    max_concurrent_downloads : int, default 20
+        Maximum number of simultaneous downloads allowed.
+    credential : any, optional
+        Azure credential object. If None, ManagedIdentityCredential is used.
+
+    Raises
+    ------
+    KeyboardInterrupt
+        If the user cancels the download operation.
+    Exception
+        For any Azure SDK or network-related errors during download.
+
+    Notes
+    -----
+    - Uses ManagedIdentityCredential for authentication
+    - Preserves blob folder structure in the local directory
+    - Handles cleanup of Azure credentials automatically
+    """
+
+    async def _runner(credential) -> None:
+        if credential is None:
+            credential = ManagedIdentityCredential()
+        try:
+            async with BlobServiceClient(
+                account_url=storage_account_url,
+                credential=credential,
+            ) as blob_service_client:
+                container_client = blob_service_client.get_container_client(
+                    container_name
+                )
+                await _async_download_blob_folder(
+                    container_client=container_client,
+                    local_folder=anyio.Path(local_folder),
+                    name_starts_with=name_starts_with,
+                    # include_pattern=include_pattern,
+                    max_concurrent_downloads=max_concurrent_downloads,
+                )
+        finally:
+            # Close the credential to free underlying resources
+            await credential.close()
+
+    try:
+        anyio.run(_runner(credential))
+
+    except KeyboardInterrupt:
+        logger.error("Download cancelled by user.")
+    except Exception as e:
+        logger.error(f"Failed to download blob folder: {e}")
+
+
+def async_upload_folder(
+    container_name: str,
+    local_folder: Path,
+    storage_account_url: str,
+    name_starts_with: str | None = None,
+    include_pattern: str | None = None,
+    max_concurrent_uploads: int = 20,
+    credential: any = None,
+) -> None:
+    """
+    Upload all files from a local folder to an Azure blob container asynchronously.
+
+    This is the main entry point for uploading files. It sets up Azure credentials,
+    creates the necessary clients, and runs the async upload process.
+
+    Parameters
+    ----------
+    container_name : str
+        Name of the Azure Storage container to upload to.
+    local_folder : Path
+        Local directory path whose files will be uploaded.
+    storage_account_url : str
+        URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
+    name_starts_with : str, optional
+        Only upload files whose relative path starts with this prefix.
+    include_pattern : str, optional
+        Glob pattern to filter file names (e.g., "*.txt", "**/*.json").
+    max_concurrent_uploads : int, default 20
+        Maximum number of simultaneous uploads allowed.
+    credential : any, optional
+        Azure credential object. If None, ManagedIdentityCredential is used.
+
+    Raises
+    ------
+    KeyboardInterrupt
+        If the user cancels the upload operation.
+    Exception
+        For any Azure SDK or network-related errors during upload.
+
+    Notes
+    -----
+    - Uses ManagedIdentityCredential for authentication
+    - Preserves folder structure in the blob container
+    - Handles cleanup of Azure credentials automatically
+    """
+
+    async def _runner(credential) -> None:
+        if credential is None:
+            credential = ManagedIdentityCredential()
+        try:
+            async with BlobServiceClient(
+                account_url=storage_account_url,
+                credential=credential,
+            ) as blob_service_client:
+                container_client = blob_service_client.get_container_client(
+                    container_name
+                )
+                await _async_upload_blob_folder(
+                    container_client=container_client,
+                    local_folder=anyio.Path(local_folder),
+                    name_starts_with=name_starts_with,
+                    include_pattern=include_pattern,
+                    max_concurrent_uploads=max_concurrent_uploads,
+                )
+        finally:
+            # Close the credential to free underlying resources
+            await credential.close()
+
+    try:
+        anyio.run(_runner(credential))
+
+    except KeyboardInterrupt:
+        logger.error("Upload cancelled by user.")
+    except Exception as e:
+        logger.error(f"Failed to upload blob folder: {e}")
