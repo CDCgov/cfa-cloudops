@@ -124,11 +124,13 @@ class CloudClient:
             cred = self.cred.client_secret_sp_credential
         else:
             cred = self.cred.client_secret_credential
-        subscription_client = SubscriptionClient(cred)
-        # List subscriptions
-        sub_list = [sub for sub in subscription_client.subscriptions.list()]
 
         try:
+            subscription_client = SubscriptionClient(cred)
+            # List subscriptions
+            sub_list = [
+                sub for sub in subscription_client.subscriptions.list()
+            ]
             for subscription in sub_list:
                 print("Found subscription via credential.")
                 print(f"Subscription ID: {subscription.subscription_id}")
