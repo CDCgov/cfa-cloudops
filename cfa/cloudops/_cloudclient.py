@@ -14,6 +14,7 @@ from azure.batch.models import (
 
 # from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
+from azure.mgmt.resource import SubscriptionClient
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
@@ -115,6 +116,27 @@ class CloudClient:
         self.logs_folder = "stdout_stderr"
         self.task_id_ints = False
         self.task_id_max = 0
+
+    def check_credentials(self):
+        if self.method == "env":
+            cred = self.cred.user_credential
+        elif self.method == "default":
+            cred = self.cred.client_secret_sp_credential
+        else:
+            cred = self.cred.client_secret_credential
+        subscription_client = SubscriptionClient(cred)
+        # List subscriptions
+        sub_list = [sub for sub in subscription_client.subscriptions.list()]
+
+        try:
+            for subscription in sub_list:
+                print("Found subscription via credential.")
+                print(f"Subscription ID: {subscription.subscription_id}")
+                print(f"Subscription Name: {subscription.display_name}")
+                print(f"State: {subscription.state}")
+                print("-" * 30)
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def create_pool(
         self,
