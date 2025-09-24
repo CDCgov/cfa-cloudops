@@ -37,6 +37,7 @@ Python Package for Cloud Operations
 ## Why use cfa-cloudops
 - easy authentication
 - intuitive functions and workflows
+  - data scientists can focus on their strengths while taking advantage of the cloud
 - upgraded libraries
 - more features beyond Azure integration coming soon
 ---
@@ -143,14 +144,15 @@ client.create_pool(
 - ContainerAppClient
 - automation (run tasks from toml)
 - local (debugging or initial development locally emulating Cloud environment)
+- CLI commands: easy cloud interaction for any programming language
 ---
 ## Live Demo
 ---
 ## Roadmap
 
-- CLI commands: easy cloud interactions for any programming language
 - Metaflow
 - DAGster: workflow orchestrator
+- Model management
 ---
 ## Documentation
 
