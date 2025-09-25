@@ -11,11 +11,52 @@ from azure.batch import models
 from azure.identity import ManagedIdentityCredential
 from azure.storage.blob import BlobServiceClient, ContainerClient
 
-from .blob_helpers import format_extensions
 from .client import get_blob_service_client
 from .util import ensure_listlike
 
 logger = logging.getLogger(__name__)
+
+
+def format_extensions(extension):
+    """Format file extensions to include leading periods.
+
+    Ensures that file extensions have the correct format with leading periods.
+    Accepts both single extensions and lists of extensions, with or without
+    leading periods.
+
+    Args:
+        extension (str | list): File extension(s) to format. Can be a single
+            extension string or a list of extension strings. Leading periods
+            are optional (e.g., "txt" or ".txt" both work).
+
+    Returns:
+        list: List of properly formatted extensions with leading periods.
+
+    Example:
+        Format single extension:
+
+            formatted = format_extensions("txt")
+            # Returns: [".txt"]
+
+        Format multiple extensions:
+
+            formatted = format_extensions(["py", ".js", "csv"])
+            # Returns: [".py", ".js", ".csv"]
+
+        Handle mixed formats:
+
+            formatted = format_extensions([".pdf", "docx"])
+            # Returns: [".pdf", ".docx"]
+    """
+    if isinstance(extension, str):
+        extension = [extension]
+    ext = []
+    for _ext in extension:
+        if _ext.startswith("."):
+            ext.append(_ext)
+        else:
+            ext.append("." + _ext)
+    return ext
 
 
 def create_storage_container_if_not_exists(
