@@ -1222,6 +1222,70 @@ class CloudClient:
         )
         logger.debug("finished call to download")
 
+    def async_upload_folder(
+        self,
+        folders: str | list[str],
+        container_name: str,
+        include_extensions: str | list | None = None,
+        exclude_extensions: str | list | None = None,
+        location_in_blob: str = ".",
+    ):
+        """Upload entire folders to an Azure Blob Storage container asynchronously.
+
+        Recursively uploads all files from specified folders to a blob storage container
+        using asynchronous operations for improved performance. Supports filtering by
+        file extensions and patterns to control which files are uploaded.
+
+        Args:
+            folders (str | list[str]): List of local folder paths to upload. Each folder
+            container_name (str): Name of the blob storage container to upload to. The
+                container must already exist.
+            include_extensions (str | list, optional): File extensions to include in the
+                upload. Can be a single extension string (e.g., ".py") or list of extensions
+                (e.g., [".py", ".txt"]). If None, all extensions are included.
+            exclude_extensions (str | list, optional): File extensions to exclude from
+                the upload. Can be a single extension string or list.
+            location_in_blob (str, optional): Remote directory path within the blob container
+                where folders should be uploaded. Default is "." (container root).
+
+        Returns:
+            list[str]: List of file paths that were successfully uploaded to the container.
+
+        Example:
+            Upload Python source folders asynchronously:
+                client = CloudClient()
+                uploaded_files = client.async_upload_folder(
+                    folders=["src", "tests"],
+                    container_name="code-repo",
+                    include_extensions=[".py", ".yaml"],
+                    location_in_blob="project")
+
+        Note:
+            The blob container must exist before uploading. Directory structure is
+            preserved in the container. Use filtering options to avoid uploading
+            unnecessary files like temporary files or build artifacts.
+        """
+        logger.debug("Attempting to upload folder(s).")
+        if self.method == "default":
+            cred = self.cred.client_secret_sp_credential
+        elif self.method == "sp":
+            cred = self.cred.client_secret_credential
+        else:
+            cred = self.cred.user_credential
+        if isinstance(folders, str):
+            folders = [folders]
+        for folder in folders:
+            logger.debug(f"Trying to upload folder {folder}.")
+            blob.async_upload_folder(
+                folder=folder,
+                container_name=container_name,
+                storage_account_url=self.cred.azure_blob_storage_endpoint,
+                include_extensions=include_extensions,
+                exclude_extensions=exclude_extensions,
+                location_in_blob=location_in_blob,
+                credential=cred,
+            )
+
     def delete_pool(self, pool_name: str) -> None:
         """Delete an Azure Batch pool and all its compute nodes.
 

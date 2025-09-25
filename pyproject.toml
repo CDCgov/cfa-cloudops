@@ -30,7 +30,9 @@ dependencies = [
     "pyyaml (>=6.0.2)",
     "griddler @ git+https://github.com/CDCgov/pygriddler.git",
     "humanize (>=4.13.0)",
-    "toml (>=0.10.2)"
+    "toml (>=0.10.2)",
+    "anyio (>=4.10.0)",
+    "aiohttp (>=3.12.15)"
 ]
 
 [tool.poetry]

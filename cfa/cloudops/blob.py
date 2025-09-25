@@ -2,7 +2,6 @@
 Functions for interacting with Azure Blob Storage.
 """
 
-import fnmatch
 import logging
 import os
 from pathlib import Path
@@ -12,6 +11,7 @@ from azure.batch import models
 from azure.identity import ManagedIdentityCredential
 from azure.storage.blob import BlobServiceClient, ContainerClient
 
+from .blob_helpers import format_extensions
 from .client import get_blob_service_client
 from .util import ensure_listlike
 
@@ -329,58 +329,6 @@ def get_node_mount_config(
     ]
 
 
-def _blob_matches_pattern(blob_name: str, include_pattern: str) -> bool:
-    """
-    Check if a blob name matches the given glob pattern.
-
-    This function handles the specific logic for matching blob names against glob patterns,
-    including the special case for patterns starting with "**/" which should also match
-    the pattern without the "**/".
-
-    Args:
-        blob_name: The name/path of the blob to check
-        include_pattern: The glob pattern to match against
-
-    Returns:
-        True if the blob matches the pattern, False otherwise
-
-    Examples:
-        >>> _blob_matches_pattern("file.txt", "*.txt")
-        True
-        >>> _blob_matches_pattern("dir/file.txt", "**/*.txt")
-        True
-        >>> _blob_matches_pattern("file.txt", "**/*.txt")
-        True
-        >>> _blob_matches_pattern("file.bin", "*.txt")
-        False
-    """
-    # Handle edge cases
-    if not include_pattern:
-        return False
-    if not blob_name:
-        return False
-
-    try:
-        # Standard pattern matching using fnmatch for more complete glob support
-        if fnmatch.fnmatch(blob_name, include_pattern):
-            return True
-
-        # Special case: if pattern starts with "**/" also try matching without it
-        # This handles cases where "**/*.txt" should match both "file.txt" and "dir/file.txt"
-        if include_pattern.startswith("**/"):
-            pattern_without_prefix = include_pattern[3:]
-            if pattern_without_prefix and fnmatch.fnmatch(
-                blob_name, pattern_without_prefix
-            ):
-                return True
-
-        return False
-
-    except (ValueError, TypeError):
-        # Fallback to False if pattern matching fails
-        return False
-
-
 async def _async_download_blob_to_file(
     container_client: ContainerClient,
     blob_name: str,
@@ -388,28 +336,20 @@ async def _async_download_blob_to_file(
     semaphore: anyio.Semaphore,
 ):
     """
-    Download a single blob to a local file asynchronously with streaming.
+    Downloads a single blob to a local file asynchronously with streaming.
 
-    Streams blob content in chunks to avoid high memory usage and uses anyio for
-    non-blocking file I/O. Concurrency is controlled by the provided semaphore.
+    Args:
+        container_client (ContainerClient): Azure container client providing authentication and transport.
+        blob_name (str): Name (path) of the blob within the container.
+        local_file_path (anyio.Path): Local filesystem path where the blob will be written. Parent directories are created automatically.
+        semaphore (anyio.Semaphore): Semaphore to limit total concurrent downloads.
 
-    Parameters
-    ----------
-    container_client : ContainerClient
-        Azure container client providing authentication and transport.
-    blob_name : str
-        Name (path) of the blob within the container.
-    local_file_path : anyio.Path
-        Local filesystem path where the blob will be written. Parent directories
-        are created automatically.
-    semaphore : anyio.Semaphore
-        Semaphore to limit total concurrent downloads.
+    Raises:
+        Exception: Network/service errors bubble up as SDK exceptions for caller handling.
 
-    Notes
-    -----
-    - Uses streaming to keep memory bounded to roughly one chunk per download
-    - Network/service errors bubble up as SDK exceptions for caller handling
-    - Designed for use with anyio TaskGroup for higher-level concurrency control
+    Notes:
+        - Uses streaming to keep memory bounded to roughly one chunk per download.
+        - Designed for use with anyio TaskGroup for higher-level concurrency control.
     """
     # The semaphore helps us limit the total number of concurrent downloads to avoid
     # overwhelming the system with too many simultaneous I/O operations.
@@ -440,23 +380,19 @@ async def _async_upload_file_to_blob(
     semaphore: anyio.Semaphore,
 ):
     """
-    Upload a single file to a blob asynchronously, respecting a concurrency limit.
+    Uploads a single file to a blob asynchronously, respecting a concurrency limit.
 
-    Parameters
-    ----------
-    container_client : ContainerClient
-        Azure container client for the destination container.
-    local_file_path : anyio.Path
-        Local file path to upload.
-    blob_name : str
-        Name of the blob in the container.
-    semaphore : anyio.Semaphore
-        Semaphore to limit concurrent uploads.
+    Args:
+        container_client (ContainerClient): Azure container client for the destination container.
+        local_file_path (anyio.Path): Local file path to upload.
+        blob_name (str): Name of the blob in the container.
+        semaphore (anyio.Semaphore): Semaphore to limit concurrent uploads.
 
-    Notes
-    -----
-    - Uses a semaphore to control concurrency.
-    - Logs errors if upload fails.
+    Raises:
+        Exception: Logs errors if upload fails.
+
+    Notes:
+        - Uses a semaphore to control concurrency.
     """
     async with semaphore:
         try:
@@ -474,54 +410,76 @@ async def _async_download_blob_folder(
     local_folder: anyio.Path,
     max_concurrent_downloads: int,
     name_starts_with: str | None = None,
-    include_pattern: str | None = None,
+    include_extensions: str | list | None = None,
+    exclude_extensions: str | list | None = None,
+    check_size: bool = True,
 ):
     """
-    Download all matching blobs from a container to a local folder asynchronously.
+    Downloads all matching blobs from a container to a local folder asynchronously.
 
-    Lists blobs in the container and schedules concurrent downloads while preserving
-    the blob folder structure in the local directory.
+    Args:
+        container_client (ContainerClient): Azure container client for the source container.
+        local_folder (anyio.Path): Local directory path where blobs will be downloaded.
+        max_concurrent_downloads (int): Maximum number of simultaneous downloads allowed.
+        name_starts_with (str, optional): Filter blobs to only those with names starting with this prefix.
+        include_extensions (str | list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
+        exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
 
-    Parameters
-    ----------
-    container_client : azure.storage.blob.aio.ContainerClient
-        Azure container client for the source container.
-    local_folder : anyio.Path
-        Local directory path where blobs will be downloaded.
-    max_concurrent_downloads : int
-        Maximum number of simultaneous downloads allowed.
-    name_starts_with : str, optional
-        Filter blobs to only those with names starting with this prefix.
-    include_pattern : str, optional
-        Glob pattern to filter blob names (e.g., "*.txt", "**/*.json").
+    Raises:
+        Exception: If both include_extensions and exclude_extensions are provided.
 
-    Notes
-    -----
-    - Uses anyio TaskGroup to manage concurrent downloads
-    - Blob folder structure is preserved in the local directory
-    - Blobs not matching the pattern are skipped with logged messages
+    Notes:
+        - include_extensions takes precedence over exclude_extensions if both are provided.
+        - Uses anyio TaskGroup to manage concurrent downloads.
+        - Blob folder structure is preserved in the local directory.
+        - Blobs not matching the pattern are skipped with logged messages.
     """
     semaphore = anyio.Semaphore(max_concurrent_downloads)
+    if include_extensions is not None:
+        include_extensions = format_extensions(include_extensions)
+    else:
+        exclude_extensions = format_extensions(exclude_extensions)
+    if include_extensions is not None and exclude_extensions is not None:
+        logger.error(
+            "Use included_extensions or exclude_extensions, not both."
+        )
+        raise Exception(
+            "Use included_extensions or exclude_extensions, not both."
+        ) from None
+
+    # Gather all matching blobs and calculate total size
+    matching_blobs = []
+    total_size = 0
+    gb = 1e9
+    async for blob_obj in container_client.list_blobs(
+        name_starts_with=name_starts_with
+    ):
+        blob_name = blob_obj.name
+        ext = Path(blob_name).suffix
+        if include_extensions is not None:
+            if ext not in include_extensions:
+                continue
+        if exclude_extensions is not None:
+            if ext in exclude_extensions:
+                continue
+        matching_blobs.append(blob_name)
+        total_size += getattr(blob_obj, "size", 0)
+
+    print(f"Total size of files to download: {total_size / gb:.2f} GB")
+    if total_size > 2 * gb and check_size:
+        print("Warning: Total size of files to download is greater than 2 GB.")
+        cont = input("Continue? [Y/n]: ")
+        if cont.lower() != "y":
+            print("Download aborted.")
+            return
 
     # A TaskGroup ensures that all spawned tasks are awaited before the block is exited.
     async with anyio.create_task_group() as tg:
         logger.info(
-            f"Searching for blobs in container '{container_client.url}'..."
+            f"Scheduling downloads for {len(matching_blobs)} blobs in container '{container_client.url}'..."
         )
-
-        # list_blob_names returns an async iterator.
-        async for blob in container_client.list_blob_names(
-            name_starts_with=name_starts_with
-        ):
-            # If a glob pattern is provided, skip blobs that don't match.
-            if include_pattern is not None:
-                if not _blob_matches_pattern(blob, include_pattern):
-                    continue
-            # Preserve the blob's folder structure within the local directory
+        async for blob in matching_blobs:
             local_file_path = local_folder / blob
-
-            # Schedule the download function to run in the background.
-            # The TaskGroup manages the concurrent execution.
             tg.start_soon(
                 _async_download_blob_to_file,
                 container_client,
@@ -537,34 +495,38 @@ async def _async_upload_blob_folder(
     local_folder: anyio.Path,
     max_concurrent_uploads: int,
     name_starts_with: str | None = None,
-    include_pattern: str | None = None,
+    include_extensions: str | list | None = None,
+    exclude_extensions: str | list | None = None,
 ):
     """
-    Upload all matching files from a local folder to a blob container asynchronously.
+    Uploads all matching files from a local folder to a blob container asynchronously.
 
-    Recursively walks the local folder and schedules concurrent uploads while preserving
-    the folder structure in the blob container.
+    Args:
+        container_client (ContainerClient): Azure container client for the destination container.
+        local_folder (anyio.Path): Local directory path whose files will be uploaded.
+        max_concurrent_uploads (int): Maximum number of simultaneous uploads allowed.
+        name_starts_with (str, optional): Only upload files whose relative path starts with this prefix.
+        include_extensions (str | list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
+        exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
 
-    Parameters
-    ----------
-    container_client : ContainerClient
-        Azure container client for the destination container.
-    local_folder : anyio.Path
-        Local directory path whose files will be uploaded.
-    max_concurrent_uploads : int
-        Maximum number of simultaneous uploads allowed.
-    name_starts_with : str, optional
-        Only upload files whose relative path starts with this prefix.
-    include_pattern : str, optional
-        Glob pattern to filter file names (e.g., "*.txt", "**/*.json").
+    Raises:
+        Exception: If both include_extensions and exclude_extensions are provided.
 
-    Notes
-    -----
-    - Uses anyio TaskGroup to manage concurrent uploads
-    - Folder structure is preserved in the blob container
-    - Files not matching the pattern are skipped with logged messages
+    Notes:
+        - Uses anyio TaskGroup to manage concurrent uploads.
+        - Folder structure is preserved in the blob container.
+        - Files not matching the pattern are skipped with logged messages.
     """
     semaphore = anyio.Semaphore(max_concurrent_uploads)
+    if include_extensions is not None:
+        include_extensions = format_extensions(include_extensions)
+    else:
+        exclude_extensions = format_extensions(exclude_extensions)
+    if include_extensions is not None and exclude_extensions is not None:
+        logger.error("Use include_extensions or exclude_extensions, not both.")
+        raise Exception(
+            "Use include_extensions or exclude_extensions, not both."
+        ) from None
 
     async def walk_files(base: anyio.Path):
         # Recursively yield all files under base as (relative_path, absolute_path)
@@ -580,15 +542,17 @@ async def _async_upload_blob_folder(
         logger.info(f"Searching for files in local folder '{local_folder}'...")
 
         async for rel_path, abs_path in walk_files(local_folder):
-            # Optionally filter by prefix
+            ext = Path(rel_path).suffix
+            if include_extensions is not None:
+                if ext not in include_extensions:
+                    continue
+            if exclude_extensions is not None:
+                if ext in exclude_extensions:
+                    continue
             if name_starts_with and not str(rel_path).startswith(
                 name_starts_with
             ):
                 continue
-            # Optionally filter by glob pattern
-            if include_pattern is not None:
-                if not _blob_matches_pattern(str(rel_path), include_pattern):
-                    continue
             # Schedule the upload function to run in the background.
             tg.start_soon(
                 _async_upload_file_to_blob,
@@ -606,7 +570,7 @@ def async_download_blob_folder(
     storage_account_url: str,
     name_starts_with: str | None = None,
     include_extensions: str | list | None = None,
-    exclued_extensions: str | list | None = None,
+    exclude_extensions: str | list | None = None,
     max_concurrent_downloads: int = 20,
     credential: any = None,
 ) -> None:
@@ -626,8 +590,10 @@ def async_download_blob_folder(
         URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
     name_starts_with : str, optional
         Filter blobs to only those with names starting with this prefix.
-    include_pattern : str, optional
-        Glob pattern to filter blob names (e.g., "*.txt", "**/*.json").
+    include_extessions : str | list, optional
+        File extensions to include (e.g., ".txt", [".json", ".csv"]
+    exclude_extensions : str | list, optional
+        File extensions to exclude (e.g., ".log", [".tmp", ".bak"]
     max_concurrent_downloads : int, default 20
         Maximum number of simultaneous downloads allowed.
     credential : any, optional
@@ -662,7 +628,8 @@ def async_download_blob_folder(
                     container_client=container_client,
                     local_folder=anyio.Path(local_folder),
                     name_starts_with=name_starts_with,
-                    # include_pattern=include_pattern,
+                    include_extensions=include_extensions,
+                    exclude_extensions=exclude_extensions,
                     max_concurrent_downloads=max_concurrent_downloads,
                 )
         finally:
@@ -683,7 +650,8 @@ def async_upload_folder(
     local_folder: Path,
     storage_account_url: str,
     name_starts_with: str | None = None,
-    include_pattern: str | None = None,
+    include_extensions: str | list | None = None,
+    exclude_extensions: str | list | None = None,
     max_concurrent_uploads: int = 20,
     credential: any = None,
 ) -> None:
@@ -703,8 +671,10 @@ def async_upload_folder(
         URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
     name_starts_with : str, optional
         Only upload files whose relative path starts with this prefix.
-    include_pattern : str, optional
-        Glob pattern to filter file names (e.g., "*.txt", "**/*.json").
+    include_extensions : str | list, optional
+        File extensions to include (e.g., ".txt", [".json", ".csv"]
+    exclude_extensions : str | list, optional
+        File extensions to exclude (e.g., ".log", [".tmp", ".bak"]
     max_concurrent_uploads : int, default 20
         Maximum number of simultaneous uploads allowed.
     credential : any, optional
@@ -739,7 +709,8 @@ def async_upload_folder(
                     container_client=container_client,
                     local_folder=anyio.Path(local_folder),
                     name_starts_with=name_starts_with,
-                    include_pattern=include_pattern,
+                    include_extensions=include_extensions,
+                    exclude_extensions=exclude_extensions,
                     max_concurrent_uploads=max_concurrent_uploads,
                 )
         finally:
