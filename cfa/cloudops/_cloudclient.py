@@ -1229,6 +1229,7 @@ class CloudClient:
         include_extensions: str | list | None = None,
         exclude_extensions: str | list | None = None,
         location_in_blob: str = ".",
+        max_concurrent_uploads: int = 20,
     ):
         """Upload entire folders to an Azure Blob Storage container asynchronously.
 
@@ -1247,6 +1248,8 @@ class CloudClient:
                 the upload. Can be a single extension string or list.
             location_in_blob (str, optional): Remote directory path within the blob container
                 where folders should be uploaded. Default is "." (container root).
+            max_concurrent_uploads (int, optional): Maximum number of concurrent
+                uploads to perform. Higher values may increase speed but use more RAM.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1277,12 +1280,13 @@ class CloudClient:
         for folder in folders:
             logger.debug(f"Trying to upload folder {folder}.")
             blob.async_upload_folder(
-                folder=folder,
+                local_folder=folder,
                 container_name=container_name,
                 storage_account_url=self.cred.azure_blob_storage_endpoint,
                 include_extensions=include_extensions,
                 exclude_extensions=exclude_extensions,
                 location_in_blob=location_in_blob,
+                max_concurrent_uploads=max_concurrent_uploads,
                 credential=cred,
             )
 
