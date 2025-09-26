@@ -655,7 +655,7 @@ def async_download_blob_folder(
             await credential.close()
 
     try:
-        anyio.run(_runner(credential))
+        anyio.run(_runner, credential)
 
     except KeyboardInterrupt:
         logger.error("Download cancelled by user.")
@@ -723,7 +723,7 @@ def async_upload_folder(
             await credential.close()
 
     try:
-        anyio.run(_runner(credential))
+        anyio.run(_runner, credential)
     except KeyboardInterrupt:
         logger.error("Upload cancelled by user.")
     except Exception as e:
