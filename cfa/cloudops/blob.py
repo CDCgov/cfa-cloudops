@@ -635,7 +635,7 @@ def async_download_blob_folder(
         if credential is None:
             credential = ManagedIdentityCredential()
         try:
-            async with BlobServiceClient(
+            with BlobServiceClient(
                 account_url=storage_account_url,
                 credential=credential,
             ) as blob_service_client:
@@ -703,7 +703,7 @@ def async_upload_folder(
         if credential is None:
             credential = ManagedIdentityCredential()
         try:
-            async with BlobServiceClient(
+            with BlobServiceClient(
                 account_url=storage_account_url,
                 credential=credential,
             ) as blob_service_client:
