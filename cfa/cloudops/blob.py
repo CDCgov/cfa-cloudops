@@ -650,9 +650,9 @@ def async_download_blob_folder(
                     exclude_extensions=exclude_extensions,
                     max_concurrent_downloads=max_concurrent_downloads,
                 )
-        finally:
-            # Close the credential to free underlying resources
-            await credential.close()
+        except Exception as e:
+            logger.error(f"Error during download: {e}")
+            raise
 
     try:
         anyio.run(_runner, credential)
@@ -718,9 +718,9 @@ def async_upload_folder(
                     exclude_extensions=exclude_extensions,
                     max_concurrent_uploads=max_concurrent_uploads,
                 )
-        finally:
-            # Close the credential to free underlying resources
-            await credential.close()
+        except Exception as e:
+            logger.error(f"Error during upload: {e}")
+            raise
 
     try:
         anyio.run(_runner, credential)
