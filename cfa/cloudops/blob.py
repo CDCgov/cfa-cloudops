@@ -716,21 +716,35 @@ def async_upload_folder(
         if credential is None:
             credential = ManagedIdentityCredential()
         try:
-            with BlobServiceClient(
+            logger.debug(f"Resolved upload folder path: {folder}")
+            logger.debug(f"Target container name: {container_name}")
+            blob_service_client = BlobServiceClient(
                 account_url=storage_account_url,
                 credential=credential,
-            ) as blob_service_client:
-                container_client = blob_service_client.get_container_client(
-                    container_name
+            )
+            if blob_service_client is None:
+                logger.error(
+                    "Failed to create BlobServiceClient. Check your storage_account_url and credentials."
                 )
-                await _async_upload_blob_folder(
-                    container_client=container_client,
-                    folder=anyio.Path(folder),
-                    location_in_blob=location_in_blob,
-                    include_extensions=include_extensions,
-                    exclude_extensions=exclude_extensions,
-                    max_concurrent_uploads=max_concurrent_uploads,
+                raise RuntimeError("Failed to create BlobServiceClient.")
+            container_client = blob_service_client.get_container_client(
+                container_name
+            )
+            if container_client is None:
+                logger.error(
+                    f"Failed to get container client for container: {container_name}"
                 )
+                raise RuntimeError(
+                    f"Failed to get container client for container: {container_name}"
+                )
+            await _async_upload_blob_folder(
+                container_client=container_client,
+                folder=anyio.Path(folder),
+                location_in_blob=location_in_blob,
+                include_extensions=include_extensions,
+                exclude_extensions=exclude_extensions,
+                max_concurrent_uploads=max_concurrent_uploads,
+            )
         except Exception as e:
             logger.error(f"Error during upload: {e}")
             raise
