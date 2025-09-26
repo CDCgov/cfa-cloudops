@@ -1280,7 +1280,7 @@ class CloudClient:
         for folder in folders:
             logger.debug(f"Trying to upload folder {folder}.")
             blob.async_upload_folder(
-                local_folder=folder,
+                folder=folder,
                 container_name=container_name,
                 storage_account_url=self.cred.azure_blob_storage_endpoint,
                 include_extensions=include_extensions,

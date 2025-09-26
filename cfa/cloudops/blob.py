@@ -18,33 +18,27 @@ logger = logging.getLogger(__name__)
 
 
 def format_extensions(extension):
-    """Format file extensions to include leading periods.
+    """
+    Formats file extensions to include leading periods.
 
-    Ensures that file extensions have the correct format with leading periods.
-    Accepts both single extensions and lists of extensions, with or without
-    leading periods.
+    Ensures that file extensions have the correct format with leading periods. Accepts both single extensions and lists of extensions, with or without leading periods.
 
     Args:
-        extension (str | list): File extension(s) to format. Can be a single
-            extension string or a list of extension strings. Leading periods
-            are optional (e.g., "txt" or ".txt" both work).
+        extension (str or list): File extension(s) to format. Can be a single extension string or a list of extension strings. Leading periods are optional (e.g., "txt" or ".txt" both work).
 
     Returns:
         list: List of properly formatted extensions with leading periods.
 
-    Example:
-        Format single extension:
-
+    Examples:
+        Format a single extension:
             formatted = format_extensions("txt")
             # Returns: [".txt"]
 
         Format multiple extensions:
-
             formatted = format_extensions(["py", ".js", "csv"])
             # Returns: [".py", ".js", ".csv"]
 
         Handle mixed formats:
-
             formatted = format_extensions([".pdf", "docx"])
             # Returns: [".pdf", ".docx"]
     """
@@ -533,9 +527,9 @@ async def _async_download_blob_folder(
 
 async def _async_upload_blob_folder(
     container_client: ContainerClient,
-    local_folder: anyio.Path,
+    folder: anyio.Path,
     max_concurrent_uploads: int,
-    name_starts_with: str | None = None,
+    location_in_blob: str = ".",
     include_extensions: str | list | None = None,
     exclude_extensions: str | list | None = None,
 ):
@@ -544,9 +538,9 @@ async def _async_upload_blob_folder(
 
     Args:
         container_client (ContainerClient): Azure container client for the destination container.
-        local_folder (anyio.Path): Local directory path whose files will be uploaded.
+        folder (anyio.Path): Local directory path whose files will be uploaded.
         max_concurrent_uploads (int): Maximum number of simultaneous uploads allowed.
-        name_starts_with (str, optional): Only upload files whose relative path starts with this prefix.
+        location_in_blob (str, optional): Path within the blob container where files will be uploaded. Defaults to "." (container root).
         include_extensions (str | list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
         exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
 
@@ -576,13 +570,13 @@ async def _async_upload_blob_folder(
                 async for sub in walk_files(entry):
                     yield sub
             elif await entry.is_file():
-                rel_path = entry.relative_to(local_folder)
+                rel_path = entry.relative_to(folder)
                 yield str(rel_path), entry
 
     async with anyio.create_task_group() as tg:
-        logger.info(f"Searching for files in local folder '{local_folder}'...")
+        logger.info(f"Searching for files in local folder '{folder}'...")
 
-        async for rel_path, abs_path in walk_files(local_folder):
+        async for rel_path, abs_path in walk_files(folder):
             ext = Path(rel_path).suffix
             if include_extensions is not None:
                 if ext not in include_extensions:
@@ -590,16 +584,13 @@ async def _async_upload_blob_folder(
             if exclude_extensions is not None:
                 if ext in exclude_extensions:
                     continue
-            if name_starts_with and not str(rel_path).startswith(
-                name_starts_with
-            ):
-                continue
+
             # Schedule the upload function to run in the background.
             tg.start_soon(
                 _async_upload_file_to_blob,
                 container_client,
                 abs_path,
-                str(rel_path),
+                f"{location_in_blob}/{str(rel_path)}",
                 semaphore,
             )
     logger.info("All upload tasks have been scheduled.")
@@ -616,42 +607,28 @@ def async_download_blob_folder(
     credential: any = None,
 ) -> None:
     """
-    Download blobs from an Azure container to a local folder asynchronously.
+    Downloads blobs from an Azure container to a local folder asynchronously.
 
-    This is the main entry point for downloading blobs. It sets up Azure credentials,
-    creates the necessary clients, and runs the async download process.
+    This is the main entry point for downloading blobs. It sets up Azure credentials, creates the necessary clients, and runs the async download process.
 
-    Parameters
-    ----------
-    container_name : str
-        Name of the Azure Storage container to download from.
-    local_folder : Path
-        Local directory path where blobs will be downloaded.
-    storage_account_url : str
-        URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
-    name_starts_with : str, optional
-        Filter blobs to only those with names starting with this prefix.
-    include_extessions : str | list, optional
-        File extensions to include (e.g., ".txt", [".json", ".csv"]
-    exclude_extensions : str | list, optional
-        File extensions to exclude (e.g., ".log", [".tmp", ".bak"]
-    max_concurrent_downloads : int, default 20
-        Maximum number of simultaneous downloads allowed.
-    credential : any, optional
-        Azure credential object. If None, ManagedIdentityCredential is used.
+    Args:
+        container_name (str): Name of the Azure Storage container to download from.
+        local_folder (Path): Local directory path where blobs will be downloaded.
+        storage_account_url (str): URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
+        name_starts_with (str, optional): Filter blobs to only those with names starting with this prefix.
+        include_extensions (str or list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
+        exclude_extensions (str or list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
+        max_concurrent_downloads (int, optional): Maximum number of simultaneous downloads allowed. Defaults to 20.
+        credential (any, optional): Azure credential object. If None, ManagedIdentityCredential is used.
 
-    Raises
-    ------
-    KeyboardInterrupt
-        If the user cancels the download operation.
-    Exception
-        For any Azure SDK or network-related errors during download.
+    Raises:
+        KeyboardInterrupt: If the user cancels the download operation.
+        Exception: For any Azure SDK or network-related errors during download.
 
-    Notes
-    -----
-    - Uses ManagedIdentityCredential for authentication
-    - Preserves blob folder structure in the local directory
-    - Handles cleanup of Azure credentials automatically
+    Notes:
+        Uses ManagedIdentityCredential for authentication.
+        Preserves blob folder structure in the local directory.
+        Handles cleanup of Azure credentials automatically.
     """
 
     async def _runner(credential) -> None:
@@ -687,12 +664,12 @@ def async_download_blob_folder(
 
 
 def async_upload_folder(
+    folder: str,
     container_name: str,
-    local_folder: Path,
     storage_account_url: str,
-    name_starts_with: str | None = None,
     include_extensions: str | list | None = None,
     exclude_extensions: str | list | None = None,
+    location_in_blob: str = ".",
     max_concurrent_uploads: int = 20,
     credential: any = None,
 ) -> None:
@@ -702,37 +679,24 @@ def async_upload_folder(
     This is the main entry point for uploading files. It sets up Azure credentials,
     creates the necessary clients, and runs the async upload process.
 
-    Parameters
-    ----------
-    container_name : str
-        Name of the Azure Storage container to upload to.
-    local_folder : Path
-        Local directory path whose files will be uploaded.
-    storage_account_url : str
-        URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
-    name_starts_with : str, optional
-        Only upload files whose relative path starts with this prefix.
-    include_extensions : str | list, optional
-        File extensions to include (e.g., ".txt", [".json", ".csv"]
-    exclude_extensions : str | list, optional
-        File extensions to exclude (e.g., ".log", [".tmp", ".bak"]
-    max_concurrent_uploads : int, default 20
-        Maximum number of simultaneous uploads allowed.
-    credential : any, optional
-        Azure credential object. If None, ManagedIdentityCredential is used.
+    Args:
+        folder (str): Local directory path whose files will be uploaded.
+        container_name (str): Name of the Azure Storage container to upload to.
+        storage_account_url (str): URL of the Azure Storage account (e.g., "https://<account_name>.blob.core.windows.net").
+        include_extensions (str or list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
+        exclude_extensions (str or list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
+        location_in_blob (str, optional): Path within the blob container where files will be uploaded. Defaults to "." (root of the container).
+        max_concurrent_uploads (int, optional): Maximum number of simultaneous uploads allowed. Defaults to 20.
+        credential (any, optional): Azure credential object. If None, ManagedIdentityCredential is used.
 
-    Raises
-    ------
-    KeyboardInterrupt
-        If the user cancels the upload operation.
-    Exception
-        For any Azure SDK or network-related errors during upload.
+    Raises:
+        KeyboardInterrupt: If the user cancels the upload operation.
+        Exception: For any Azure SDK or network-related errors during upload.
 
-    Notes
-    -----
-    - Uses ManagedIdentityCredential for authentication
-    - Preserves folder structure in the blob container
-    - Handles cleanup of Azure credentials automatically
+    Notes:
+        - Uses ManagedIdentityCredential for authentication.
+        - Preserves folder structure in the blob container.
+        - Handles cleanup of Azure credentials automatically.
     """
 
     async def _runner(credential) -> None:
@@ -748,8 +712,8 @@ def async_upload_folder(
                 )
                 await _async_upload_blob_folder(
                     container_client=container_client,
-                    local_folder=anyio.Path(local_folder),
-                    name_starts_with=name_starts_with,
+                    folder=anyio.Path(folder),
+                    location_in_blob=location_in_blob,
                     include_extensions=include_extensions,
                     exclude_extensions=exclude_extensions,
                     max_concurrent_uploads=max_concurrent_uploads,
@@ -760,7 +724,6 @@ def async_upload_folder(
 
     try:
         anyio.run(_runner(credential))
-
     except KeyboardInterrupt:
         logger.error("Upload cancelled by user.")
     except Exception as e:
