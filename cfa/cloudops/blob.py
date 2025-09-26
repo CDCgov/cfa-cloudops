@@ -573,13 +573,21 @@ async def _async_upload_blob_folder(
 
     async def walk_files(base: anyio.Path):
         # Recursively yield all files under base as (relative_path, absolute_path)
-        async for entry in base.iterdir():
-            if await entry.is_dir():
-                async for sub in walk_files(entry):
-                    yield sub
-            elif await entry.is_file():
-                rel_path = entry.relative_to(folder)
-                yield str(rel_path), entry
+        try:
+            entries = []
+            async for entry in base.iterdir():
+                entries.append(entry)
+            logger.debug(f"Found {len(entries)} entries in directory: {base}")
+            for entry in entries:
+                if await entry.is_dir():
+                    async for sub in walk_files(entry):
+                        yield sub
+                elif await entry.is_file():
+                    rel_path = entry.relative_to(folder)
+                    yield str(rel_path), entry
+        except Exception as e:
+            logger.error(f"Error iterating directory {base}: {e}")
+            raise
 
     found_files = False
     async with anyio.create_task_group() as tg:
