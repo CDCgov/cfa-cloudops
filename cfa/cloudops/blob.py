@@ -563,6 +563,14 @@ async def _async_upload_blob_folder(
             "Use include_extensions or exclude_extensions, not both."
         ) from None
 
+    # Check if folder exists and is a directory
+    if not await folder.exists():
+        logger.error(f"Upload folder does not exist: {folder}")
+        raise FileNotFoundError(f"Upload folder does not exist: {folder}")
+    if not await folder.is_dir():
+        logger.error(f"Upload path is not a directory: {folder}")
+        raise NotADirectoryError(f"Upload path is not a directory: {folder}")
+
     async def walk_files(base: anyio.Path):
         # Recursively yield all files under base as (relative_path, absolute_path)
         async for entry in base.iterdir():
@@ -573,10 +581,12 @@ async def _async_upload_blob_folder(
                 rel_path = entry.relative_to(folder)
                 yield str(rel_path), entry
 
+    found_files = False
     async with anyio.create_task_group() as tg:
         logger.info(f"Searching for files in local folder '{folder}'...")
 
         async for rel_path, abs_path in walk_files(folder):
+            found_files = True
             ext = Path(rel_path).suffix
             if include_extensions is not None:
                 if ext not in include_extensions:
@@ -593,7 +603,10 @@ async def _async_upload_blob_folder(
                 f"{location_in_blob}/{str(rel_path)}",
                 semaphore,
             )
-    logger.info("All upload tasks have been scheduled.")
+    if not found_files:
+        logger.warning(f"No files found to upload in folder: {folder}")
+    else:
+        logger.info("All upload tasks have been scheduled.")
 
 
 def async_download_blob_folder(
