@@ -144,6 +144,7 @@ class CloudClient:
         self,
         pool_name: str,
         mounts=None,
+        shared_relative_mount_path=None,
         container_image_name=None,
         vm_size=d.default_vm_size,  # do some validation on size if too large
         autoscale=True,
@@ -235,6 +236,7 @@ class CloudClient:
             mount_config = get_node_mount_config(
                 storage_containers=storage_containers,
                 mount_names=mount_names,
+                shared_relative_mount_path=shared_relative_mount_path,
                 account_names=self.cred.azure_blob_storage_account,
                 identity_references=self.cred.compute_node_identity_reference,
                 cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
