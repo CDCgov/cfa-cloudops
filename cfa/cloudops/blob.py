@@ -608,7 +608,7 @@ async def _async_upload_blob_folder(
                 _async_upload_file_to_blob,
                 container_client,
                 abs_path,
-                f"{location_in_blob}/{str(rel_path)}",
+                os.path.join(location_in_blob, str(rel_path)),
                 semaphore,
             )
     if not found_files:
