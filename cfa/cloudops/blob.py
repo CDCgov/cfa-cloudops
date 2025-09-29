@@ -459,6 +459,7 @@ async def _async_download_blob_folder(
         name_starts_with (str, optional): Filter blobs to only those with names starting with this prefix.
         include_extensions (str | list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
         exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
+        check_size (bool, optional): If True, prompts user if total download size exceeds 2 GB. Defaults to True.
 
     Raises:
         Exception: If both include_extensions and exclude_extensions are provided.
@@ -628,6 +629,7 @@ def async_download_blob_folder(
     name_starts_with: str | None = None,
     include_extensions: str | list | None = None,
     exclude_extensions: str | list | None = None,
+    check_size: bool = True,
     max_concurrent_downloads: int = 20,
     credential: any = None,
 ) -> None:
@@ -643,6 +645,7 @@ def async_download_blob_folder(
         name_starts_with (str, optional): Filter blobs to only those with names starting with this prefix.
         include_extensions (str or list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
         exclude_extensions (str or list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
+        check_size (bool, optional): If True, prompts user if total download size exceeds 2 GB. Defaults to True.
         max_concurrent_downloads (int, optional): Maximum number of simultaneous downloads allowed. Defaults to 20.
         credential (any, optional): Azure credential object. If None, ManagedIdentityCredential is used.
 
@@ -674,6 +677,7 @@ def async_download_blob_folder(
                     include_extensions=include_extensions,
                     exclude_extensions=exclude_extensions,
                     max_concurrent_downloads=max_concurrent_downloads,
+                    check_size=check_size,
                 )
         except Exception as e:
             logger.error(f"Error during download: {e}")
