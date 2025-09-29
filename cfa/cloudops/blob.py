@@ -592,25 +592,29 @@ async def _async_upload_blob_folder(
     found_files = False
     async with anyio.create_task_group() as tg:
         logger.info(f"Searching for files in local folder '{folder}'...")
+        try:
+            async for rel_path, abs_path in walk_files(folder):
+                found_files = True
+                ext = Path(rel_path).suffix
+                if include_extensions is not None:
+                    if ext not in include_extensions:
+                        continue
+                if exclude_extensions is not None:
+                    if ext in exclude_extensions:
+                        continue
 
-        async for rel_path, abs_path in walk_files(folder):
-            found_files = True
-            ext = Path(rel_path).suffix
-            if include_extensions is not None:
-                if ext not in include_extensions:
-                    continue
-            if exclude_extensions is not None:
-                if ext in exclude_extensions:
-                    continue
+                # Schedule the upload function to run in the background.
+                tg.start_soon(
+                    _async_upload_file_to_blob,
+                    container_client,
+                    abs_path,
+                    os.path.join(location_in_blob, str(rel_path)),
+                    semaphore,
+                )
+        except Exception as e:
+            logger.error(f"Error walking files in folder {folder}: {e}")
+            raise
 
-            # Schedule the upload function to run in the background.
-            tg.start_soon(
-                _async_upload_file_to_blob,
-                container_client,
-                abs_path,
-                os.path.join(location_in_blob, str(rel_path)),
-                semaphore,
-            )
     if not found_files:
         logger.warning(f"No files found to upload in folder: {folder}")
     else:
