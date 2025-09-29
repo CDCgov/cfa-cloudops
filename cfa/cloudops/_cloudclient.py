@@ -479,9 +479,9 @@ class CloudClient:
     def add_task(
         self,
         job_name: str,
-        command_line: list[str],
+        command_line: str,
         name_suffix: str = "",
-        depends_on: list[str] | None = None,
+        depends_on: str | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
         container_image_name: str = None,
@@ -492,7 +492,7 @@ class CloudClient:
 
         Args:
             job_name (str): Name of the job to add the task to.
-            command_line (list[str]): Command line arguments for the task.
+            command_line (str): Command line arguments for the task.
             name_suffix (str, optional): Suffix to append to the task ID.
             depends_on (list[str], optional): List of task IDs this task depends on.
             depends_on_range (tuple, optional): Range of task IDs this task depends on.
