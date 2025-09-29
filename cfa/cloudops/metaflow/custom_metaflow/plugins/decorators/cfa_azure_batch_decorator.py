@@ -57,14 +57,27 @@ class CFAAzureBatchDecorator(StepDecorator):
         "Storage": None,
     }
 
-    def __init__(self, pool_name, attributes, **kwargs):
+    def __init__(self, pool_name, attributes, job_configuration, **kwargs):
         super(CFAAzureBatchDecorator, self).__init__()
         self.attributes = self.defaults.copy()
         self.attributes.update(attributes)
+        self.job_configuration = job_configuration
         self.task_interval = int(
-            self.attributes.get("TASK_INTERVAL", DEFAULT_TASK_INTERVAL)
+            self.job_configuration["Job"].get(
+                "task_interval", DEFAULT_TASK_INTERVAL
+            )
         )
+        self.__setup_credentials()
+        self.batch_client = BatchServiceClient(
+            credentials=self.cred.batch_service_principal_credentials,
+            batch_url=self.cred.azure_batch_endpoint,
+        )
+        self.batch_mgmt_client = get_batch_management_client(self.cred)
+        self.pool_name = pool_name
+        self.docker_command = kwargs.get("docker_command")
+        self.task_parameters = kwargs.get("task_parameters", [])
 
+    def __setup_credentials(self):
         self.cred = SPCredentialHandler(
             azure_tenant_id=self.attributes["AZURE_TENANT_ID"],
             azure_subscription_id=self.attributes["AZURE_SUBSCRIPTION_ID"],
@@ -95,15 +108,6 @@ class CFAAzureBatchDecorator(StepDecorator):
         self.cred.azure_batch_endpoint_subdomain = (
             default_azure_batch_endpoint_subdomain
         )
-
-        self.batch_client = BatchServiceClient(
-            credentials=self.cred.batch_service_principal_credentials,
-            batch_url=self.cred.azure_batch_endpoint,
-        )
-        self.batch_mgmt_client = get_batch_management_client(self.cred)
-        self.pool_name = pool_name
-        self.docker_command = kwargs.get("docker_command", "python main.py")
-        self.task_parameters = kwargs.get("task_parameters", [])
 
     def __create_job(
         self,
@@ -222,8 +226,8 @@ class CFAAzureBatchDecorator(StepDecorator):
         return tid
 
     def fetch_or_create_job(self):
-        job_id = self.attributes.get("JOB_ID")
-        job_id_prefix = self.attributes.get("JOB_ID_PREFIX")
+        job_id = self.job_configuration["Job"].get("job_id")
+        job_id_prefix = self.job_configuration["Job"].get("job_id_prefix")
         if job_id_prefix:
             job_id = f"{job_id_prefix}{generate_random_string(5)}"
 
@@ -242,21 +246,21 @@ class CFAAzureBatchDecorator(StepDecorator):
         def wrapper(*args, **kwargs):
             job_id = self.fetch_or_create_job()
             task_dependencies = None
-            parent_tasks = self.attributes.get("PARENT_TASK")
+            parent_tasks = self.job_configuration["Job"].get("parent_task")
             if parent_tasks:
                 task_dependencies = parent_tasks.split(",")
             time.sleep(self.task_interval)
-            for task_input in self.task_parameters:
-                docker_command = self.docker_command.format(
-                    task_input=task_input
+            for nindex, task_input in enumerate(self.task_parameters):
+                docker_command_formatted = self.docker_command.format(
+                    task_input=task_input, job_id=f"{job_id}_task{nindex}"
                 )
                 self.task_id = self.add_task(
                     job_name=job_id,
-                    command_line=docker_command,
+                    command_line=docker_command_formatted,
                     name_suffix=f"{job_id}_task_{generate_random_string(3)}_",
                     depends_on=task_dependencies,
-                    container_image_name=self.attributes.get(
-                        "CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME
+                    container_image_name=self.job_configuration["Pool"].get(
+                        "container_image_name", DEFAULT_CONTAINER_IMAGE_NAME
                     ),
                 )
             return func(*args, **kwargs)

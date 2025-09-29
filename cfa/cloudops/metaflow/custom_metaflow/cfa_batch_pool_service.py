@@ -18,15 +18,25 @@ from cfa.cloudops.defaults import (
 )
 
 DEFAULT_CONTAINER_IMAGE_NAME = "python:latest"
+DEFAULT_POOL_LIMIT = "1"
 
 logger = logging.getLogger(__name__)
 
 
 class CFABatchPoolService:
-    def __init__(self, dotenv_path):
+    def __init__(self, dotenv_path, job_config_file="job.toml"):
         self.batch_pools = []
-        self.parallel_pool_limit = 1
         self.attributes = dotenv_values(dotenv_path)
+        self.job_configuration = toml.load(job_config_file)
+        self.parallel_pool_limit = int(
+            self.job_configuration["Pool"].get(
+                "parallel_pool_limit", DEFAULT_POOL_LIMIT
+            )
+        )
+        self.__setup_credentials()
+        self.batch_mgmt_client = get_batch_management_client(self.cred)
+
+    def __setup_credentials(self):
         self.cred = SPCredentialHandler(
             azure_tenant_id=self.attributes["AZURE_TENANT_ID"],
             azure_subscription_id=self.attributes["AZURE_SUBSCRIPTION_ID"],
@@ -36,6 +46,9 @@ class CFABatchPoolService:
             azure_keyvault_sp_secret_id=self.attributes[
                 "AZURE_KEYVAULT_SP_SECRET_ID"
             ],
+        )
+        self.cred.azure_container_registry_account = self.attributes.get(
+            "AZURE_CONTAINER_REGISTRY_ACCOUNT"
         )
         self.cred.azure_user_assigned_identity = self.attributes.get(
             "AZURE_USER_ASSIGNED_IDENTITY"
@@ -54,7 +67,6 @@ class CFABatchPoolService:
         self.cred.azure_batch_endpoint_subdomain = (
             default_azure_batch_endpoint_subdomain
         )
-        self.batch_mgmt_client = get_batch_management_client(self.cred)
 
     def __setup_pool(self, pool_name):
         if bh.check_pool_exists(
@@ -76,18 +88,15 @@ class CFABatchPoolService:
             self.batch_pools.append(pool_name)
 
     def setup_pools(self, pools: list[str] = None):
-        pool_name = self.attributes.get("POOL_NAME")
+        pool_name = self.job_configuration["Pool"].get("pool_name")
         if pool_name:
             self.__setup_pool(pool_name)
         elif pools:
             for pool_name in pools:
                 self.__setup_pool(pool_name)
         else:
-            self.parallel_pool_limit = int(
-                self.attributes.get("PARALLEL_POOL_LIMIT", "1")
-            )
-            pool_name_prefix = self.attributes.get(
-                "POOL_NAME_PREFIX", "cfa_pool_"
+            pool_name_prefix = self.job_configuration["Pool"].get(
+                "pool_name_prefix", "cfa_pool_"
             )
             for i in range(self.parallel_pool_limit):
                 pool_name = f"{pool_name_prefix}{i}"
@@ -96,8 +105,12 @@ class CFABatchPoolService:
     def __create_containers(self):
         storage_containers = []
         mount_names = []
-        input_mount_name = self.attributes.get("INPUT_MOUNT", "input")
-        output_mount_name = self.attributes.get("OUTPUT_MOUNT", "output")
+        input_mount_name = self.job_configuration["Pool"].get(
+            "input_mount", "input-test"
+        )
+        output_mount_name = self.job_configuration["Pool"].get(
+            "output_mount", "output-test"
+        )
         mounts = [(input_mount_name, "input"), (output_mount_name, "output")]
         for mount in mounts:
             storage_containers.append(mount[0])
@@ -111,18 +124,26 @@ class CFABatchPoolService:
         )
         return mount_config
 
-    def __create_pool_configuration(self, pool_name, mount_config):
-        pool_config = get_default_pool_config(
-            pool_name=pool_name,
-            subnet_id=self.cred.azure_subnet_id,
-            user_assigned_identity=self.cred.azure_user_assigned_identity,
-            mount_configuration=mount_config,
-            vm_size=self.attributes.get("POOL_VM_SIZE"),
+    def __setup_fixedscale_configuration(self, pool_config):
+        pool_config.scale_settings = models.ScaleSettings(
+            fixed_scale=models.FixedScaleSettings(
+                target_dedicated_nodes=int(
+                    self.job_configuration["Pool"].get("dedicated_nodes", "3")
+                ),
+                target_low_priority_nodes=int(
+                    self.job_configuration["Pool"].get(
+                        "low_priority_nodes", "3"
+                    )
+                ),
+            )
         )
+        return pool_config
+
+    def __setup_autoscaled_configuration(self, pool_config):
         formula = remaining_task_autoscale_formula(
             task_sample_interval_minutes=15,
             max_number_vms=int(
-                self.attributes.get("MAX_AUTOSCALE_NODES", "3")
+                self.job_configuration["Pool"].get("max_autoscale_nodes", "3")
             ),
         )
         pool_config.scale_settings = models.ScaleSettings(
@@ -131,16 +152,29 @@ class CFABatchPoolService:
                 evaluation_interval="PT5M",  # Evaluate every 5 minutes
             )
         )
-        pool_config.task_slots_per_node = int(
-            self.attributes.get("TASK_SLOTS_PER_NODE", "1")
-        )
+        return pool_config
 
+    def __create_pool_configuration(self, pool_name, mount_config):
+        pool_config = get_default_pool_config(
+            pool_name=pool_name,
+            subnet_id=self.cred.azure_subnet_id,
+            user_assigned_identity=self.cred.azure_user_assigned_identity,
+            mount_configuration=mount_config,
+            vm_size=self.job_configuration["Pool"].get("vm_size"),
+        )
+        autoscale = self.job_configuration["Pool"].get("autoscale", "True")
+        if autoscale.lower() == "true":
+            pool_config = self.__setup_autoscaled_configuration(pool_config)
+        else:
+            pool_config = self.__setup_fixedscale_configuration(pool_config)
+
+        pool_config.task_slots_per_node = int(
+            self.job_configuration["Pool"].get("task_slots_per_node", "1")
+        )
         container_config = models.ContainerConfiguration(
             type="dockerCompatible",
             container_image_names=[
-                self.attributes.get(
-                    "CONTAINER_IMAGE_NAME", DEFAULT_CONTAINER_IMAGE_NAME
-                )
+                self.job_configuration["Pool"].get("container_image_name")
             ],
         )
 
@@ -169,21 +203,11 @@ class CFABatchPoolService:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
             raise RuntimeError(error_msg)
 
-    def setup_step_parameters(
-        self, items, job_config_file, pools: list[str] = None
-    ):
-        job_configuration = toml.load(job_config_file)
-        docker_command_formatted = None
-        if "Job" in job_configuration:
-            docker_command = job_configuration["Job"].get(
+    def setup_step_parameters(self, items, pools: list[str] = None):
+        if "Job" in self.job_configuration:
+            docker_command = self.job_configuration["Job"].get(
                 "docker_command", "python main.py"
             )
-            arguments = {
-                k: v
-                for k, v in job_configuration["Job"].items()
-                if k.lower().startswith("arg")
-            }
-            docker_command_formatted = docker_command.format(**arguments)
         if pools:
             item_chunks = np.array_split(items, len(pools))
         else:
@@ -197,8 +221,9 @@ class CFABatchPoolService:
                 {
                     "pool_name": pool_name,
                     "attributes": self.attributes,
+                    "job_configuration": self.job_configuration,
                     "task_parameters": item_chunks[i],
-                    "docker_command": docker_command_formatted,
+                    "docker_command": docker_command,
                 }
             )
         return step_parameters
