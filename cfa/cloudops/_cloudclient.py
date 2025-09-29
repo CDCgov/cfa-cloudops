@@ -1209,7 +1209,7 @@ class CloudClient:
             cred = self.cred.client_secret_credential
         else:
             cred = self.cred.user_credential
-        blob.async_download_folder(
+        blob.async_download_blob_folder(
             container_name=container_name,
             local_folder=dest_path,
             name_starts_with=src_path,
