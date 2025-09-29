@@ -74,7 +74,7 @@ class CFAAzureBatchDecorator(StepDecorator):
         )
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.pool_name = pool_name
-        self.docker_command = kwargs.get("docker_command", "python main.py")
+        self.docker_command = kwargs.get("docker_command")
         self.task_parameters = kwargs.get("task_parameters", [])
 
     def __setup_credentials(self):
@@ -250,13 +250,13 @@ class CFAAzureBatchDecorator(StepDecorator):
             if parent_tasks:
                 task_dependencies = parent_tasks.split(",")
             time.sleep(self.task_interval)
-            for task_input in self.task_parameters:
-                docker_command = self.docker_command.format(
-                    task_input=task_input
+            for nindex, task_input in enumerate(self.task_parameters):
+                docker_command_formatted = self.docker_command.format(
+                    task_input=task_input, job_id=f"{job_id}_task{nindex}"
                 )
                 self.task_id = self.add_task(
                     job_name=job_id,
-                    command_line=docker_command,
+                    command_line=docker_command_formatted,
                     name_suffix=f"{job_id}_task_{generate_random_string(3)}_",
                     depends_on=task_dependencies,
                     container_image_name=self.job_configuration["Pool"].get(

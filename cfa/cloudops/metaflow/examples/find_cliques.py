@@ -17,13 +17,14 @@ class CliqueFlow(FlowSpec):
         self.batch_pool_service = CFABatchPoolService(
             dotenv_path="cliques.env", job_config_file="bk_job.toml"
         )
-        node_sizes = np.random.randint(30, 100, size=3)
+        random_integers_list = [
+            np.random.randint(2000, 3000) for _ in range(50)
+        ]
         self.batch_pool_service.setup_pools()
         self.split_nodes = self.batch_pool_service.setup_step_parameters(
-            node_sizes
+            random_integers_list
         )
         self.next(self.process_state, foreach="split_nodes")
-        # self.next(self.end)
 
     @step
     def process_state(self):
