@@ -1,7 +1,7 @@
 azure-identity
 azure-batch
 azure-mgmt-resource
-cfa-cloudops @ git+https://github.com/CDCgov/cfa-cloudops.git@metaflow
+cfa-cloudops @ git+https://github.com/CDCgov/cfa-cloudops.git@rr-dev
 matplotlib
 numpy
 networkx
