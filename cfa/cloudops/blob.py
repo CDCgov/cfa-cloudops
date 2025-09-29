@@ -406,6 +406,7 @@ async def _async_download_blob_to_file(
             logger.error(
                 f"Failed to download blob {blob_name} to {local_file_path}: {e}"
             )
+    return local_file_path
 
 
 async def _async_upload_file_to_blob(
@@ -438,6 +439,7 @@ async def _async_upload_file_to_blob(
             logger.error(
                 f"Failed to upload file {local_file_path} to blob {blob_name}: {e}"
             )
+    return local_file_path
 
 
 async def _async_download_blob_folder(
@@ -524,6 +526,7 @@ async def _async_download_blob_folder(
                 semaphore,
             )
     logger.info("All download tasks have been scheduled.")
+    return local_folder
 
 
 async def _async_upload_blob_folder(
@@ -620,6 +623,7 @@ async def _async_upload_blob_folder(
         logger.warning(f"No files found to upload in folder: {folder}")
     else:
         logger.info("All upload tasks have been scheduled.")
+    return folder
 
 
 def async_download_blob_folder(
@@ -690,6 +694,7 @@ def async_download_blob_folder(
         logger.error("Download cancelled by user.")
     except Exception as e:
         logger.error(f"Failed to download blob folder: {e}")
+    return local_folder
 
 
 def async_upload_folder(
@@ -728,7 +733,7 @@ def async_upload_folder(
         - Handles cleanup of Azure credentials automatically.
     """
 
-    async def _runner(credential) -> None:
+    async def _runner(credential):
         if credential is None:
             credential = ManagedIdentityCredential()
         try:
@@ -771,3 +776,4 @@ def async_upload_folder(
         logger.error("Upload cancelled by user.")
     except Exception as e:
         logger.error(f"Failed to upload blob folder: {e}")
+    return folder
