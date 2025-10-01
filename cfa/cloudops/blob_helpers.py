@@ -6,6 +6,7 @@ from pathlib import Path
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.storage.blob import (
     BlobServiceClient,
+    BlobType,
     ContainerClient,
     StorageStreamDownloader,
 )
@@ -924,5 +925,7 @@ def write_blob_stream(
         raise ValueError(
             "Either container name and account name or container client must be provided."
         )
-    container_client.upload_blob(name=blob_url, data=data, overwrite=True)
+    container_client.upload_blob(
+        name=blob_url, data=data, blob_type=BlobType.APPENDBLOB
+    )
     return True
