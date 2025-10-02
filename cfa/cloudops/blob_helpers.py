@@ -887,6 +887,8 @@ def write_blob_stream(
     account_name: str = None,
     container_name: str = None,
     container_client: ContainerClient = None,
+    append_blob: bool = False,
+    overwrite: bool = False,
 ) -> bool:
     """
     Write a stream into a file in Azure Blob storage
@@ -925,7 +927,11 @@ def write_blob_stream(
         raise ValueError(
             "Either container name and account name or container client must be provided."
         )
+    if append_blob:
+        blob_type = BlobType.APPENDBLOB
+    else:
+        blob_type = BlobType.BLOCKBLOB
     container_client.upload_blob(
-        name=blob_url, data=data, blob_type=BlobType.APPENDBLOB
+        name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite
     )
     return True
