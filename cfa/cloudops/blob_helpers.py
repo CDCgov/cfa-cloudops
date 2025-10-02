@@ -2,6 +2,7 @@ import logging
 import os
 from os import path, walk
 from pathlib import Path
+from typing import Union
 
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.storage.blob import (
@@ -882,13 +883,13 @@ def walk_blobs_in_container(
 
 
 def write_blob_stream(
-    data,
+    data: Union[str, bytes],
     blob_url: str,
     account_name: str = None,
     container_name: str = None,
     container_client: ContainerClient = None,
     append_blob: bool = False,
-    overwrite: bool = False,
+    overwrite: bool = True,
 ) -> bool:
     """
     Write a stream into a file in Azure Blob storage
@@ -904,6 +905,10 @@ def write_blob_stream(
             [Optional] Name of Blob container within storage account
         container_client (ContainerClient):
             [Optional] Instance of ContainerClient provided with the storage account
+        append_blob (bool):
+            [Optional] Append to an existing blob or create a new one. Default False
+        overwrite (bool):
+            [Optional] Delete existing blob if it exists and create a new one in its place. If append_blob is False and overwrite is False, an ResourceExistsError will be raised if the blob already exists. Default True
 
     Raises:
         ValueError:
