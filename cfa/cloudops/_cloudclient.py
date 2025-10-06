@@ -14,6 +14,7 @@ from azure.batch.models import (
 
 # from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
+from azure.mgmt.resource import SubscriptionClient
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
@@ -115,6 +116,29 @@ class CloudClient:
         self.logs_folder = "stdout_stderr"
         self.task_id_ints = False
         self.task_id_max = 0
+
+    def check_credentials(self):
+        if self.method == "env":
+            cred = self.cred.user_credential
+        elif self.method == "default":
+            cred = self.cred.client_secret_sp_credential
+        else:
+            cred = self.cred.client_secret_credential
+
+        try:
+            subscription_client = SubscriptionClient(cred)
+            # List subscriptions
+            sub_list = [
+                sub for sub in subscription_client.subscriptions.list()
+            ]
+            for subscription in sub_list:
+                print("Found subscription via credential.")
+                print(f"Subscription ID: {subscription.subscription_id}")
+                print(f"Subscription Name: {subscription.display_name}")
+                print(f"State: {subscription.state}")
+                print("-" * 30)
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def create_pool(
         self,
@@ -479,9 +503,9 @@ class CloudClient:
     def add_task(
         self,
         job_name: str,
-        command_line: list[str],
+        command_line: str,
         name_suffix: str = "",
-        depends_on: list[str] | None = None,
+        depends_on: str | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
         container_image_name: str = None,
@@ -492,7 +516,7 @@ class CloudClient:
 
         Args:
             job_name (str): Name of the job to add the task to.
-            command_line (list[str]): Command line arguments for the task.
+            command_line (str): Command line arguments for the task.
             name_suffix (str, optional): Suffix to append to the task ID.
             depends_on (list[str], optional): List of task IDs this task depends on.
             depends_on_range (tuple, optional): Range of task IDs this task depends on.
