@@ -489,7 +489,7 @@ async def _async_download_blob_folder(
     matching_blobs = []
     total_size = 0
     gb = 1e9
-    async for blob_obj in container_client.list_blobs(
+    for blob_obj in container_client.list_blobs(
         name_starts_with=name_starts_with
     ):
         blob_name = blob_obj.name
