@@ -548,47 +548,45 @@ class SPCredentialHandler(CredentialHandler):
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
+        mandatory_environment_variables = [
+            "AZURE_TENANT_ID",
+            "AZURE_SUBSCRIPTION_ID",
+            "AZURE_CLIENT_ID",
+            "AZURE_CLIENT_SECRET",
+        ]
+        for mandatory in mandatory_environment_variables:
+            if mandatory not in os.environ:
+                logger.warning(
+                    f"Environment variable {mandatory} was not provided"
+                )
+
+        # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
         self.azure_tenant_id = (
             azure_tenant_id
             if azure_tenant_id is not None
-            else os.environ["AZURE_TENANT_ID"]
+            else os.getenv("AZURE_TENANT_ID", None)
         )
         self.azure_subscription_id = (
             azure_subscription_id
             if azure_subscription_id is not None
-            else os.environ["AZURE_SUBSCRIPTION_ID"]
+            else os.getenv("AZURE_SUBSCRIPTION_ID", None)
         )
         self.azure_client_id = (
             azure_client_id
             if azure_client_id is not None
-            else os.environ["AZURE_CLIENT_ID"]
+            else os.getenv("AZURE_CLIENT_ID", None)
         )
         self.azure_client_secret = (
             azure_client_secret
             if azure_client_secret is not None
-            else os.environ["AZURE_CLIENT_SECRET"]
+            else os.getenv("AZURE_CLIENT_SECRET", None)
         )
 
-        # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
-        if "AZURE_TENANT_ID" not in os.environ and not azure_tenant_id:
-            raise ValueError(
-                "AZURE_TENANT_ID not found in env variables and not provided."
-            )
-        if (
-            "AZURE_SUBSCRIPTION_ID" not in os.environ
-            and not azure_subscription_id
-        ):
-            raise ValueError(
-                "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
-            )
-        if "AZURE_CLIENT_ID" not in os.environ and not azure_client_id:
-            raise ValueError(
-                "AZURE_CLIENT_ID not found in env variables and not provided."
-            )
-        if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
-            raise ValueError(
-                "AZURE_CLIENT_SECRET not found in env variables and not provided."
-            )
+        self.require_attr(
+            [x.lower() for x in mandatory_environment_variables],
+            goal="service principal credentials",
+        )
+
         d.set_env_vars()
 
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
