@@ -1478,6 +1478,57 @@ class CloudClient:
                     **kwargs,
                 )
 
+    def __sort_tasks(self, *args: batch_helpers.Task):
+        """Sorts a set of tasks according to topological order
+
+        Accepts multiple Task objects.
+
+        Args:
+            *args: batch_helpers.Task objects representing tasks and their dependencies.
+        """
+        # get topologicalsorter object
+        ts = TopologicalSorter()
+        tasks = args
+        for task in tasks:
+            ts.add(task, *task.deps)
+        try:
+            task_order = [*ts.static_order()]
+            return task_order
+        except CycleError as ce:
+            logger.warning("Submitted tasks do not form a DAG.")
+            raise ce
+
+    def generate_dag(self, *args: batch_helpers.Task, filename: str):
+        """Creates an ASCII represention of a set of tasks as directed acyclic graph (DAG) in the correct order.
+
+        Accepts multiple Task objects, determines their execution order using topological
+        sorting, generates a graph and saves it into a text file
+
+        Args:
+            *args: batch_helpers.Task objects representing tasks and their dependencies.
+            file_name (str): Name of the file where graph will be stored.
+            **kwargs: Additional keyword arguments passed to add_task().
+
+        Raises:
+            CycleError: If the submitted tasks do not form a valid DAG (contain cycles).
+
+        Example:
+            Generate diagram for DAG of tasks:
+
+                client = CloudClient()
+                t1 = Task("python step1.py")
+                t2 = Task("python step2.py")
+                t3 = Task("python step3.py")
+                t4 = Task("python step4.py")
+                t2.after(t1)
+                t3.after(t1)
+                t4.after([t2, t3])
+                client.generate_dag(t1, t2, t3, t4, file_name="dag_job.txt")
+        """
+        task_order = self.__sort_tasks(args)
+        with open(filename, "w") as file:
+            file.write(" -> ".join(task_order))
+
     def run_dag(self, *args: batch_helpers.Task, job_name: str, **kwargs):
         """Run a set of tasks as a directed acyclic graph (DAG) in the correct order.
 
@@ -1512,16 +1563,7 @@ class CloudClient:
             automatically and tasks are submitted in the correct order. Task IDs and
             dependencies are updated as tasks are submitted.
         """
-        # get topologicalsorter opject
-        ts = TopologicalSorter()
-        tasks = args
-        for task in tasks:
-            ts.add(task, *task.deps)
-        try:
-            task_order = [*ts.static_order()]
-        except CycleError as ce:
-            logger.warn("Submitted tasks do not form a DAG.")
-            raise ce
+        task_order = self.__sort_tasks(args)
         task_df = pd.DataFrame(columns=["id", "cmd", "deps"])
         # initialize df for task execution
         for i, task in enumerate(task_order):
