@@ -43,6 +43,17 @@ For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the
 client = CloudClient()
 client.generate_dag(t1, t2, t3, t4, file_name = "dag_example.txt")
 ```
+This will generate a diagram similar to this example in `dag_example.txt` file:
+
+```text
++-- t1
+    |-> t2
+    |   |-> t3
+    |   |   !
+    |   |   t4 <- t1, t2
+    |   L->  ...
+    L->  ...
+```
 
 After verifying the text diagram, use the client method `run_dag()` to execute the DAG based on the provided tasks. The general structure of this method is comma-separated Task objects, followed by a `job_id` specification.
 
