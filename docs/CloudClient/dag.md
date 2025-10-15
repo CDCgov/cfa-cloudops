@@ -36,7 +36,15 @@ t1.after(t3)
 t1.after([t2, t3])
 ```
 
-Once all tasks have their task dependencies added, use the client method `run_dag()` to execute the DAG based on the provided tasks. The general structure of this method is comma-separated Task objects, followed by a `job_id` specification.
+Once all tasks have their task dependencies added, use the client method `generate_dag()` to optionally visualize the DAG as a text diagram. The diagram shall be saved to the text file specified in `file_name` parameter. 
+
+For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
+```python
+client = CloudClient()
+client.generate_dag(t1, t2, t3, t4, file_name = "dag_example.txt")
+```
+
+After verifying the text diagram, use the client method `run_dag()` to execute the DAG based on the provided tasks. The general structure of this method is comma-separated Task objects, followed by a `job_id` specification.
 
 For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
 ```python
