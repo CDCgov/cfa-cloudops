@@ -36,7 +36,7 @@ t1.after(t3)
 t1.after([t2, t3])
 ```
 
-Once all tasks have their task dependencies added, use the client method `generate_dag()` to optionally visualize the DAG as a text diagram. The diagram shall be saved to the text file specified in `file_name` parameter. 
+Once all tasks have their task dependencies added, use the client method `generate_dag()` to optionally visualize the DAG as a text diagram. The diagram shall be saved to the text file specified in `file_name` parameter.
 
 For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
 ```python
