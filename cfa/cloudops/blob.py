@@ -394,11 +394,10 @@ async def _async_download_blob_to_file(
             blob_client = container_client.get_blob_client(blob_name)
             await local_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            download_stream = await blob_client.download_blob()
+            download_stream = blob_client.download_blob()
+            content = download_stream.readall()
             async with await local_file_path.open("wb") as f:
-                # Streams in manageable pieces to avoid overwhelming RAM
-                async for chunk in download_stream.chunks():
-                    await f.write(chunk)
+                await f.write(content)
         except Exception as e:
             # Clean up partial file on failure
             if await local_file_path.exists():
@@ -473,10 +472,6 @@ async def _async_download_blob_folder(
         - Blobs not matching the pattern are skipped with logged messages.
     """
     semaphore = anyio.Semaphore(max_concurrent_downloads)
-    if include_extensions is not None:
-        include_extensions = format_extensions(include_extensions)
-    else:
-        exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
         logger.error(
             "Use included_extensions or exclude_extensions, not both."
@@ -484,6 +479,10 @@ async def _async_download_blob_folder(
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
+    if include_extensions is not None:
+        include_extensions = format_extensions(include_extensions)
+    if exclude_extensions is not None:
+        exclude_extensions = format_extensions(exclude_extensions)
 
     # Gather all matching blobs and calculate total size
     matching_blobs = []
@@ -516,7 +515,7 @@ async def _async_download_blob_folder(
         logger.info(
             f"Scheduling downloads for {len(matching_blobs)} blobs in container '{container_client.url}'..."
         )
-        async for blob in matching_blobs:
+        for blob in matching_blobs:
             local_file_path = local_folder / blob
             tg.start_soon(
                 _async_download_blob_to_file,
