@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.0.6"
+version = "0.0.9"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -58,6 +58,7 @@ build-backend = "poetry.core.masonry.api"
 hello = "cfa.cloudops.scripts:hello"
 create_pool = "cfa.cloudops.scripts:create_pool"
 create_job = "cfa.cloudops.scripts:create_job"
+create_job_schedule = "cfa.cloudops.scripts:create_job_schedule"
 add_task = "cfa.cloudops.scripts:add_task"
 create_blob_container = "cfa.cloudops.scripts:create_blob_container"
 upload_file = "cfa.cloudops.scripts:upload_file"
