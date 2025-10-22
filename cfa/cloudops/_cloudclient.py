@@ -32,7 +32,7 @@ from .client import (
     get_blob_service_client,
     get_compute_management_client,
 )
-from .job import create_job
+from .job import create_job, create_job_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -497,6 +497,110 @@ class CloudClient:
             exist_ok=exist_ok,
             verify_pool=verify_pool,
             verbose=verbose,
+        )
+
+    def create_job_schedule(
+        self,
+        job_name: str,
+        job_schedule_name: str,
+        timeout: int = 30,
+        start_window: str = None,
+        recurrence_interval: str = None,
+        do_not_run_until: str = None,
+        do_not_run_after: str = None,
+        exist_ok=False,
+        verify_pool: bool = True,
+        verbose=False,
+    ):
+        """Create a job schedule in Azure Batch to run an existing job on a specified pool.
+
+        An job schedule is a service resource that automates the creation of recurring jobs.
+        Instead of manually submitting the same job each time it needs to run,
+        you can create a job schedule that handles the process automatically on a defined cadence
+
+        Args:
+            job_name (str): Unique identifier for the existing job for which schedule is being created.
+            job_schedule_name (str): Unique display name for the job. Must be unique within the Batch
+                account. Can contain letters, numbers, hyphens, and underscores. Cannot
+                exceed 1024 characters. Spaces will be automatically replaced with dashes.
+            timeout (int, optional): The maximum time that the server can spend processing the request, in seconds.
+                Default is 30 seconds.
+            start_window (str): If a Job is not created within the startWindow interval, then the 'opportunity' is lost;
+                no Job will be created until the next recurrence of the schedule.
+            recurrence_interval (str): Specify a recurring interval for running the specified job
+            do_not_run_until (str): Disable the schedule until the specified time
+            do_not_run_after (str): Disable the schedule after the specified time
+            exist_ok (bool, optional): Whether to allow the job creation if a job schedule with the
+                same name already exists. Default is False.
+
+        Raises:
+            RuntimeError: If the job schedule creation fails due to Azure Batch service errors,
+                authentication issues, or invalid parameters.
+            ValueError: If the job_name schedule ID is invalid
+
+        Example:
+            Create a simple job schedule with default timeout of 30 seconds and recurrence interval of 10 minutes
+
+                client = CloudClient()
+                client.
+                client.create_job_schedule(
+                    job_name="data-prrocessing-job",
+                    job_name="Data Processing Job Schedule",
+                    recurrence_interval="P10M"
+                )
+
+            Create a simple job schedule with timeout of 900 seconds, recurrence interval of 2 hours. Job must be run before 11 PM on December 31st, 2025.
+
+                client = CloudClient()
+                client.create_job_schedule(
+                    job_name="data-prrocessing-job",
+                    job_name="Data Processing Job Schedule",
+                    timeout=900,
+                    recurrence_interval="P2H",
+                    do_not_run_after="2025-12-31T23:00:00Z"
+                )
+        Note:
+            - The job must be created before adding a schedule for it
+        """
+        job_schedule_id = job_schedule_name.replace(" ", "-").lower()
+        logger.debug(f"job_schedule_id: {job_schedule_id}")
+
+        cloud_job = self.batch_service_client.job.get(job_name)
+        if not cloud_job:
+            logger.error(
+                f"Job name {job_name} does not exist. Please specify a valid job name and try again."
+            )
+            raise Exception(
+                f"Job name {job_name} does not exist. Please specify a valid job name and try again."
+            )
+
+        schedule = batch_models.Schedule(
+            start_window=start_window,
+            recurrence_interval=recurrence_interval,
+            do_not_run_until=do_not_run_until,
+            do_not_run_after=do_not_run_after,
+        )
+
+        # add the job schedule
+        job_schedule_add_param = batch_models.JobScheduleAddParameter(
+            id=job_schedule_id,
+            display_name=job_schedule_name,
+            schedule=schedule,
+            job_specification=cloud_job.job_specification,
+        )
+
+        job_schedule_add_options = batch_models.JobScheduleAddOptions(
+            timeout=timeout,
+        )
+
+        # Create the job
+        create_job_schedule(
+            self.batch_service_client,
+            job_schedule_add_param,
+            exist_ok=exist_ok,
+            verify_pool=verify_pool,
+            verbose=verbose,
+            job_schedule_add_options=job_schedule_add_options,
         )
 
     def add_task(
@@ -1687,3 +1791,4 @@ class CloudClient:
                     else:
                         dlist.append(str(dp))
                 task_df.at[i, "deps"] = dlist
+

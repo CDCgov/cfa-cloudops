@@ -180,3 +180,29 @@ There are times when it's desired to delete a job, whether after it completes/fa
 ```python
 client.delete_job("running-job-example")
 ```
+
+## Runnings Jobs on a Schedule
+
+The `CloudClient` class has a method called `create_job_schedule` which should be used for programmatically running jobs on a schedule in your specified Azure Batch account. The following parameters can be passed to the method for customization of the job:
+
+- job_name: name of the job to create. Spaces will be removed.
+- job_schedule_name: name of the job schedule to create. Spaces will be replaced with dashes.
+- timeout: maximum time in minutes that the job can run before being terminated. Dedault is 30 seconds.
+- start_window: interval during which job must be run. Otherwise job will be created until the next recurrence of the schedule.
+- recurrence_interval: a recurring interval for running the specified job
+- do_not_run_until: disable the schedule until the specified time
+- do_not_run_after: Disable the schedule after the specified time
+- exist_ok: whether to allow the job creation if a job with the same name already exists. Default is False.
+- verify_pool: whether to check if the pool exists.
+- verbose: whether to be verbose as the job gets created.
+
+### The Simplest Example
+For users just looking to get started with this job schedule creation, the following can be run to create a job called 'test-job-1' on schedule called 'test-schedule' after every 15 minutes.
+```python
+client = CloudClient()
+client.create_job_schedule(
+    job_name = "test-job-1",
+    job_schedule_name = "test-schedule",
+    recurrence_interval = "P15M"
+)
+```
