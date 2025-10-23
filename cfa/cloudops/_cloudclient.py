@@ -505,8 +505,8 @@ class CloudClient:
         job_name: str,
         job_schedule_name: str,
         timeout: int = 30,
-        start_window: str = None,
-        recurrence_interval: str = None,
+        start_window: datetime.timedelta = None,
+        recurrence_interval: datetime.timedelta = None,
         do_not_run_until: str = None,
         do_not_run_after: str = None,
         exist_ok=False,
@@ -526,9 +526,9 @@ class CloudClient:
                 exceed 1024 characters. Spaces will be automatically replaced with dashes.
             timeout (int, optional): The maximum time that the server can spend processing the request, in seconds.
                 Default is 30 seconds.
-            start_window (str): If a Job is not created within the startWindow interval, then the 'opportunity' is lost;
+            start_window (timedelta): If a Job is not created within the startWindow interval, then the 'opportunity' is lost;
                 no Job will be created until the next recurrence of the schedule.
-            recurrence_interval (str): Specify a recurring interval for running the specified job
+            recurrence_interval (timedelta): Specify a recurring interval for running the specified job
             do_not_run_until (str): Disable the schedule until the specified time
             do_not_run_after (str): Disable the schedule after the specified time
             exist_ok (bool, optional): Whether to allow the job creation if a job schedule with the
@@ -558,7 +558,7 @@ class CloudClient:
                     job_name="Data Processing Job Schedule",
                     timeout=900,
                     recurrence_interval="P2H",
-                    do_not_run_after="2025-12-31T23:00:00Z"
+                    do_not_run_after="2025-12-31 %23:00:00"
                 )
         Note:
             - The job must be created before adding a schedule for it
@@ -575,11 +575,17 @@ class CloudClient:
                 f"Job name {job_name} does not exist. Please specify a valid job name and try again."
             )
 
+        do_not_run_after_datetime = datetime.datetime.strptime(
+            do_not_run_after, d.default_datetime_format
+        )
+        do_not_run_until_datetime = datetime.datetime.strptime(
+            do_not_run_until, d.default_datetime_format
+        )
         schedule = batch_models.Schedule(
             start_window=start_window,
             recurrence_interval=recurrence_interval,
-            do_not_run_until=do_not_run_until,
-            do_not_run_after=do_not_run_after,
+            do_not_run_until=do_not_run_until_datetime,
+            do_not_run_after=do_not_run_after_datetime,
         )
 
         # add the job schedule
@@ -1012,6 +1018,75 @@ class CloudClient:
         logger.debug(f"Attempting to delete {job_name}.")
         self.batch_service_client.job.delete(job_name)
         logger.info(f"Job {job_name} deleted.")
+
+    def delete_job_schedule(self, job_schedule_id: str) -> None:
+        """Delete an Azure Batch job schedule.
+
+        Permanently removes a job schedule from the Batch account.
+
+        Args:
+            job_schedule_id (str): Name/ID of the job schedule to delete. The job schedule must exist.
+
+        Raises:
+            RuntimeError: If the job schedule deletion fails due to Azure Batch service errors
+                or if the job schedule does not exist.
+
+        Example:
+            Delete a completed job chedule:
+
+                client = CloudClient()
+                client.delete_job_schedule("my-job-schedule")
+
+        Warning:
+            This operation is irreversible.
+        """
+        logger.debug(f"Attempting to delete schedule {job_schedule_id}.")
+        self.batch_service_client.job_schedule.delete(job_schedule_id)
+        logger.info(f"Job schedule {job_schedule_id} deleted.")
+
+    def resume_job_schedule(self, job_schedule_id: str) -> None:
+        """Resumes a suspended Azure Batch job schedule.
+
+        Enables a job schedule in the Batch account.
+
+        Args:
+            job_schedule_id (str): Name/ID of the job schedule to resume. The job schedule must exist.
+
+        Raises:
+            RuntimeError: If the job schedule suspension fails due to Azure Batch service errors
+                or if the job schedule does not exist.
+
+        Example:
+            Delete a completed job chedule:
+
+                client = CloudClient()
+                client.resume_job_schedule("my-job-schedule")
+        """
+        logger.debug(f"Attempting to resume schedule {job_schedule_id}.")
+        self.batch_service_client.job_schedule.enable(job_schedule_id)
+        logger.info(f"Job schedule {job_schedule_id} resumed.")
+
+    def suspend_job_schedule(self, job_schedule_id: str) -> None:
+        """Suspends an active Azure Batch job schedule until it is resumed.
+
+        Disables a job schedule in the Batch account.
+
+        Args:
+            job_schedule_id (str): Name/ID of the job schedule to suspend. The job schedule must exist.
+
+        Raises:
+            RuntimeError: If the job schedule suspension fails due to Azure Batch service errors
+                or if the job schedule does not exist.
+
+        Example:
+            Delete a completed job chedule:
+
+                client = CloudClient()
+                client.suspend_job_schedule("my-job-schedule")
+        """
+        logger.debug(f"Attempting to suspend schedule {job_schedule_id}.")
+        self.batch_service_client.job_schedule.disable(job_schedule_id)
+        logger.info(f"Job schedule {job_schedule_id} suspended.")
 
     def package_and_upload_dockerfile(
         self,

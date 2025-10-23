@@ -175,10 +175,56 @@ The `CloudClient` class has a method called `create_job_schedule` which should b
 ### The Simplest Example
 For users just looking to get started with this job schedule creation, the following can be run to create a job called 'test-job-1' after every 15 minutes on schedule called 'test-schedule'.
 ```python
+import datetime
 client = CloudClient()
 client.create_job_schedule(
     job_name = "test-job-1",
     job_schedule_name = "test-schedule",
-    recurrence_interval = "P15M"
+    recurrence_interval = datetime.timedelta(minutes=15)
 )
+```
+
+### A Complex Example
+Suppose we want the same job to run every 1 hour between 9 AM and 9 PM daily during the last week of March 2026. If the previous job is still running after 15 minutes, then next job will be skipped. In this case, the following should be run:
+```python
+import datetime
+client = CloudClient()
+client.create_job_schedule(
+    job_name = "test-job-1",
+    job_schedule_name = "test-schedule",
+    recurrence_interval = datetime.timedelta(hours=1),
+    start_window = datetime.timedelta(minutes=15),
+    do_not_run_until = "2026-03-23 00:00:00",
+    do_not_run_after = "2026-03-31 00:00:00",
+)
+```
+
+## Deleting a Job Schedule
+
+If it becomes necessary to remove recurring interval or scheduled start/end for a job, this can be accomplished with `delete_job_schedule` method and providing the name of the job schedule to delete. This will only delete the schedule. It will not delete the job.
+
+### Example:
+
+```python
+client.delete_job_schedule("test-schedule")
+```
+
+## Suspending a Job Schedule
+
+Instead of permanently deleting a job schedule, the job schedule can be temporarily suspended with the `suspend_job_schedule` method and providing the name of the job schedule to suspend.
+
+### Example:
+
+```python
+client.suspend_job_schedule("test-schedule")
+```
+
+## Resuming a Job Schedule
+
+A suspended job schedule can be resumed with the `resume_job_schedule` method and providing the name of the job schedule to resume.
+
+### Example:
+
+```python
+client.resume_job_schedule("test-schedule")
 ```

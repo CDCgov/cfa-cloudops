@@ -83,6 +83,8 @@ default_image_reference = models.ImageReference(
     version="latest",
 )
 
+default_datetime_format = "%Y-%m-%d %H:%M:%S"
+
 # this default sets up pools to use containers but does not
 # pre-fetch any
 default_container_configuration = models.ContainerConfiguration(
