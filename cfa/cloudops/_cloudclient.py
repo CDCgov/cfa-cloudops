@@ -502,8 +502,8 @@ class CloudClient:
 
     def create_job_schedule(
         self,
-        job_name: str,
         job_schedule_name: str,
+        job_specification: batch_models.JobSpecification,
         timeout: int = 30,
         start_window: datetime.timedelta = None,
         recurrence_interval: datetime.timedelta = None,
@@ -513,17 +513,17 @@ class CloudClient:
         verify_pool: bool = True,
         verbose=False,
     ):
-        """Create a job schedule in Azure Batch to run an existing job on a specified pool.
+        """Create a job schedule in Azure Batch to run a job on a specified pool.
 
         An job schedule is a service resource that automates the creation of recurring jobs.
         Instead of manually submitting the same job each time it needs to run,
         you can create a job schedule that handles the process automatically on a defined cadence
 
         Args:
-            job_name (str): Unique identifier for the existing job for which schedule is being created.
             job_schedule_name (str): Unique display name for the job. Must be unique within the Batch
                 account. Can contain letters, numbers, hyphens, and underscores. Cannot
                 exceed 1024 characters. Spaces will be automatically replaced with dashes.
+            job_specification (JobSpecification): Details of the job that will be launched on a schedule
             timeout (int, optional): The maximum time that the server can spend processing the request, in seconds.
                 Default is 30 seconds.
             start_window (timedelta): If a Job is not created within the startWindow interval, then the 'opportunity' is lost;
@@ -531,56 +531,56 @@ class CloudClient:
             recurrence_interval (timedelta): Specify a recurring interval for running the specified job
             do_not_run_until (str): Disable the schedule until the specified time
             do_not_run_after (str): Disable the schedule after the specified time
-            exist_ok (bool, optional): Whether to allow the job creation if a job schedule with the
+            exist_ok (bool, optional): Whether to allow the job schedule creation if a job schedule with the
                 same name already exists. Default is False.
 
         Raises:
             RuntimeError: If the job schedule creation fails due to Azure Batch service errors,
                 authentication issues, or invalid parameters.
-            ValueError: If the job_name schedule ID is invalid
+            ValueError: If the job schedule ID is invalid
 
         Example:
             Create a simple job schedule with default timeout of 30 seconds and recurrence interval of 10 minutes
 
                 client = CloudClient()
-                client.
+                job_specification = batchmodels.JobSpecification(
+                    pool_info=batchmodels.PoolInformation(pool_id="test-pool"),
+                    on_all_tasks_complete=batchmodels.OnAllTasksComplete.terminate_job,
+                    job_manager_task=batchmodels.JobManagerTask(
+                        id="job-manager-task",
+                        command_line="cmd /c echo Hello world from the job schedule!"
+                    )
+                )
                 client.create_job_schedule(
-                    job_name="data-prrocessing-job",
-                    job_name="Data Processing Job Schedule",
-                    recurrence_interval="P10M"
+                    job_schedule_name="Data Processing Job Schedule",
+                    job_specification=job_specification,
+                    recurrence_interval=datetime.timedelta(minutes=10)
                 )
 
             Create a simple job schedule with timeout of 900 seconds, recurrence interval of 2 hours. Job must be run before 11 PM on December 31st, 2025.
 
                 client = CloudClient()
                 client.create_job_schedule(
-                    job_name="data-prrocessing-job",
-                    job_name="Data Processing Job Schedule",
+                    job_schedule_name="Data Processing Job Schedule",
+                    job_specification=job_specification,
                     timeout=900,
-                    recurrence_interval="P2H",
-                    do_not_run_after="2025-12-31 %23:00:00"
+                    recurrence_interval=datetime.timedelta(hours=2),
+                    do_not_run_after="2025-12-31 23:00:00"
                 )
-        Note:
-            - The job must be created before adding a schedule for it
         """
         job_schedule_id = job_schedule_name.replace(" ", "-").lower()
         logger.debug(f"job_schedule_id: {job_schedule_id}")
 
-        cloud_job = self.batch_service_client.job.get(job_name)
-        if not cloud_job:
-            logger.error(
-                f"Job name {job_name} does not exist. Please specify a valid job name and try again."
+        do_not_run_after_datetime = None
+        if do_not_run_after:
+            do_not_run_after_datetime = datetime.datetime.strptime(
+                do_not_run_after, d.default_datetime_format
             )
-            raise Exception(
-                f"Job name {job_name} does not exist. Please specify a valid job name and try again."
+        do_not_run_until_datetime = None
+        if do_not_run_until:
+            do_not_run_until_datetime = datetime.datetime.strptime(
+                do_not_run_until, d.default_datetime_format
             )
-
-        do_not_run_after_datetime = datetime.datetime.strptime(
-            do_not_run_after, d.default_datetime_format
-        )
-        do_not_run_until_datetime = datetime.datetime.strptime(
-            do_not_run_until, d.default_datetime_format
-        )
         schedule = batch_models.Schedule(
             start_window=start_window,
             recurrence_interval=recurrence_interval,
@@ -593,7 +593,7 @@ class CloudClient:
             id=job_schedule_id,
             display_name=job_schedule_name,
             schedule=schedule,
-            job_specification=cloud_job.job_specification,
+            job_specification=job_specification,
         )
 
         job_schedule_add_options = batch_models.JobScheduleAddOptions(
