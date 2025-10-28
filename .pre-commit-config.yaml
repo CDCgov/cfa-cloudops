@@ -12,18 +12,13 @@ repos:
     -   id: trailing-whitespace
 #####
 # Python
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.11.10
-  hooks:
-    # Sort imports
-    - id: ruff
-      args: ['check', '--select', 'I', '--fix']
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.9
+    hooks:
     # Run the linter
-    - id: ruff
-      args: ['--line-length', '79']
+    -   id: ruff-check
     # Run the formatter
-    - id: ruff-format
-      args: ['--line-length', '79']
+    -   id: ruff-format
 #####
 # Secrets
 -   repo: https://github.com/Yelp/detect-secrets
