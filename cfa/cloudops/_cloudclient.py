@@ -154,6 +154,7 @@ class CloudClient:
         task_slots_per_node=1,
         availability_zones="regional",
         cache_blobfuse=True,
+        shared_mount = None
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -238,6 +239,7 @@ class CloudClient:
                 account_names=self.cred.azure_blob_storage_account,
                 identity_references=self.cred.compute_node_identity_reference,
                 cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                shared_relative_mount_path= shared_mount
             )
 
         # validate pool name
