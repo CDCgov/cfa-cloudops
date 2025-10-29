@@ -66,6 +66,21 @@ def cloud_client(
         return CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
 
 
+@pytest.fixture
+def cloud_client_with_service_principal(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+):
+    with patch(
+        "cfa.cloudops._cloudclient.SPCredentialHandler"
+    ) as mock_cred_handler:
+        mock_cred_handler.return_value = MagicMock()
+        return CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
+
+
 def test_create_job_schedule_success(
     mock_env_vars,
     mock_get_batch_service_client,
@@ -114,6 +129,145 @@ def test_create_job_schedule_success(
             exist_ok=exist_ok,
         )
         assert result is True
+
+
+def test_create_job_schedule_success_with_service_principal(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    # Mock job specification
+    job_specification = batch_models.JobSpecification(
+        pool_info=batch_models.PoolInformation(pool_id="mock_pool_id"),
+        on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
+        job_manager_task=batch_models.JobManagerTask(
+            id="mock-job-manager-task",
+            command_line="cmd /c echo Mock job schedule created!",
+        ),
+    )
+
+    # Mock parameters for create_job_schedule
+    job_schedule_name = "MockJobSchedule"
+    timeout = 600
+    recurrence_interval = datetime.timedelta(hours=1)
+    do_not_run_before = "2025-12-01 23:59:59"
+    do_not_run_after = "2025-12-31 23:59:59"
+    exist_ok = True
+
+    # Mock the create_job_schedule method
+    with patch.object(
+        cloud_client_with_service_principal,
+        "create_job_schedule",
+        return_value=True,
+    ) as mock_create_job_schedule:
+        result = cloud_client_with_service_principal.create_job_schedule(
+            job_schedule_name=job_schedule_name,
+            job_specification=job_specification,
+            timeout=timeout,
+            recurrence_interval=recurrence_interval,
+            do_not_run_before=do_not_run_before,
+            do_not_run_after=do_not_run_after,
+            exist_ok=exist_ok,
+        )
+
+        # Assertions
+        mock_create_job_schedule.assert_called_once_with(
+            job_schedule_name=job_schedule_name,
+            job_specification=job_specification,
+            timeout=timeout,
+            recurrence_interval=recurrence_interval,
+            do_not_run_before=do_not_run_before,
+            do_not_run_after=do_not_run_after,
+            exist_ok=exist_ok,
+        )
+        assert result is True
+
+
+def test_delete_job_schedule_success_with_service_principal(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    # Mock parameters for create_job_schedule
+    job_schedule_id = "MockJobSchedule"
+
+    # Mock the create_job_schedule method
+    with patch.object(
+        cloud_client_with_service_principal,
+        "delete_job_schedule",
+        return_value=None,
+    ) as mock_delete_job_schedule:
+        result = cloud_client_with_service_principal.delete_job_schedule(
+            job_schedule_id=job_schedule_id
+        )
+
+        # Assertions
+        mock_delete_job_schedule.assert_called_once_with(
+            job_schedule_id=job_schedule_id,
+        )
+        assert result is None
+
+
+def test_suspend_job_schedule_success_with_service_principal(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    # Mock parameters for create_job_schedule
+    job_schedule_id = "MockJobSchedule"
+
+    # Mock the create_job_schedule method
+    with patch.object(
+        cloud_client_with_service_principal,
+        "suspend_job_schedule",
+        return_value=None,
+    ) as mock_suspend_job_schedule:
+        result = cloud_client_with_service_principal.suspend_job_schedule(
+            job_schedule_id=job_schedule_id
+        )
+
+        # Assertions
+        mock_suspend_job_schedule.assert_called_once_with(
+            job_schedule_id=job_schedule_id,
+        )
+        assert result is None
+
+
+def test_resume_job_schedule_success_with_service_principal(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    # Mock parameters for create_job_schedule
+    job_schedule_id = "MockJobSchedule"
+
+    # Mock the create_job_schedule method
+    with patch.object(
+        cloud_client_with_service_principal,
+        "resume_job_schedule",
+        return_value=None,
+    ) as mock_resume_job_schedule:
+        result = cloud_client_with_service_principal.resume_job_schedule(
+            job_schedule_id=job_schedule_id
+        )
+
+        # Assertions
+        mock_resume_job_schedule.assert_called_once_with(
+            job_schedule_id=job_schedule_id,
+        )
+        assert result is None
 
 
 def test_cloudclient_init_with_env_credentials(
