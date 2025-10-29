@@ -225,13 +225,8 @@ class CloudClient:
 
         # Configure storage mounts if provided
         if mounts is not None:
-            storage_containers = []
-            mount_names = []
-            for mount in mounts:
-                storage_containers.append(mount[0])
-                mount_names.append(mount[1])
             mount_config = get_node_mount_config(
-                storage_containers=storage_containers,
+                storage_containers=mounts,
                 account_names=self.cred.azure_blob_storage_account,
                 identity_references=self.cred.compute_node_identity_reference,
                 cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
