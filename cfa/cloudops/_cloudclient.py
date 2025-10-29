@@ -143,7 +143,7 @@ class CloudClient:
     def create_pool(
         self,
         pool_name: str,
-        mounts: list | None = None,
+        mounts: list[str] | list[dict] | None = None,
         container_image_name=None,
         vm_size=d.default_vm_size,  # do some validation on size if too large
         autoscale=True,
@@ -220,17 +220,26 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
-        # Initialize mount configuration
-        mount_config = None
 
         # Configure storage mounts if provided
         if mounts is not None:
-            mount_config = get_node_mount_config(
-                storage_containers=mounts,
-                account_names=self.cred.azure_blob_storage_account,
-                identity_references=self.cred.compute_node_identity_reference,
-                cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
-            )
+            if isinstance(mounts[0], str):
+                mount_config = get_node_mount_config(
+                    storage_containers=mounts,
+                    account_names=self.cred.azure_blob_storage_account,
+                    identity_references=self.cred.compute_node_identity_reference,
+                    cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                )
+            elif isinstance(mounts[0], dict):
+                mount_config = get_node_mount_config(
+                    storage_containers=[mount["source"] for mount in mounts],
+                    account_names=self.cred.azure_blob_storage_account,
+                    identity_references=self.cred.compute_node_identity_reference,
+                    cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                    mount_targets=[mount["target"] for mount in mounts],
+                )
+            else:
+                mount_config = None
 
         # validate pool name
         pool_name = pool_name.replace(" ", "_")
