@@ -143,7 +143,7 @@ class CloudClient:
     def create_pool(
         self,
         pool_name: str,
-        mounts=None,
+        mounts: list | None = None,
         container_image_name=None,
         vm_size=d.default_vm_size,  # do some validation on size if too large
         autoscale=True,
@@ -163,9 +163,7 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of mount configurations as tuples of
-                (storage_container, mount_name). Each tuple specifies a blob storage
-                container to mount and the local mount point name.
+            mounts (list, optional): List of Blob Storage containers to mount to the pool.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
@@ -211,7 +209,7 @@ class CloudClient:
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
                     vm_size="Standard_D4s_v3",
-                    mounts=[("input-data", "data"), ("output-results", "results")],
+                    mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
                     availability_zones="zonal"
