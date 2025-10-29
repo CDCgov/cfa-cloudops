@@ -1083,7 +1083,7 @@ def add_task(
                 mount_str
                 + "--mount type=bind,source="
                 + az_mount_dir
-                + f"/{mount[1]},target=/{mount[1]} "
+                + f"/{mount[0]},target=/{mount[1]} "
             )
 
     if task_id_ints:
