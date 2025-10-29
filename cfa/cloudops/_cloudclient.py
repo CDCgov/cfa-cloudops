@@ -236,7 +236,7 @@ class CloudClient:
                     account_names=self.cred.azure_blob_storage_account,
                     identity_references=self.cred.compute_node_identity_reference,
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
-                    mount_targets=[mount["target"] for mount in mounts],
+                    mount_names=[mount["target"] for mount in mounts],
                 )
             else:
                 mount_config = None
