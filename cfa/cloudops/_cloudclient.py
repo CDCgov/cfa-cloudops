@@ -234,7 +234,6 @@ class CloudClient:
                 mount_names.append(mount[1])
             mount_config = get_node_mount_config(
                 storage_containers=storage_containers,
-                mount_names=mount_names,
                 account_names=self.cred.azure_blob_storage_account,
                 identity_references=self.cred.compute_node_identity_reference,
                 cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
@@ -504,6 +503,7 @@ class CloudClient:
         self,
         job_name: str,
         command_line: str,
+        mount_pairs: list[dict] | None = None,
         name_suffix: str = "",
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
@@ -517,6 +517,7 @@ class CloudClient:
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
+            mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task. Each dict is in the form {"source": <container_name>, "target": <target_name>}.
             name_suffix (str, optional): Suffix to append to the task ID.
             depends_on (list[str], optional): List of task IDs this task depends on.
             depends_on_range (tuple, optional): Range of task IDs this task depends on.
@@ -567,12 +568,15 @@ class CloudClient:
             rel_mnt_path = None
 
         # get all mounts from pool info
-        self.mounts = batch_helpers.get_pool_mounts(
-            pool_name,
-            self.cred.azure_resource_group_name,
-            self.cred.azure_batch_account,
-            self.batch_mgmt_client,
-        )
+        if mount_pairs is None:
+            self.mounts = batch_helpers.get_pool_mounts(
+                pool_name,
+                self.cred.azure_resource_group_name,
+                self.cred.azure_batch_account,
+                self.batch_mgmt_client,
+            )
+        else:
+            self.mounts = mount_pairs
 
         logger.debug("Adding tasks to job.")
         tid = batch_helpers.add_task(
