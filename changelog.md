@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.0.8
+- added ruff.toml config file for pre-commit fixes
+
 ## v0.0.5
 - changed type hints for command_line
 - add a credential check to CloudClient
