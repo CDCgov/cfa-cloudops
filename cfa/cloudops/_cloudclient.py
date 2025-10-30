@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import uuid
 from graphlib import CycleError, TopologicalSorter
 
 import networkx as nx
@@ -1494,9 +1495,9 @@ class CloudClient:
             Generate diagram for DAG of tasks:
 
                 client = CloudClient()
-                t1 = Task("python step1.py")
-                t2 = Task("python step2.py")
-                t3 = Task("python step3.py")
+                t1 = Task("python step1.py", id='task1')
+                t2 = Task("python step2.py", id='task2')
+                t3 = Task("python step3.py") # id will be auto-assigned with task prefix
                 t4 = Task("python step4.py")
                 t2.after(t1)
                 t3.after(t1)
@@ -1505,6 +1506,13 @@ class CloudClient:
         """
 
         tasks = args
+        for index, task in enumerate(tasks):
+            try:
+                if str(uuid.UUID(task.id)) == task.id:
+                    task.id = f"task_{index}"
+            except ValueError:
+                continue
+
         graph = nx.DiGraph()
         for task in tasks:
             for predecessor in task.deps:
