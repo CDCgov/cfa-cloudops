@@ -174,7 +174,7 @@ The `CloudClient` class has a method called `create_job_schedule` which should b
 - verbose: whether to be verbose as the job schedule gets created.
 
 ### The Simplest Example
-For users just looking to get started with this job schedule creation, the following can be run to create a job after every 15 minutes on schedule called 'test-schedule' using the 'test-pool' Azure batch pool. 
+For users just looking to get started with this job schedule creation, the following can be run to create a job after every 15 minutes on schedule called 'test-schedule' using the 'test-pool' Azure batch pool.
 ```python
 import datetime
 
