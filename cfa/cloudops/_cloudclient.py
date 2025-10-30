@@ -578,7 +578,13 @@ class CloudClient:
                 self.batch_mgmt_client,
             )
         else:
-            self.mounts = mount_pairs
+            self.mounts = [
+                {
+                    "source": mount["source"],
+                    "target": helpers.format_rel_path(mount["target"]),
+                }
+                for mount in mount_pairs
+            ]
 
         logger.debug("Adding tasks to job.")
         tid = batch_helpers.add_task(
