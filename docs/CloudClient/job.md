@@ -188,7 +188,7 @@ The `CloudClient` class has a method called `create_job_schedule` which should b
 - job_schedule_name: name of the job schedule to create. Spaces will be replaced with dashes.
 - pool_name: name of Azure batch pool where the job's tasks will run. The pool must exist before job schedule is created.
 - command: Docker command that will be run by the job manager task of the job created by the job schedule.
-- timeout: maximum time in seconds that the job can run before being terminated. Dedault is 30 seconds.
+- timeout: maximum time in seconds that the job can run before being terminated. Default is 30 seconds.
 - start_window: interval during which job must be run. Otherwise job will be created upon next recurrence of the schedule.
 - recurrence_interval: a recurring cadence for running the specified job
 - do_not_run_until: disable the schedule until the specified time
@@ -198,7 +198,7 @@ The `CloudClient` class has a method called `create_job_schedule` which should b
 - verbose: whether to be verbose as the job schedule gets created.
 
 ### The Simplest Example
-For users just looking to get started with this job schedule creation, the following can be run to create a job called 'test-job-1' after every 15 minutes on schedule called 'test-schedule'.
+For users just looking to get started with this job schedule creation, the following can be run to create a job after every 15 minutes on schedule called 'test-schedule' using the 'test-pool' Azure batch pool. 
 ```python
 import datetime
 
