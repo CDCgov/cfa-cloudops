@@ -55,9 +55,7 @@ def create_container(container_name: str):
         os.makedirs(container_name)
         logger.info(f"Container [{container_name}] created successfully.")
     except Exception:
-        logger.debug(
-            f"Container [{container_name}] already exists. No action needed."
-        )
+        logger.debug(f"Container [{container_name}] already exists. No action needed.")
     return "container_client"
 
 
@@ -178,9 +176,7 @@ def upload_folder(
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
-        logger.error(
-            "Use included_extensions or exclude_extensions, not both."
-        )
+        logger.error("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
