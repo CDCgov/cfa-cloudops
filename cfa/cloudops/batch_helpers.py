@@ -911,7 +911,7 @@ def get_pool_mounts(
             mounts.append(
                 {
                     "source": m["azure_blob_file_system_configuration"][
-                        "container_name"
+                        "relative_mount_path"
                     ],
                     "target": m["azure_blob_file_system_configuration"][
                         "relative_mount_path"
