@@ -503,7 +503,8 @@ class CloudClient:
     def create_job_schedule(
         self,
         job_schedule_name: str,
-        job_specification: batch_models.JobSpecification,
+        pool_name: str,
+        command: str,
         timeout: int = 30,
         start_window: datetime.timedelta = None,
         recurrence_interval: datetime.timedelta = None,
@@ -523,7 +524,8 @@ class CloudClient:
             job_schedule_name (str): Unique display name for the job. Must be unique within the Batch
                 account. Can contain letters, numbers, hyphens, and underscores. Cannot
                 exceed 1024 characters. Spaces will be automatically replaced with dashes.
-            job_specification (JobSpecification): Details of the job that will be launched on a schedule
+            pool_name (str): Name of Azure batch pool where the job's tasks will run. The pool must exist before job schedule is created.
+            command (str): Docker command that will be run by the job manager task of the job created by the job schedule.
             timeout (int, optional): The maximum time that the server can spend processing the request, in seconds.
                 Default is 30 seconds.
             start_window (timedelta): If a Job is not created within the startWindow interval, then the 'opportunity' is lost;
@@ -543,17 +545,10 @@ class CloudClient:
             Create a simple job schedule with default timeout of 30 seconds and recurrence interval of 10 minutes
 
                 client = CloudClient()
-                job_specification = batchmodels.JobSpecification(
-                    pool_info=batchmodels.PoolInformation(pool_id="test-pool"),
-                    on_all_tasks_complete=batchmodels.OnAllTasksComplete.terminate_job,
-                    job_manager_task=batchmodels.JobManagerTask(
-                        id="job-manager-task",
-                        command_line="cmd /c echo Hello world from the job schedule!"
-                    )
-                )
                 client.create_job_schedule(
                     job_schedule_name="Data Processing Job Schedule",
-                    job_specification=job_specification,
+                    pool_name="my-test-pool-1",
+                    command="python process_data.py",
                     recurrence_interval=datetime.timedelta(minutes=10)
                 )
 
@@ -562,7 +557,8 @@ class CloudClient:
                 client = CloudClient()
                 client.create_job_schedule(
                     job_schedule_name="Data Processing Job Schedule",
-                    job_specification=job_specification,
+                    pool_name="my-test-pool-2",
+                    command="python process_data.py",
                     timeout=900,
                     recurrence_interval=datetime.timedelta(hours=2),
                     do_not_run_after="2025-12-31 23:00:00"
@@ -570,6 +566,14 @@ class CloudClient:
         """
         job_schedule_id = job_schedule_name.replace(" ", "-").lower()
         logger.debug(f"job_schedule_id: {job_schedule_id}")
+
+        job_specification = batch_models.JobSpecification(
+            pool_info=batch_models.PoolInformation(pool_id=pool_name),
+            on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
+            job_manager_task=batch_models.JobManagerTask(
+                id=f"{job_schedule_id}-job", command_line=command
+            ),
+        )
 
         do_not_run_after_datetime = None
         if do_not_run_after:

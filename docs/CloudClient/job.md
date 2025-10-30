@@ -162,7 +162,8 @@ client.delete_job("running-job-example")
 The `CloudClient` class has a method called `create_job_schedule` which should be used for programmatically running jobs on a schedule in your specified Azure Batch account. The following parameters can be passed to the method for specifying the job schedule:
 
 - job_schedule_name: name of the job schedule to create. Spaces will be replaced with dashes.
-- job_specification: details of the job that shall be launched on schedule.
+- pool_name: name of Azure batch pool where the job's tasks will run. The pool must exist before job schedule is created.
+- command: Docker command that will be run by the job manager task of the job created by the job schedule.
 - timeout: maximum time in seconds that the job can run before being terminated. Dedault is 30 seconds.
 - start_window: interval during which job must be run. Otherwise job will be created upon next recurrence of the schedule.
 - recurrence_interval: a recurring cadence for running the specified job
@@ -176,20 +177,12 @@ The `CloudClient` class has a method called `create_job_schedule` which should b
 For users just looking to get started with this job schedule creation, the following can be run to create a job called 'test-job-1' after every 15 minutes on schedule called 'test-schedule'.
 ```python
 import datetime
-from azure.batch import models as batch_models
 
-job_specification = batch_models.JobSpecification(
-    pool_info=batch_models.PoolInformation(pool_id="test-pool"),
-    on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
-    job_manager_task=batch_models.JobManagerTask(
-        id="job-manager-task",
-        command_line="cmd /c echo Hello world from the job schedule!"
-    )
-)
 client = CloudClient()
 client.create_job_schedule(
-    job_schedule_name = "test-schedule",
-    job_specification = job_specification,
+    job_schedule_name = 'test-schedule',
+    pool_name = 'test-pool',
+    command = "cmd /c echo Hello world from the job schedule!",
     recurrence_interval = datetime.timedelta(minutes=15)
 )
 ```
@@ -198,21 +191,13 @@ client.create_job_schedule(
 Suppose we want the same job to run every 1 hour during the last week of March 2026. If the previous job is still running after 15 minutes, then next job will be skipped. In this case, the following should be run:
 ```python
 import datetime
-from azure.batch import models as batch_models
 
-job_specification = batch_models.JobSpecification(
-    pool_info=batch_models.PoolInformation(pool_id="test-pool"),
-    on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
-    job_manager_task=batch_models.JobManagerTask(
-        id="job-manager-task",
-        command_line="cmd /c echo Hello world from the job schedule!"
-    )
-)
 
 client = CloudClient()
 client.create_job_schedule(
     job_schedule_name = "test-schedule",
-    job_specification = job_specification,
+    pool_name = 'test-pool',
+    command = "cmd /c echo Hello world from the job schedule!",
     recurrence_interval = datetime.timedelta(hours=1),
     start_window = datetime.timedelta(minutes=15),
     do_not_run_until = "2026-03-23 00:00:00",
