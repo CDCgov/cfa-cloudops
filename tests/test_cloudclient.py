@@ -2,7 +2,6 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from azure.batch import models as batch_models
 
 from cfa.cloudops._cloudclient import CloudClient
 
@@ -89,19 +88,11 @@ def test_create_job_schedule_success(
     mock_get_compute_management_client,
     cloud_client,
 ):
-    # Mock job specification
-    job_specification = batch_models.JobSpecification(
-        pool_info=batch_models.PoolInformation(pool_id="mock_pool_id"),
-        on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
-        job_manager_task=batch_models.JobManagerTask(
-            id="mock-job-manager-task",
-            command_line="cmd /c echo Mock job schedule created!",
-        ),
-    )
-
     # Mock parameters for create_job_schedule
     job_schedule_name = "MockJobSchedule"
     timeout = 600
+    pool_name = "mock_pool_id"
+    command_line = "cmd /c echo Mock job schedule created!"
     recurrence_interval = datetime.timedelta(hours=1)
     do_not_run_after = "2025-12-31 23:59:59"
     exist_ok = True
@@ -112,7 +103,8 @@ def test_create_job_schedule_success(
     ) as mock_create_job_schedule:
         result = cloud_client.create_job_schedule(
             job_schedule_name=job_schedule_name,
-            job_specification=job_specification,
+            pool_name=pool_name,
+            command=command_line,
             timeout=timeout,
             recurrence_interval=recurrence_interval,
             do_not_run_after=do_not_run_after,
@@ -122,7 +114,8 @@ def test_create_job_schedule_success(
         # Assertions
         mock_create_job_schedule.assert_called_once_with(
             job_schedule_name=job_schedule_name,
-            job_specification=job_specification,
+            pool_name=pool_name,
+            command=command_line,
             timeout=timeout,
             recurrence_interval=recurrence_interval,
             do_not_run_after=do_not_run_after,
@@ -139,19 +132,11 @@ def test_create_job_schedule_success_with_service_principal(
     mock_get_compute_management_client,
     cloud_client_with_service_principal,
 ):
-    # Mock job specification
-    job_specification = batch_models.JobSpecification(
-        pool_info=batch_models.PoolInformation(pool_id="mock_pool_id"),
-        on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
-        job_manager_task=batch_models.JobManagerTask(
-            id="mock-job-manager-task",
-            command_line="cmd /c echo Mock job schedule created!",
-        ),
-    )
-
     # Mock parameters for create_job_schedule
     job_schedule_name = "MockJobSchedule"
     timeout = 600
+    pool_name = "mock_pool_id"
+    command_line = "cmd /c echo Mock job schedule created!"
     recurrence_interval = datetime.timedelta(hours=1)
     do_not_run_before = "2025-12-01 23:59:59"
     do_not_run_after = "2025-12-31 23:59:59"
@@ -165,7 +150,8 @@ def test_create_job_schedule_success_with_service_principal(
     ) as mock_create_job_schedule:
         result = cloud_client_with_service_principal.create_job_schedule(
             job_schedule_name=job_schedule_name,
-            job_specification=job_specification,
+            pool_name=pool_name,
+            command=command_line,
             timeout=timeout,
             recurrence_interval=recurrence_interval,
             do_not_run_before=do_not_run_before,
@@ -176,7 +162,8 @@ def test_create_job_schedule_success_with_service_principal(
         # Assertions
         mock_create_job_schedule.assert_called_once_with(
             job_schedule_name=job_schedule_name,
-            job_specification=job_specification,
+            pool_name=pool_name,
+            command=command_line,
             timeout=timeout,
             recurrence_interval=recurrence_interval,
             do_not_run_before=do_not_run_before,
