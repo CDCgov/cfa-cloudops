@@ -181,9 +181,7 @@ def output_task_files_to_blob(
     """
     if compute_node_identity_reference is None:
         compute_node_identity_reference = get_compute_node_identity_reference()
-    if not isinstance(
-        compute_node_identity_reference, ComputeNodeIdentityReference
-    ):
+    if not isinstance(compute_node_identity_reference, ComputeNodeIdentityReference):
         raise TypeError(
             "compute_node_identity_reference "
             "must be an instance of "
@@ -322,8 +320,7 @@ def get_task_config(
         command_line=base_call,
         container_settings=container_settings,
         user_identity=user_identity,
-        output_files=ensure_listlike(output_files)
-        + ensure_listlike(log_output_files),
+        output_files=ensure_listlike(output_files) + ensure_listlike(log_output_files),
         **kwargs,
     )
 

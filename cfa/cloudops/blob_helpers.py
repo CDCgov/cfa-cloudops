@@ -2,60 +2,20 @@ import logging
 import os
 from os import path, walk
 from pathlib import Path
+from typing import Union
 
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.storage.blob import (
     BlobServiceClient,
+    BlobType,
     ContainerClient,
     StorageStreamDownloader,
 )
 from humanize import naturalsize as ns
 
-from .blob import upload_to_storage_container
+from .blob import format_extensions, upload_to_storage_container
 
 logger = logging.getLogger(__name__)
-
-
-def format_extensions(extension):
-    """Format file extensions to include leading periods.
-
-    Ensures that file extensions have the correct format with leading periods.
-    Accepts both single extensions and lists of extensions, with or without
-    leading periods.
-
-    Args:
-        extension (str | list): File extension(s) to format. Can be a single
-            extension string or a list of extension strings. Leading periods
-            are optional (e.g., "txt" or ".txt" both work).
-
-    Returns:
-        list: List of properly formatted extensions with leading periods.
-
-    Example:
-        Format single extension:
-
-            formatted = format_extensions("txt")
-            # Returns: [".txt"]
-
-        Format multiple extensions:
-
-            formatted = format_extensions(["py", ".js", "csv"])
-            # Returns: [".py", ".js", ".csv"]
-
-        Handle mixed formats:
-
-            formatted = format_extensions([".pdf", "docx"])
-            # Returns: [".pdf", ".docx"]
-    """
-    if isinstance(extension, str):
-        extension = [extension]
-    ext = []
-    for _ext in extension:
-        if _ext.startswith("."):
-            ext.append(_ext)
-        else:
-            ext.append("." + _ext)
-    return ext
 
 
 def walk_folder(folder: str) -> list | None:
@@ -166,9 +126,7 @@ def upload_files_in_folder(
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
-        logger.error(
-            "Use included_extensions or exclude_extensions, not both."
-        )
+        logger.error("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
@@ -330,9 +288,7 @@ def download_file(
             print(f"Downloaded {src_path} to {dest_path}")
 
 
-def get_container_client(
-    account_name: str, container_name: str
-) -> ContainerClient:
+def get_container_client(account_name: str, container_name: str) -> ContainerClient:
     """Create a container client using managed identity authentication.
 
     Instantiates a container client using the specified account name and container name,
@@ -716,9 +672,7 @@ def download_folder(
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
-        logger.error(
-            "Use included_extensions or exclude_extensions, not both."
-        )
+        logger.error("Use included_extensions or exclude_extensions, not both.")
         print("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
@@ -726,13 +680,9 @@ def download_folder(
     # check container exists
     logger.debug(f"Checking Blob container {container_name} exists.")
     # create container client
-    c_client = blob_service_client.get_container_client(
-        container=container_name
-    )
+    c_client = blob_service_client.get_container_client(container=container_name)
     if not check_virtual_directory_existence(c_client, src_path):
-        raise ValueError(
-            f"Source virtual directory: {src_path} does not exist."
-        )
+        raise ValueError(f"Source virtual directory: {src_path} does not exist.")
 
     blob_list = []
     if not src_path.endswith("/"):
@@ -768,9 +718,7 @@ def download_folder(
                 t_size += blob.size
         print("Total size of files to download: ", ns(t_size))
         if t_size > 2 * gb:
-            print(
-                "Warning: Total size of files to download is greater than 2 GB."
-            )
+            print("Warning: Total size of files to download is greater than 2 GB.")
             cont = input("Continue? [Y/n]: ")
             if cont.lower() != "y":
                 print("Download aborted.")
@@ -850,9 +798,7 @@ def delete_blob_folder(
         data before deletion.
     """
     # create container client
-    c_client = blob_service_client.get_container_client(
-        container=container_name
-    )
+    c_client = blob_service_client.get_container_client(container=container_name)
     # list out files in folder
     blob_names = c_client.list_blob_names(name_starts_with=folder_path)
     _files = [blob for blob in blob_names]
@@ -881,11 +827,13 @@ def walk_blobs_in_container(
 
 
 def write_blob_stream(
-    data,
+    data: Union[str, bytes],
     blob_url: str,
     account_name: str = None,
     container_name: str = None,
     container_client: ContainerClient = None,
+    append_blob: bool = False,
+    overwrite: bool = True,
 ) -> bool:
     """
     Write a stream into a file in Azure Blob storage
@@ -901,6 +849,10 @@ def write_blob_stream(
             [Optional] Name of Blob container within storage account
         container_client (ContainerClient):
             [Optional] Instance of ContainerClient provided with the storage account
+        append_blob (bool):
+            [Optional] Append to an existing blob or create a new one. Default False
+        overwrite (bool):
+            [Optional] Delete existing blob if it exists and create a new one in its place. If append_blob is False and overwrite is False, an ResourceExistsError will be raised if the blob already exists. Default True
 
     Raises:
         ValueError:
@@ -924,5 +876,11 @@ def write_blob_stream(
         raise ValueError(
             "Either container name and account name or container client must be provided."
         )
-    container_client.upload_blob(name=blob_url, data=data, overwrite=True)
+    if append_blob:
+        blob_type = BlobType.APPENDBLOB
+    else:
+        blob_type = BlobType.BLOCKBLOB
+    container_client.upload_blob(
+        name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite
+    )
     return True

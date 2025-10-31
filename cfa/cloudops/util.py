@@ -164,9 +164,7 @@ def lookup_available_vm_skus_for_batch(
     if client is None:
         from .client import get_batch_management_client
 
-        client = get_batch_management_client(
-            config_dict=config_dict, try_env=try_env
-        )
+        client = get_batch_management_client(config_dict=config_dict, try_env=try_env)
     result = [
         item
         for item in client.location.list_supported_virtual_machine_skus(

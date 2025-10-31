@@ -11,9 +11,7 @@ class Task:
        dep: dependent Task(s)
     """
 
-    def __init__(
-        self, cmd: str, id: str | None = None, dep: str | list | None = None
-    ):
+    def __init__(self, cmd: str, id: str | None = None, dep: str | list | None = None):
         """
         Args:
             cmd (str): command to be used with Azure Batch task

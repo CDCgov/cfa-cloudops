@@ -96,9 +96,7 @@ class CloudClient:
             self.method = "env"
             logger.info("Using environment-based credentials.")
         elif use_federated:
-            self.cred = DefaultCredentialHandler(
-                dotenv_path=dotenv_path, **kwargs
-            )
+            self.cred = DefaultCredentialHandler(dotenv_path=dotenv_path, **kwargs)
             self.method = "default"
             logger.info("Using default credentials.")
         else:
@@ -128,9 +126,7 @@ class CloudClient:
         try:
             subscription_client = SubscriptionClient(cred)
             # List subscriptions
-            sub_list = [
-                sub for sub in subscription_client.subscriptions.list()
-            ]
+            sub_list = [sub for sub in subscription_client.subscriptions.list()]
             for subscription in sub_list:
                 print("Found subscription via credential.")
                 print(f"Subscription ID: {subscription.subscription_id}")
@@ -315,9 +311,7 @@ class CloudClient:
                 policy=models.NodePlacementPolicyType.zonal
             )
         else:
-            raise ValueError(
-                "Availability zone needs to be 'zonal' or 'regional'."
-            )
+            raise ValueError("Availability zone needs to be 'zonal' or 'regional'.")
 
         try:
             # Create the pool using the batch management client
@@ -481,9 +475,7 @@ class CloudClient:
             on_task_failure=OnTaskFailure.perform_exit_options_job_action,
             constraints=job_constraints,
             metadata=[
-                MetadataItem(
-                    name="mark_complete", value=mark_complete_after_tasks_run
-                )
+                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run)
             ],
         )
 
@@ -541,11 +533,11 @@ class CloudClient:
                     self.batch_mgmt_client,
                 )
                 logger.debug("Generated full pool info.")
-                vm_config = pool_info.deployment_configuration.virtual_machine_configuration
-                logger.debug("Generated VM config.")
-                pool_container = (
-                    vm_config.container_configuration.container_image_names
+                vm_config = (
+                    pool_info.deployment_configuration.virtual_machine_configuration
                 )
+                logger.debug("Generated VM config.")
+                pool_container = vm_config.container_configuration.container_image_names
                 container_name = pool_container[0].split("://")[-1]
                 logger.debug(f"Container name set to {container_name}.")
             else:
@@ -563,9 +555,7 @@ class CloudClient:
                 batch_mgmt_client=self.batch_mgmt_client,
             )
             if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(
-                    rel_path=rel_mnt_path
-                )
+                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
         else:
             rel_mnt_path = None
 
@@ -868,9 +858,7 @@ class CloudClient:
             )
             logger.info("Task info:")
             logger.info(c_tasks)
-            if batch_helpers.check_job_complete(
-                job_name, self.batch_service_client
-            ):
+            if batch_helpers.check_job_complete(job_name, self.batch_service_client):
                 logger.info(f"Job {job_name} completed.")
                 return "complete"
             else:
@@ -1107,9 +1095,7 @@ class CloudClient:
         )
 
         logger.debug("Attempting to download file.")
-        blob_helpers.download_file(
-            c_client, src_path, dest_path, do_check, check_size
-        )
+        blob_helpers.download_file(c_client, src_path, dest_path, do_check, check_size)
 
     def download_folder(
         self,
@@ -1160,7 +1146,6 @@ class CloudClient:
                     dest_path="./local_logs",
                     container_name="job-logs",
                     include_extensions=[".log", ".txt"],
-                    exclude_extensions=[".tmp"],
                     verbose=False
                 )
 
@@ -1181,6 +1166,151 @@ class CloudClient:
             check_size,
         )
         logger.debug("finished call to download")
+
+    def async_download_folder(
+        self,
+        src_path: str,
+        dest_path: str,
+        container_name: str,
+        include_extensions: str | list | None = None,
+        exclude_extensions: str | list | None = None,
+        check_size=True,
+        max_concurrent_downloads: int = 20,
+    ) -> None:
+        """Download an entire folder from Azure Blob Storage to the local filesystem.
+
+        Recursively downloads all files from a directory in a blob storage container,
+        preserving the directory structure. Supports filtering by file extensions.
+
+        Args:
+            src_path (str): Path of the directory within the blob container to download.
+                Should be the directory path within the container (e.g., "data/outputs").
+            dest_path (str): Local filesystem path where the directory should be saved.
+                The directory structure will be recreated under this path.
+            container_name (str): Name of the blob storage container containing the directory.
+            include_extensions (str | list, optional): File extensions to include in the
+                download. Can be a single extension string (e.g., ".csv") or list of
+                extensions (e.g., [".csv", ".json"]). If None, all files are included.
+            exclude_extensions (str | list, optional): File extensions to exclude from
+                the download. Can be a single extension string or list. Takes precedence
+                over include_extensions if a file matches both.
+            check_size (bool, optional): Whether to verify that downloaded file sizes
+                match the source file sizes. Default is True.
+            max_concurrent_downloads (int, optional): Maximum number of concurrent
+                downloads to perform. Higher values may increase speed but use more RAM.
+                Default is 20.
+
+        Example:
+            Download entire results directory:
+
+                client = CloudClient()
+                client.async_download_folder(
+                    src_path="job-123/outputs",
+                    dest_path="./results",
+                    container_name="job-outputs"
+                )
+
+            Download only specific file types:
+
+                client.async_download_folder(
+                    src_path="logs",
+                    dest_path="./local_logs",
+                    container_name="job-logs",
+                    include_extensions=[".log", ".txt"],
+                )
+
+        Note:
+            The destination folder will be created if it doesn't exist. The source
+            folder structure is preserved in the destination. Large downloads may
+            take considerable time depending on file sizes and network speed.
+        """
+        logger.debug("Attempting to download folder.")
+        if self.method == "default":
+            cred = self.cred.client_secret_sp_credential
+        elif self.method == "sp":
+            cred = self.cred.client_secret_credential
+        else:
+            cred = self.cred.user_credential
+        blob.async_download_blob_folder(
+            container_name=container_name,
+            local_folder=dest_path,
+            name_starts_with=src_path,
+            storage_account_url=self.cred.azure_blob_storage_endpoint,
+            include_extensions=include_extensions,
+            exclude_extensions=exclude_extensions,
+            check_size=check_size,
+            max_concurrent_downloads=max_concurrent_downloads,
+            credential=cred,
+        )
+        logger.debug("finished call to download")
+
+    def async_upload_folder(
+        self,
+        folders: str | list[str],
+        container_name: str,
+        include_extensions: str | list | None = None,
+        exclude_extensions: str | list | None = None,
+        location_in_blob: str = ".",
+        max_concurrent_uploads: int = 20,
+    ):
+        """Upload entire folders to an Azure Blob Storage container asynchronously.
+
+        Recursively uploads all files from specified folders to a blob storage container
+        using asynchronous operations for improved performance. Supports filtering by
+        file extensions and patterns to control which files are uploaded.
+
+        Args:
+            folders (str | list[str]): List of local folder paths to upload. Each folder
+            container_name (str): Name of the blob storage container to upload to. The
+                container must already exist.
+            include_extensions (str | list, optional): File extensions to include in the
+                upload. Can be a single extension string (e.g., ".py") or list of extensions
+                (e.g., [".py", ".txt"]). If None, all extensions are included.
+            exclude_extensions (str | list, optional): File extensions to exclude from
+                the upload. Can be a single extension string or list.
+            location_in_blob (str, optional): Remote directory path within the blob container
+                where folders should be uploaded. Default is "." (container root).
+            max_concurrent_uploads (int, optional): Maximum number of concurrent
+                uploads to perform. Higher values may increase speed but use more RAM.
+
+        Returns:
+            list[str]: List of file paths that were successfully uploaded to the container.
+
+        Example:
+            Upload Python source folders asynchronously:
+                client = CloudClient()
+                uploaded_files = client.async_upload_folder(
+                    folders=["src", "tests"],
+                    container_name="code-repo",
+                    include_extensions=[".py", ".yaml"],
+                    location_in_blob="project")
+
+        Note:
+            The blob container must exist before uploading. Directory structure is
+            preserved in the container. Use filtering options to avoid uploading
+            unnecessary files like temporary files or build artifacts.
+        """
+        logger.debug("Attempting to upload folder(s).")
+        if self.method == "default":
+            cred = self.cred.client_secret_sp_credential
+        elif self.method == "sp":
+            cred = self.cred.client_secret_credential
+        else:
+            cred = self.cred.user_credential
+        if isinstance(folders, str):
+            folders = [folders]
+        for folder in folders:
+            logger.debug(f"Trying to upload folder {folder}.")
+            blob.async_upload_folder(
+                folder=folder,
+                container_name=container_name,
+                storage_account_url=self.cred.azure_blob_storage_endpoint,
+                include_extensions=include_extensions,
+                exclude_extensions=exclude_extensions,
+                location_in_blob=location_in_blob,
+                max_concurrent_uploads=max_concurrent_uploads,
+                credential=cred,
+            )
 
     def delete_pool(self, pool_name: str) -> None:
         """Delete an Azure Batch pool and all its compute nodes.
@@ -1423,9 +1553,7 @@ class CloudClient:
         # submit tasks
         task_list = []
         for task_str in task_strs:
-            tid = self.add_task(
-                job_name=job_name, command_line=task_str, **kwargs
-            )
+            tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
             task_list.append(tid)
         return task_list
 

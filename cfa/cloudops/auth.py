@@ -52,9 +52,7 @@ class CredentialHandler:
     azure_keyvault_sp_secret_id: str = None
     azure_tenant_id: str = None
     azure_client_id: str = None
-    azure_batch_endpoint_subdomain: str = (
-        d.default_azure_batch_endpoint_subdomain
-    )
+    azure_batch_endpoint_subdomain: str = d.default_azure_batch_endpoint_subdomain
     azure_batch_account: str = None
     azure_batch_location: str = d.default_azure_batch_location
     azure_batch_resource_url: str = d.default_azure_batch_resource_url
@@ -64,9 +62,7 @@ class CredentialHandler:
     azure_blob_storage_account: str = None
 
     azure_container_registry_account: str = None
-    azure_container_registry_domain: str = (
-        d.default_azure_container_registry_domain
-    )
+    azure_container_registry_domain: str = d.default_azure_container_registry_domain
     method: str = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
@@ -91,9 +87,7 @@ class CredentialHandler:
         for attr in attributes:
             attr_val = getattr(self, attr)
             if attr_val is None:
-                err_msg = (
-                    f"A non-None value for attribute {attr} is required "
-                ) + (
+                err_msg = (f"A non-None value for attribute {attr} is required ") + (
                     f"to obtain a value for {goal}."
                     if goal is not None
                     else "for this operation."
@@ -360,9 +354,7 @@ class CredentialHandler:
             goal=("Azure Container Registry `ContainerRegistry` instance"),
         )
 
-        valid, msg = is_valid_acr_endpoint(
-            self.azure_container_registry_endpoint
-        )
+        valid, msg = is_valid_acr_endpoint(self.azure_container_registry_endpoint)
         if not valid:
             raise ValueError(msg)
 
@@ -384,9 +376,7 @@ class DefaultCredential(BasicTokenAuthentication):
         if credential is None:
             credential = DefaultAzureCredential()
         self.credential = credential
-        self._policy = BearerTokenCredentialPolicy(
-            credential, resource_id, **kwargs
-        )
+        self._policy = BearerTokenCredentialPolicy(credential, resource_id, **kwargs)
 
     def _make_request(self):
         return PipelineRequest(
@@ -459,9 +449,7 @@ class EnvCredentialHandler(CredentialHandler):
         self.__setattr__("method", "env")
         # check for azure batch location
         if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__(
-                "azure_batch_location", d.default_azure_batch_location
-            )
+            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
 
 
 def load_env_vars(dotenv_path=None):
@@ -548,47 +536,43 @@ class SPCredentialHandler(CredentialHandler):
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
+        mandatory_environment_variables = [
+            "AZURE_TENANT_ID",
+            "AZURE_SUBSCRIPTION_ID",
+            "AZURE_CLIENT_ID",
+            "AZURE_CLIENT_SECRET",
+        ]
+        for mandatory in mandatory_environment_variables:
+            if mandatory not in os.environ:
+                logger.warning(f"Environment variable {mandatory} was not provided")
+
+        # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
         self.azure_tenant_id = (
             azure_tenant_id
             if azure_tenant_id is not None
-            else os.environ["AZURE_TENANT_ID"]
+            else os.getenv("AZURE_TENANT_ID", None)
         )
         self.azure_subscription_id = (
             azure_subscription_id
             if azure_subscription_id is not None
-            else os.environ["AZURE_SUBSCRIPTION_ID"]
+            else os.getenv("AZURE_SUBSCRIPTION_ID", None)
         )
         self.azure_client_id = (
             azure_client_id
             if azure_client_id is not None
-            else os.environ["AZURE_CLIENT_ID"]
+            else os.getenv("AZURE_CLIENT_ID", None)
         )
         self.azure_client_secret = (
             azure_client_secret
             if azure_client_secret is not None
-            else os.environ["AZURE_CLIENT_SECRET"]
+            else os.getenv("AZURE_CLIENT_SECRET", None)
         )
 
-        # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
-        if "AZURE_TENANT_ID" not in os.environ and not azure_tenant_id:
-            raise ValueError(
-                "AZURE_TENANT_ID not found in env variables and not provided."
-            )
-        if (
-            "AZURE_SUBSCRIPTION_ID" not in os.environ
-            and not azure_subscription_id
-        ):
-            raise ValueError(
-                "AZURE_SUBSCRIPTION_ID not found in env variables and not provided."
-            )
-        if "AZURE_CLIENT_ID" not in os.environ and not azure_client_id:
-            raise ValueError(
-                "AZURE_CLIENT_ID not found in env variables and not provided."
-            )
-        if "AZURE_CLIENT_SECRET" not in os.environ and not azure_client_secret:
-            raise ValueError(
-                "AZURE_CLIENT_SECRET not found in env variables and not provided."
-            )
+        self.require_attr(
+            [x.lower() for x in mandatory_environment_variables],
+            goal="service principal credentials",
+        )
+
         d.set_env_vars()
 
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
@@ -599,9 +583,7 @@ class SPCredentialHandler(CredentialHandler):
         self.__setattr__("method", "sp")
         # check for azure batch location
         if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__(
-                "azure_batch_location", d.default_azure_batch_location
-            )
+            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
 
 
 class DefaultCredentialHandler(CredentialHandler):
@@ -615,13 +597,9 @@ class DefaultCredentialHandler(CredentialHandler):
         sub_c = SubscriptionClient(d_cred)
         sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
         if sub_id is None:
-            raise ValueError(
-                "AZURE_SUBSCRIPTION_ID not found in env variables."
-            )
+            raise ValueError("AZURE_SUBSCRIPTION_ID not found in env variables.")
         subscription = [
-            sub
-            for sub in sub_c.subscriptions.list()
-            if sub.subscription_id == sub_id
+            sub for sub in sub_c.subscriptions.list() if sub.subscription_id == sub_id
         ]
         # pull info if sub exists
         if subscription:
@@ -642,9 +620,7 @@ class DefaultCredentialHandler(CredentialHandler):
         self.__setattr__("method", "default")
         # check for azure batch location
         if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__(
-                "azure_batch_location", d.default_azure_batch_location
-            )
+            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
 
 
 def get_sp_secret(
@@ -673,9 +649,7 @@ def get_sp_secret(
     if user_credential is None:
         user_credential = ManagedIdentityCredential()
 
-    secret_client = SecretClient(
-        vault_url=vault_url, credential=user_credential
-    )
+    secret_client = SecretClient(vault_url=vault_url, credential=user_credential)
     sp_secret = secret_client.get_secret(vault_sp_secret_id).value
 
     return sp_secret

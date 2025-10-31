@@ -131,10 +131,7 @@ class ContainerAppClient:
             list[str]: List of job names.
         """
         job_list = [
-            i.name
-            for i in self.client.jobs.list_by_resource_group(
-                self.resource_group
-            )
+            i.name for i in self.client.jobs.list_by_resource_group(self.resource_group)
         ]
         return job_list
 
@@ -192,9 +189,7 @@ class ContainerAppClient:
             if env is not None and not isinstance(env, list):
                 raise ValueError("Env must be in list format.")
             new_containers = []
-            for i in self.client.jobs.list_by_resource_group(
-                self.resource_group
-            ):
+            for i in self.client.jobs.list_by_resource_group(self.resource_group):
                 if i.name == job_name:
                     job_info = i
             for c in job_info.__dict__["template"].__dict__["containers"]:

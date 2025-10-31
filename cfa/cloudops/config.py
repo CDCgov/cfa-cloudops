@@ -193,9 +193,7 @@ def get_config_val(
     if result is None:
         if config_dict is not None:
             err_msg = dict_msg + (
-                (" Also searched environment variables. " + env_msg)
-                if try_env
-                else ""
+                (" Also searched environment variables. " + env_msg) if try_env else ""
             )
         else:
             err_msg = env_msg

@@ -10,6 +10,9 @@ The versioning pattern is `major.minor.patch`.
 ## v0.1.0
 - significant changes to mounting structure in create_pool and add_task
 
+## v0.0.8
+- added ruff.toml config file for pre-commit fixes
+
 ## v0.0.5
 - changed type hints for command_line
 - add a credential check to CloudClient
