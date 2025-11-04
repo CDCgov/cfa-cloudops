@@ -161,6 +161,12 @@ class CloudClient:
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
             mounts (list, optional): List of Blob Storage containers to mount to the pool.
+                The format can be a list of strings or dictionaries. For example, if you want to connect
+                to two storage containers named "input-data" and "output-results", you can provide:
+                - As strings: ["input-data", "output-results"]
+                - As dictionaries: [{"source": "input-data", "target": "/mnt/input"}, {"source": "output-results", "target": "/mnt/output"}]
+                    If provided this way as dictionaries, the value of each target is
+                    how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
