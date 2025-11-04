@@ -41,9 +41,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
                 d_env = docker.from_env(timeout=8)
                 d_env.ping()
             except Exception:
-                print(
-                    "Could not ping docker. Make sure the docker daemon is running."
-                )
+                print("Could not ping docker. Make sure the docker daemon is running.")
             try:
                 d_env.images.get(image_name)
             except Exception:
@@ -156,9 +154,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs):
     if "pool_name" in task_toml["job"].keys():
         pool_name = task_toml["job"]["pool_name"]
     else:
-        print(
-            "could not find 'pool_name' key in 'job' section of task config toml."
-        )
+        print("could not find 'pool_name' key in 'job' section of task config toml.")
         print("please specify a pool name to use.")
         return None
 

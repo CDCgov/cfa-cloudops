@@ -99,21 +99,15 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
             time.sleep(5)  # Polling interval
             tasks = list(batch_client.task.list(job_name))
             incomplete_tasks = [
-                task
-                for task in tasks
-                if task.state != batch_models.TaskState.completed
+                task for task in tasks if task.state != batch_models.TaskState.completed
             ]
             incompletions = len(incomplete_tasks)
             completed_tasks = [
-                task
-                for task in tasks
-                if task.state == batch_models.TaskState.completed
+                task for task in tasks if task.state == batch_models.TaskState.completed
             ]
             completions = len(completed_tasks)
             running_tasks = [
-                task
-                for task in tasks
-                if task.state == batch_models.TaskState.running
+                task for task in tasks if task.state == batch_models.TaskState.running
             ]
             running = len(running_tasks)
 
@@ -167,9 +161,7 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
         terminate_reason = None
 
     runtime = end_time - start_time
-    logger.info(
-        f"Monitoring ended: {end_time}. Total elapsed time: {runtime}."
-    )
+    logger.info(f"Monitoring ended: {end_time}. Total elapsed time: {runtime}.")
     print("\n")
     print("-" * 50)
     return {
@@ -350,9 +342,7 @@ def get_completed_tasks(job_name: str, batch_client: object):
     total_tasks = len(tasks)
 
     completed_tasks = [
-        task
-        for task in tasks
-        if task.state == batch_models.TaskState.completed
+        task for task in tasks if task.state == batch_models.TaskState.completed
     ]
     num_c_tasks = len(completed_tasks)
 
@@ -612,9 +602,7 @@ def get_full_container_image_name(
     """
     if registry.lower() == "azure":
         if not acr_name:
-            raise ValueError(
-                "acr_name must be provided for Azure Container Registry."
-            )
+            raise ValueError("acr_name must be provided for Azure Container Registry.")
         return f"{acr_name}.azurecr.io/{container_name}"
     elif registry.lower().startswith("docker"):
         return f"{container_name}"
@@ -631,9 +619,7 @@ def get_full_container_image_name(
 
 
 class Task:
-    def __init__(
-        self, cmd: str, id: str | None = None, dep: str | list | None = None
-    ):
+    def __init__(self, cmd: str, id: str | None = None, dep: str | list | None = None):
         """Initialize a Task object for Azure Batch job execution.
 
         Creates a task with a command, optional ID, and optional dependencies on other tasks.
@@ -818,10 +804,7 @@ def get_rel_mnt_path(
         return "ERROR!"
     mc = pool_info.as_dict()["mount_configuration"]
     for m in mc:
-        if (
-            m["azure_blob_file_system_configuration"]["container_name"]
-            == blob_name
-        ):
+        if m["azure_blob_file_system_configuration"]["container_name"] == blob_name:
             rel_mnt_path = m["azure_blob_file_system_configuration"][
                 "relative_mount_path"
             ]
@@ -849,9 +832,7 @@ def get_pool_full_info(
         dict: dictionary with full pool information
     """
     logger.debug("Pulling pool info.")
-    result = batch_mgmt_client.pool.get(
-        resource_group_name, account_name, pool_name
-    )
+    result = batch_mgmt_client.pool.get(resource_group_name, account_name, pool_name)
     return result
 
 
@@ -909,14 +890,14 @@ def get_pool_mounts(
         mc = pool_info.as_dict()["mount_configuration"]
         for m in mc:
             mounts.append(
-                (
-                    m["azure_blob_file_system_configuration"][
-                        "container_name"
-                    ],
-                    m["azure_blob_file_system_configuration"][
+                {
+                    "source": m["azure_blob_file_system_configuration"][
                         "relative_mount_path"
                     ],
-                )
+                    "target": m["azure_blob_file_system_configuration"][
+                        "relative_mount_path"
+                    ],
+                },
             )
     except Exception as e:
         mounts = None
@@ -931,7 +912,7 @@ def add_task(
     save_logs_rel_path: str | None = None,
     logs_folder: str = "stdout_stderr",
     name_suffix: str = "",
-    mounts: list | None = None,
+    mounts: list[dict] | None = None,
     depends_on: str | list[str] | None = None,
     depends_on_range: tuple | None = None,
     run_dependent_tasks_on_fail: bool = False,
@@ -958,8 +939,8 @@ def add_task(
         logs_folder (str): Name of the folder to create for saving logs. Defaults to
             "stdout_stderr".
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
-        mounts (list[tuple[str, str]], optional): List of mount configurations as tuples
-            of (container_name, relative_mount_path).
+        mounts (list[dict], optional): List of mount configurations as dicts
+            of {"source": <container_name>, "target": <relative_mount_path>).
         depends_on (str | list[str], optional): Task ID(s) that this task depends on.
             Task will not start until dependencies complete successfully.
         depends_on_range (tuple[int, int], optional): Range of task IDs (start, end) that
@@ -1083,7 +1064,7 @@ def add_task(
                 mount_str
                 + "--mount type=bind,source="
                 + az_mount_dir
-                + f"/{mount[1]},target=/{mount[1]} "
+                + f"/{mount['source']},target=/{mount['target']} "
             )
 
     if task_id_ints:
@@ -1106,7 +1087,9 @@ def add_task(
                 save_logs_rel_path = "/" + save_logs_rel_path
             _folder = f"{save_logs_rel_path}/{logs_folder}/"
             sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
-            full_cmd = f"""/bin/bash -c "mkdir -p {_folder}; {cmd_str} 2>&1 | tee {sout}" """
+            full_cmd = (
+                f"""/bin/bash -c "mkdir -p {_folder}; {cmd_str} 2>&1 | tee {sout}" """
+            )
     else:
         full_cmd = cmd_str
 
@@ -1163,9 +1146,7 @@ def check_pool_exists(
     """
     logger.debug(f"Checking if pool {pool_name} exists.")
     try:
-        batch_mgmt_client.pool.get(
-            resource_group_name, account_name, pool_name
-        )
+        batch_mgmt_client.pool.get(resource_group_name, account_name, pool_name)
         logger.debug("Pool exists.")
         return True
     except Exception:

@@ -53,9 +53,7 @@ def get_log_level() -> int:
             logger.info("Log level set to CRITICAL")
             return logging.CRITICAL
         case ll:
-            logger.warning(
-                f"Did not recognize log level string {ll}. Using DEBUG"
-            )
+            logger.warning(f"Did not recognize log level string {ll}. Using DEBUG")
             return logging.DEBUG
 
 

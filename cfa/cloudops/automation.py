@@ -119,9 +119,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
             client.monitor_job(job_name)
 
 
-def run_tasks(
-    task_config: str, dotenv_path: str | None = None, **kwargs
-) -> None:
+def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs) -> None:
     """Run jobs and tasks automatically based on the provided task config.
     Args:
         task_config (str): path to task config file (toml)
@@ -150,9 +148,7 @@ def run_tasks(
             return None
         pool_name = task_toml["job"]["pool_name"]
     else:
-        print(
-            "could not find 'pool_name' key in 'setup' section of task config toml."
-        )
+        print("could not find 'pool_name' key in 'setup' section of task config toml.")
         print("please specify a pool name to use.")
         return None
 
