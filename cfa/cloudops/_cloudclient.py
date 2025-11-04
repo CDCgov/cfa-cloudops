@@ -150,7 +150,7 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
-        shared_mount: str | None = None
+        shared_mount: str | None = None,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
