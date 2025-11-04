@@ -58,9 +58,7 @@ def cloud_client(
     mock_get_blob_service_client,
     mock_get_compute_management_client,
 ):
-    with patch(
-        "cfa.cloudops._cloudclient.EnvCredentialHandler"
-    ) as mock_cred_handler:
+    with patch("cfa.cloudops._cloudclient.EnvCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         return CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
 
@@ -73,9 +71,7 @@ def cloud_client_with_service_principal(
     mock_get_blob_service_client,
     mock_get_compute_management_client,
 ):
-    with patch(
-        "cfa.cloudops._cloudclient.SPCredentialHandler"
-    ) as mock_cred_handler:
+    with patch("cfa.cloudops._cloudclient.SPCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         return CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
 
@@ -111,7 +107,7 @@ def test_create_job_schedule_success(
             exist_ok=exist_ok,
         )
 
-        # Assertions
+        # Assertions for job schedule creation
         mock_create_job_schedule.assert_called_once_with(
             job_schedule_name=job_schedule_name,
             pool_name=pool_name,
@@ -264,13 +260,9 @@ def test_cloudclient_init_with_env_credentials(
     mock_get_blob_service_client,
     mock_get_compute_management_client,
 ):
-    with patch(
-        "cfa.cloudops._cloudclient.EnvCredentialHandler"
-    ) as mock_cred_handler:
+    with patch("cfa.cloudops._cloudclient.EnvCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
-        client = CloudClient(
-            dotenv_path=None, use_sp=False, use_federated=False
-        )
+        client = CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
         assert client.method == "env"
         mock_cred_handler.assert_called_once()
         mock_get_batch_service_client.assert_called_once()
@@ -290,9 +282,7 @@ def test_cloudclient_init_with_default_credentials(
         "cfa.cloudops._cloudclient.DefaultCredentialHandler"
     ) as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
-        client = CloudClient(
-            dotenv_path=None, use_sp=False, use_federated=True
-        )
+        client = CloudClient(dotenv_path=None, use_sp=False, use_federated=True)
         assert client.method == "default"
         mock_cred_handler.assert_called_once()
         mock_get_batch_service_client.assert_called_once()
@@ -308,13 +298,9 @@ def test_cloudclient_init_with_sp_credentials(
     mock_get_blob_service_client,
     mock_get_compute_management_client,
 ):
-    with patch(
-        "cfa.cloudops._cloudclient.SPCredentialHandler"
-    ) as mock_cred_handler:
+    with patch("cfa.cloudops._cloudclient.SPCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
-        client = CloudClient(
-            dotenv_path=None, use_sp=True, use_federated=False
-        )
+        client = CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
         assert client.method == "sp"
         mock_cred_handler.assert_called_once()
         mock_get_batch_service_client.assert_called_once()
