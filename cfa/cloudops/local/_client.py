@@ -158,9 +158,7 @@ class CloudClient:
         elif availability_zones.lower() == "zonal":
             pass
         else:
-            raise ValueError(
-                "Availability zone needs to be 'zonal' or 'regional'."
-            )
+            raise ValueError("Availability zone needs to be 'zonal' or 'regional'.")
 
         # see if docker is running
         try:
@@ -366,9 +364,7 @@ class CloudClient:
             mark_complete=mark_complete_after_tasks_run,
         )
         # get container name and run infinitely
-        self.cont_name = (
-            image_name.replace("/", "_").replace(":", "_") + f".{job_name}"
-        )
+        self.cont_name = image_name.replace("/", "_").replace(":", "_") + f".{job_name}"
         sp.run(
             f"docker run -d --rm {mount_str} --name {self.cont_name} {image_name} sleep inf",
             shell=True,
@@ -416,18 +412,13 @@ class CloudClient:
         # pull container from pool
         pool_info = eval(pool_path.read_text())
         c_name = (
-            pool_info["image_name"].replace("/", "_").replace(":", "_")
-            + f".{job_name}"
+            pool_info["image_name"].replace("/", "_").replace(":", "_") + f".{job_name}"
         )
         # run tasks for input files
         logger.debug("Adding task to job.")
         task_id = self.task_id_max
         print(f"Running {task_id}.")
-        cont_name = (
-            container_image_name
-            if container_image_name is not None
-            else c_name
-        )
+        cont_name = container_image_name if container_image_name is not None else c_name
         sp.run(f"""docker exec -i {cont_name} {command_line}""", shell=True)
 
         self.task_id_max += 1
@@ -886,9 +877,7 @@ class CloudClient:
         # use the output container client by default for downloading files
         logger.debug("Attempting to download file.")
         c_client = None
-        helpers.download_file(
-            c_client, src_path, dest_path, do_check, check_size
-        )
+        helpers.download_file(c_client, src_path, dest_path, do_check, check_size)
 
     def download_folder(
         self,
@@ -1170,15 +1159,11 @@ class CloudClient:
             base_cmd is prepended to each command from the YAML file.
         """
         # get tasks from yaml
-        task_strs = helpers.get_tasks_from_yaml(
-            base_cmd=base_cmd, file_path=file_path
-        )
+        task_strs = helpers.get_tasks_from_yaml(base_cmd=base_cmd, file_path=file_path)
         # submit tasks
         task_list = []
         for task_str in task_strs:
-            tid = self.add_task(
-                job_name=job_name, command_line=task_str, **kwargs
-            )
+            tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
             task_list.append(tid)
         return task_list
 

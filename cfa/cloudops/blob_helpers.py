@@ -126,9 +126,7 @@ def upload_files_in_folder(
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
-        logger.error(
-            "Use included_extensions or exclude_extensions, not both."
-        )
+        logger.error("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
@@ -290,9 +288,7 @@ def download_file(
             print(f"Downloaded {src_path} to {dest_path}")
 
 
-def get_container_client(
-    account_name: str, container_name: str
-) -> ContainerClient:
+def get_container_client(account_name: str, container_name: str) -> ContainerClient:
     """Create a container client using managed identity authentication.
 
     Instantiates a container client using the specified account name and container name,
@@ -676,9 +672,7 @@ def download_folder(
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
-        logger.error(
-            "Use included_extensions or exclude_extensions, not both."
-        )
+        logger.error("Use included_extensions or exclude_extensions, not both.")
         print("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
@@ -686,13 +680,9 @@ def download_folder(
     # check container exists
     logger.debug(f"Checking Blob container {container_name} exists.")
     # create container client
-    c_client = blob_service_client.get_container_client(
-        container=container_name
-    )
+    c_client = blob_service_client.get_container_client(container=container_name)
     if not check_virtual_directory_existence(c_client, src_path):
-        raise ValueError(
-            f"Source virtual directory: {src_path} does not exist."
-        )
+        raise ValueError(f"Source virtual directory: {src_path} does not exist.")
 
     blob_list = []
     if not src_path.endswith("/"):
@@ -728,9 +718,7 @@ def download_folder(
                 t_size += blob.size
         print("Total size of files to download: ", ns(t_size))
         if t_size > 2 * gb:
-            print(
-                "Warning: Total size of files to download is greater than 2 GB."
-            )
+            print("Warning: Total size of files to download is greater than 2 GB.")
             cont = input("Continue? [Y/n]: ")
             if cont.lower() != "y":
                 print("Download aborted.")
@@ -810,9 +798,7 @@ def delete_blob_folder(
         data before deletion.
     """
     # create container client
-    c_client = blob_service_client.get_container_client(
-        container=container_name
-    )
+    c_client = blob_service_client.get_container_client(container=container_name)
     # list out files in folder
     blob_names = c_client.list_blob_names(name_starts_with=folder_path)
     _files = [blob for blob in blob_names]

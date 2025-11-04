@@ -76,11 +76,7 @@ def create_storage_container_if_not_exists(
         container_client.create_container()
         print("Container [{}] created.".format(blob_storage_container_name))
     else:
-        print(
-            "Container [{}] already exists.".format(
-                blob_storage_container_name
-            )
-        )
+        print("Container [{}] already exists.".format(blob_storage_container_name))
 
 
 def upload_to_storage_container(
@@ -213,8 +209,7 @@ def get_node_mount_config(
     storage_containers: str | list[str],
     account_names: str | list[str],
     identity_references: (
-        models.ComputeNodeIdentityReference
-        | list[models.ComputeNodeIdentityReference]
+        models.ComputeNodeIdentityReference | list[models.ComputeNodeIdentityReference]
     ),
     shared_relative_mount_path: str = "",
     mount_names: list[str] = None,
@@ -473,9 +468,7 @@ async def _async_download_blob_folder(
     """
     semaphore = anyio.Semaphore(max_concurrent_downloads)
     if include_extensions is not None and exclude_extensions is not None:
-        logger.error(
-            "Use included_extensions or exclude_extensions, not both."
-        )
+        logger.error("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
@@ -488,9 +481,7 @@ async def _async_download_blob_folder(
     matching_blobs = []
     total_size = 0
     gb = 1e9
-    for blob_obj in container_client.list_blobs(
-        name_starts_with=name_starts_with
-    ):
+    for blob_obj in container_client.list_blobs(name_starts_with=name_starts_with):
         blob_name = blob_obj.name
         ext = Path(blob_name).suffix
         if include_extensions is not None:
@@ -747,9 +738,7 @@ def async_upload_folder(
                     "Failed to create BlobServiceClient. Check your storage_account_url and credentials."
                 )
                 raise RuntimeError("Failed to create BlobServiceClient.")
-            container_client = blob_service_client.get_container_client(
-                container_name
-            )
+            container_client = blob_service_client.get_container_client(container_name)
             if container_client is None:
                 logger.error(
                     f"Failed to get container client for container: {container_name}"

@@ -6,9 +6,7 @@ from cfa.cloudops import CloudClient
 
 def hello():
     parser = argparse.ArgumentParser(description="CloudOps parser")
-    parser.add_argument(
-        "--name", type=str, default="World", help="Name to greet"
-    )
+    parser.add_argument("--name", type=str, default="World", help="Name to greet")
     args = parser.parse_args()
     print(f"Hello, {args.name}!")
 
@@ -359,9 +357,7 @@ def create_blob_container():
 
 
 def upload_file():
-    parser = argparse.ArgumentParser(
-        description="Upload files to a blob container"
-    )
+    parser = argparse.ArgumentParser(description="Upload files to a blob container")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -614,9 +610,7 @@ def delete_job():
 
 
 def package_and_upload_dockerfile():
-    parser = argparse.ArgumentParser(
-        description="Package and upload Dockerfile"
-    )
+    parser = argparse.ArgumentParser(description="Package and upload Dockerfile")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -751,9 +745,7 @@ def upload_docker_image():
 
 
 def download_file():
-    parser = argparse.ArgumentParser(
-        description="Download a file from Blob storage"
-    )
+    parser = argparse.ArgumentParser(description="Download a file from Blob storage")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -812,9 +804,7 @@ def download_file():
 
 
 def download_folder():
-    parser = argparse.ArgumentParser(
-        description="Download a folder from Blob storage"
-    )
+    parser = argparse.ArgumentParser(description="Download a folder from Blob storage")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -927,9 +917,7 @@ def delete_pool():
 
 
 def list_blob_files():
-    parser = argparse.ArgumentParser(
-        description="List files in a blob container"
-    )
+    parser = argparse.ArgumentParser(description="List files in a blob container")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -964,9 +952,7 @@ def list_blob_files():
 
 
 def delete_blob_file():
-    parser = argparse.ArgumentParser(
-        description="Delete a file from a blob container"
-    )
+    parser = argparse.ArgumentParser(description="Delete a file from a blob container")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -1052,9 +1038,7 @@ def delete_blob_folder():
 
 
 def download_job_stats():
-    parser = argparse.ArgumentParser(
-        description="Download job stats from Blob storage"
-    )
+    parser = argparse.ArgumentParser(description="Download job stats from Blob storage")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )
@@ -1157,9 +1141,7 @@ def download_after_job():
 
 
 def add_tasks_from_yaml():
-    parser = argparse.ArgumentParser(
-        description="Add tasks to a job from a YAML file"
-    )
+    parser = argparse.ArgumentParser(description="Add tasks to a job from a YAML file")
     parser.add_argument(
         "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
     )

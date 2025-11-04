@@ -96,9 +96,7 @@ class CloudClient:
             self.method = "env"
             logger.info("Using environment-based credentials.")
         elif use_federated:
-            self.cred = DefaultCredentialHandler(
-                dotenv_path=dotenv_path, **kwargs
-            )
+            self.cred = DefaultCredentialHandler(dotenv_path=dotenv_path, **kwargs)
             self.method = "default"
             logger.info("Using default credentials.")
         else:
@@ -128,9 +126,7 @@ class CloudClient:
         try:
             subscription_client = SubscriptionClient(cred)
             # List subscriptions
-            sub_list = [
-                sub for sub in subscription_client.subscriptions.list()
-            ]
+            sub_list = [sub for sub in subscription_client.subscriptions.list()]
             for subscription in sub_list:
                 print("Found subscription via credential.")
                 print(f"Subscription ID: {subscription.subscription_id}")
@@ -314,9 +310,7 @@ class CloudClient:
                 policy=models.NodePlacementPolicyType.zonal
             )
         else:
-            raise ValueError(
-                "Availability zone needs to be 'zonal' or 'regional'."
-            )
+            raise ValueError("Availability zone needs to be 'zonal' or 'regional'.")
 
         try:
             # Create the pool using the batch management client
@@ -480,9 +474,7 @@ class CloudClient:
             on_task_failure=OnTaskFailure.perform_exit_options_job_action,
             constraints=job_constraints,
             metadata=[
-                MetadataItem(
-                    name="mark_complete", value=mark_complete_after_tasks_run
-                )
+                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run)
             ],
         )
 
@@ -652,11 +644,11 @@ class CloudClient:
                     self.batch_mgmt_client,
                 )
                 logger.debug("Generated full pool info.")
-                vm_config = pool_info.deployment_configuration.virtual_machine_configuration
-                logger.debug("Generated VM config.")
-                pool_container = (
-                    vm_config.container_configuration.container_image_names
+                vm_config = (
+                    pool_info.deployment_configuration.virtual_machine_configuration
                 )
+                logger.debug("Generated VM config.")
+                pool_container = vm_config.container_configuration.container_image_names
                 container_name = pool_container[0].split("://")[-1]
                 logger.debug(f"Container name set to {container_name}.")
             else:
@@ -674,9 +666,7 @@ class CloudClient:
                 batch_mgmt_client=self.batch_mgmt_client,
             )
             if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(
-                    rel_path=rel_mnt_path
-                )
+                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
         else:
             rel_mnt_path = None
 
@@ -970,9 +960,7 @@ class CloudClient:
             )
             logger.info("Task info:")
             logger.info(c_tasks)
-            if batch_helpers.check_job_complete(
-                job_name, self.batch_service_client
-            ):
+            if batch_helpers.check_job_complete(job_name, self.batch_service_client):
                 logger.info(f"Job {job_name} completed.")
                 return "complete"
             else:
@@ -1278,9 +1266,7 @@ class CloudClient:
         )
 
         logger.debug("Attempting to download file.")
-        blob_helpers.download_file(
-            c_client, src_path, dest_path, do_check, check_size
-        )
+        blob_helpers.download_file(c_client, src_path, dest_path, do_check, check_size)
 
     def download_folder(
         self,
@@ -1738,9 +1724,7 @@ class CloudClient:
         # submit tasks
         task_list = []
         for task_str in task_strs:
-            tid = self.add_task(
-                job_name=job_name, command_line=task_str, **kwargs
-            )
+            tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
             task_list.append(tid)
         return task_list
 
