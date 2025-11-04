@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.0.9"
+version = "0.1.0"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
