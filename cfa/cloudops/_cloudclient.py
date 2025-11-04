@@ -140,7 +140,7 @@ class CloudClient:
         self,
         pool_name: str,
         mounts: list[str] | list[dict] | None = None,
-        container_image_name: str = None,
+        container_image_name: str | None = None,
         vm_size: str = d.default_vm_size,  # do some validation on size if too large
         autoscale: bool = True,
         autoscale_formula: str = "default",
