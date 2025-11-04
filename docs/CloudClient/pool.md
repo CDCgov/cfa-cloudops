@@ -21,6 +21,7 @@ Pools can easily be created with a `CloudClient` object while maintaining the fl
 - availability_zones: either regional or zonal policy. Default is regional.
 - cache_blobfuse: whether to cache the blobfuse connection on the node. Default is True.
 
+
 A very basic example of creating a pool with the `CloudClient` is as follows:
 ```python
 client = CloudClient()
