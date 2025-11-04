@@ -62,24 +62,68 @@ def create_job(
         >>> success = create_job(client, job, exist_ok=True, verbose=True)
         Job my-job exists.
     """
+    logger.debug(f"Starting create_job for job ID: '{job.id}'")
+    logger.debug(
+        f"Parameters: verify_pool={verify_pool}, exist_ok={exist_ok}, verbose={verbose}"
+    )
+
+    pool_id = job.pool_info.pool_id
+    logger.debug(f"Job '{job.id}' configured to use pool: '{pool_id}'")
+
     if verify_pool:
-        pool_id = job.pool_info.pool_id
-        if not client.pool.exists(pool_id):
-            raise ValueError(
+        logger.debug(f"Pool verification enabled, checking if pool '{pool_id}' exists")
+        pool_exists = client.pool.exists(pool_id)
+        logger.debug(f"Pool '{pool_id}' exists: {pool_exists}")
+
+        if not pool_exists:
+            error_msg = (
                 f"Attempt to create job {job.id} on "
                 f"pool {pool_id}, but could not find "
                 "the requested pool. Check that this "
                 "pool id is correct and that a pool "
                 "with that id exists"
             )
+            logger.debug(f"Pool verification failed: {error_msg}")
+            raise ValueError(error_msg)
+        else:
+            logger.debug(f"Pool verification successful for pool '{pool_id}'")
+    else:
+        logger.debug("Pool verification disabled, skipping pool existence check")
+
+    logger.debug(f"Attempting to create job '{job.id}' on Azure Batch service")
+    if kwargs:
+        logger.debug(f"Additional kwargs provided: {list(kwargs.keys())}")
+    else:
+        logger.debug("No additional kwargs provided")
+
     try:
+        logger.debug(f"Calling client.job.add() for job '{job.id}'")
         client.job.add(job, **kwargs)
+        logger.debug(f"Successfully created job '{job.id}' on pool '{pool_id}'")
+
         if verbose:
             print(f"Created job {job.id}.")
+
+        logger.debug("Job creation completed successfully, returning True")
         return True
+
     except models.BatchErrorException as e:
+        logger.debug(f"BatchErrorException caught: error code = '{e.error.code}'")
+        logger.debug(
+            f"Job exists check: error code is 'JobExists' = {e.error.code == 'JobExists'}, exist_ok = {exist_ok}"
+        )
+
         if not (e.error.code == "JobExists" and exist_ok):
+            logger.debug(
+                f"Re-raising BatchErrorException for job '{job.id}': {e.error.code}"
+            )
             raise e
+
+        logger.debug(
+            f"Job '{job.id}' already exists and exist_ok=True, proceeding without error"
+        )
         if verbose:
             print(f"Job {job.id} exists.")
+
+        logger.debug("Job already exists scenario, returning False")
         return False

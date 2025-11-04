@@ -29,16 +29,27 @@ def get_log_level() -> int:
         Recognized values (case-insensitive): none, debug, info, warning, warn, error, critical.
         Unrecognized values will trigger a warning and default to DEBUG.
     """
+    logger.debug("Getting log level from LOG_LEVEL environment variable")
+
     log_level = os.getenv("LOG_LEVEL")
+    logger.debug(f"LOG_LEVEL environment variable value: {log_level}")
 
     if log_level is None:
+        logger.debug(
+            "LOG_LEVEL not set, returning CRITICAL+1 to effectively disable logging"
+        )
         return logging.CRITICAL + 1
 
+    logger.debug(f"Processing log level string: '{log_level.lower()}'")
     match log_level.lower():
         case "none":
+            logger.debug(
+                "Log level 'none' selected, returning CRITICAL+1 to disable logging"
+            )
             return logging.CRITICAL + 1
         case "debug":
             logger.info("Log level set to DEBUG")
+            logger.debug("Returning DEBUG logging level constant")
             return logging.DEBUG
         case "info":
             logger.info("Log level set to INFO")
@@ -108,7 +119,12 @@ def package_and_upload_dockerfile(
         This function requires Docker to be installed and the Azure CLI to be available and authenticated.
         The resulting image name is returned as a string for use in Azure Batch pools or jobs.
     """
+    logger.debug(
+        f"Starting package_and_upload_dockerfile with parameters: registry_name='{registry_name}', repo_name='{repo_name}', tag='{tag}', path_to_dockerfile='{path_to_dockerfile}', use_device_code={use_device_code}"
+    )
+
     # check if Dockerfile exists
+    logger.debug(f"Checking if Dockerfile exists at path: {path_to_dockerfile}")
     logger.debug("Trying to ping docker daemon.")
     try:
         d = docker.from_env(timeout=10).ping()
@@ -119,26 +135,49 @@ def package_and_upload_dockerfile(
         logger.warning("Try again when Docker is running.")
         raise DockerException("Make sure Docker is running.") from None
 
-    if os.path.exists(path_to_dockerfile) and d:
+    dockerfile_exists = os.path.exists(path_to_dockerfile)
+    logger.debug(f"Dockerfile exists at {path_to_dockerfile}: {dockerfile_exists}")
+
+    if dockerfile_exists and d:
         full_container_name = f"{registry_name}.azurecr.io/{repo_name}:{tag}"
         logger.info(f"full container name: {full_container_name}")
+        logger.debug(
+            f"Constructed full container name from components: {registry_name}.azurecr.io/{repo_name}:{tag}"
+        )
+
         # Build container
         logger.debug("Building container.")
-        sp.run(
-            f"docker image build -f {path_to_dockerfile} -t {full_container_name} .",
-            shell=True,
+        build_command = (
+            f"docker image build -f {path_to_dockerfile} -t {full_container_name} ."
         )
+        logger.debug(f"Executing Docker build command: {build_command}")
+        sp.run(build_command, shell=True)
+        logger.debug("Docker build command completed")
         # Upload container to registry
         # upload with device login if desired
+        logger.debug("Starting Azure authentication and ACR upload process")
         if use_device_code:
             logger.debug("Logging in with device code.")
-            sp.run("az login --use-device-code", shell=True)
+            auth_command = "az login --use-device-code"
+            logger.debug(f"Executing Azure CLI command: {auth_command}")
+            sp.run(auth_command, shell=True)
         else:
             logger.debug("Logging in to Azure.")
-            sp.run("az login --identity", shell=True)
-        sp.run(f"az acr login --name {registry_name}", shell=True)
+            auth_command = "az login --identity"
+            logger.debug(f"Executing Azure CLI command: {auth_command}")
+            sp.run(auth_command, shell=True)
+
+        acr_login_command = f"az acr login --name {registry_name}"
+        logger.debug(f"Executing ACR login command: {acr_login_command}")
+        sp.run(acr_login_command, shell=True)
+        logger.debug(f"Successfully logged in to ACR: {registry_name}")
+
         logger.debug("Pushing Docker container to ACR.")
-        sp.run(f"docker push {full_container_name}", shell=True)
+        push_command = f"docker push {full_container_name}"
+        logger.debug(f"Executing Docker push command: {push_command}")
+        sp.run(push_command, shell=True)
+        logger.debug(f"Successfully pushed container to ACR: {full_container_name}")
+
         return full_container_name
     else:
         logger.error("Dockerfile does not exist in the root of the directory.")
@@ -200,7 +239,12 @@ def upload_docker_image(
         This function requires Docker to be installed and the Azure CLI to be available and authenticated.
         The resulting image name is returned as a string for use in Azure Batch pools or jobs.
     """
+    logger.debug(
+        f"Starting upload_docker_image with parameters: image_name='{image_name}', registry_name='{registry_name}', repo_name='{repo_name}', tag='{tag}', use_device_code={use_device_code}"
+    )
+
     full_container_name = f"{registry_name}.azurecr.io/{repo_name}:{tag}"
+    logger.debug(f"Constructed full container name: {full_container_name}")
 
     # check if docker is running
     logger.debug("Trying to ping docker daemon.")
@@ -216,28 +260,46 @@ def upload_docker_image(
 
     # Tagging the image with the unique tag
     logger.debug(f"Tagging image {image_name} with {full_container_name}.")
+    logger.debug(f"Attempting to get local Docker image: {image_name}")
     try:
         image = docker_env.images.get(image_name)
+        logger.debug(f"Successfully found local image: {image_name}")
+        logger.debug(f"Tagging image {image_name} with tag: {full_container_name}")
         image.tag(full_container_name)
+        logger.debug(f"Successfully tagged image with: {full_container_name}")
     except docker.errors.ImageNotFound:
         # Log available images to guide the user
         available_images = [img.tags for img in docker_env.images.list()]
         logger.error(
             f"Image {image_name} does not exist. Available images are: {available_images}"
         )
+        logger.debug(f"Failed to find image '{image_name}' in local Docker images")
         raise
 
     # Log in to ACR and upload container to registry
     # upload with device login if desired
+    logger.debug("Starting Azure authentication and ACR upload process")
     if use_device_code:
         logger.debug("Logging in with device code.")
-        sp.run("az login --use-device-code", shell=True)
+        auth_command = "az login --use-device-code"
+        logger.debug(f"Executing Azure CLI command: {auth_command}")
+        sp.run(auth_command, shell=True)
     else:
         logger.debug("Logging in to Azure.")
-        sp.run("az login --identity", shell=True)
-    sp.run(f"az acr login --name {registry_name}", shell=True)
+        auth_command = "az login --identity"
+        logger.debug(f"Executing Azure CLI command: {auth_command}")
+        sp.run(auth_command, shell=True)
+
+    acr_login_command = f"az acr login --name {registry_name}"
+    logger.debug(f"Executing ACR login command: {acr_login_command}")
+    sp.run(acr_login_command, shell=True)
+    logger.debug(f"Successfully logged in to ACR: {registry_name}")
+
     logger.debug("Pushing Docker container to ACR.")
-    sp.run(f"docker push {full_container_name}", shell=True)
+    push_command = f"docker push {full_container_name}"
+    logger.debug(f"Executing Docker push command: {push_command}")
+    sp.run(push_command, shell=True)
+    logger.debug(f"Successfully pushed container to ACR: {full_container_name}")
 
     return full_container_name
 
@@ -269,7 +331,14 @@ def format_rel_path(rel_path: str) -> str:
         This function is used to ensure Azure storage mount paths are in the correct
         format expected by Azure services.
     """
+    logger.debug(f"Formatting relative path: '{rel_path}'")
+
     if rel_path.startswith("/"):
+        logger.debug(f"Detected leading forward slash in path: '{rel_path}'")
         rel_path = rel_path[1:]
-        logger.debug(f"path formatted to {rel_path}")
+        logger.debug(f"Removed leading slash, path formatted to: '{rel_path}'")
+    else:
+        logger.debug(f"No leading slash found, path unchanged: '{rel_path}'")
+
+    logger.debug(f"Final formatted path: '{rel_path}'")
     return rel_path

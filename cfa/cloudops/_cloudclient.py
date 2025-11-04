@@ -154,7 +154,6 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
-        shared_mount: str | None = None,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -227,16 +226,21 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
+        logger.debug(f"Creating pool: {pool_name}")
         # Configure storage mounts if provided
         if mounts:
+            logger.debug("Configuring storage mounts for pool.")
             if isinstance(mounts[0], str):
+                logger.debug("Mounts provided as list of strings.")
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
                     account_names=self.cred.azure_blob_storage_account,
                     identity_references=self.cred.compute_node_identity_reference,
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                 )
+                logger.debug("Generated mount configuration from string list.")
             elif isinstance(mounts[0], dict):
+                logger.debug
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
@@ -244,7 +248,11 @@ class CloudClient:
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                     mount_names=[mount["target"] for mount in mounts],
                 )
+                logger.debug("Generated mount configuration from dict list.")
             else:
+                logger.debug(
+                    "Invalid mounts format provided. Will not configure mounts."
+                )
                 mount_config = None
 
         # validate pool name
@@ -362,9 +370,9 @@ class CloudClient:
         mark_complete_after_tasks_run: bool = False,
         task_id_ints: bool = False,
         timeout: int | None = None,
-        exist_ok=False,
+        exist_ok: bool = False,
         verify_pool: bool = True,
-        verbose=False,
+        verbose: bool = False,
     ):
         """Create a job in Azure Batch to run tasks on a specified pool.
 
@@ -463,6 +471,9 @@ class CloudClient:
         self.save_logs_to_blob = save_logs_to_blob
 
         if save_logs_to_blob:
+            logger.debug(
+                f"Configuring log saving to blob container: {save_logs_to_blob}"
+            )
             if logs_folder is None:
                 self.logs_folder = "stdout_stderr"
             else:

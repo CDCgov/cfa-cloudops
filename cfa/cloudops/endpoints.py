@@ -29,16 +29,25 @@ def _construct_https_url(netloc: str, path: str = "") -> str:
         >>> print(url)
         'https://subdomain.example.com'
     """
-    return urlunparse(
-        [
-            "https",
-            quote(netloc),
-            path,
-            "",
-            "",
-            "",
-        ]
-    )
+    logger.debug(f"Constructing HTTPS URL with netloc: '{netloc}', path: '{path}'")
+
+    quoted_netloc = quote(netloc)
+    logger.debug(f"URL-encoded netloc: '{quoted_netloc}'")
+
+    url_components = [
+        "https",
+        quoted_netloc,
+        path,
+        "",
+        "",
+        "",
+    ]
+    logger.debug(f"URL components: {url_components}")
+
+    constructed_url = urlunparse(url_components)
+    logger.debug(f"Successfully constructed URL: '{constructed_url}'")
+
+    return constructed_url
 
 
 def construct_batch_endpoint(
@@ -66,9 +75,21 @@ def construct_batch_endpoint(
         >>> print(url)
         'https://mybatch.westus.custom.domain.com/'
     """
-    return _construct_https_url(
-        f"{batch_account}.{batch_location}.{batch_endpoint_subdomain}"
+
+    is_default_subdomain = (
+        batch_endpoint_subdomain == d.default_azure_batch_endpoint_subdomain
     )
+    logger.debug(
+        f"Using {'default' if is_default_subdomain else 'custom'} batch endpoint subdomain"
+    )
+
+    netloc = f"{batch_account}.{batch_location}.{batch_endpoint_subdomain}"
+    logger.debug(f"Assembled batch endpoint netloc: '{netloc}'")
+
+    endpoint_url = _construct_https_url(netloc)
+    logger.debug(f"Successfully constructed Azure Batch endpoint: '{endpoint_url}'")
+
+    return endpoint_url
 
 
 def construct_azure_container_registry_endpoint(
@@ -94,9 +115,26 @@ def construct_azure_container_registry_endpoint(
         >>> print(url)
         'https://myregistry.custom.domain.io'
     """
-    return _construct_https_url(
-        f"{azure_container_registry_account}.{azure_container_registry_domain}"
+    logger.debug(
+        f"Constructing Azure Container Registry endpoint: account='{azure_container_registry_account}', domain='{azure_container_registry_domain}'"
     )
+
+    is_default_domain = (
+        azure_container_registry_domain == d.default_azure_container_registry_domain
+    )
+    logger.debug(
+        f"Using {'default' if is_default_domain else 'custom'} container registry domain"
+    )
+
+    netloc = f"{azure_container_registry_account}.{azure_container_registry_domain}"
+    logger.debug(f"Assembled container registry netloc: '{netloc}'")
+
+    endpoint_url = _construct_https_url(netloc)
+    logger.debug(
+        f"Successfully constructed Azure Container Registry endpoint: '{endpoint_url}'"
+    )
+
+    return endpoint_url
 
 
 def construct_blob_account_endpoint(
@@ -122,7 +160,26 @@ def construct_blob_account_endpoint(
         >>> print(url)
         'https://mystorageaccount.custom.blob.domain/'
     """
-    return _construct_https_url(f"{blob_account}.{blob_endpoint_subdomain}")
+    logger.debug(
+        f"Constructing Azure Blob account endpoint: account='{blob_account}', subdomain='{blob_endpoint_subdomain}'"
+    )
+
+    is_default_subdomain = (
+        blob_endpoint_subdomain == d.default_azure_blob_storage_endpoint_subdomain
+    )
+    logger.debug(
+        f"Using {'default' if is_default_subdomain else 'custom'} blob storage subdomain"
+    )
+
+    netloc = f"{blob_account}.{blob_endpoint_subdomain}"
+    logger.debug(f"Assembled blob account netloc: '{netloc}'")
+
+    endpoint_url = _construct_https_url(netloc)
+    logger.debug(
+        f"Successfully constructed Azure Blob account endpoint: '{endpoint_url}'"
+    )
+
+    return endpoint_url
 
 
 def construct_blob_container_endpoint(
@@ -152,10 +209,25 @@ def construct_blob_container_endpoint(
         >>> print(url)
         'https://storage.custom.blob.domain/data'
     """
-    return urljoin(
-        construct_blob_account_endpoint(blob_account, blob_endpoint_subdomain),
-        quote(blob_container),
+    logger.debug(
+        f"Constructing Azure Blob container endpoint: container='{blob_container}', account='{blob_account}', subdomain='{blob_endpoint_subdomain}'"
     )
+
+    logger.debug("Getting blob account endpoint for container URL construction")
+    account_endpoint = construct_blob_account_endpoint(
+        blob_account, blob_endpoint_subdomain
+    )
+    logger.debug(f"Blob account endpoint: '{account_endpoint}'")
+
+    quoted_container = quote(blob_container)
+    logger.debug(f"URL-encoded container name: '{quoted_container}'")
+
+    container_endpoint = urljoin(account_endpoint, quoted_container)
+    logger.debug(
+        f"Successfully constructed Azure Blob container endpoint: '{container_endpoint}'"
+    )
+
+    return container_endpoint
 
 
 def is_valid_acr_endpoint(endpoint: str) -> tuple[bool, str | None]:
@@ -182,40 +254,45 @@ def is_valid_acr_endpoint(endpoint: str) -> tuple[bool, str | None]:
         >>> print(valid)  # False
         >>> print("subdomain" in error)  # True
     """
+    logger.debug(f"Validating Azure Container Registry endpoint: '{endpoint}'")
+
+    logger.debug("Checking for trailing slash in ACR endpoint")
     if endpoint.endswith("/"):
-        return (
-            False,
-            (
-                "Azure Container Registry URLs "
-                "must not end with a trailing "
-                "slash, as this can hamper DNS "
-                "lookups of the private registry endpoint. "
-                f"Got {endpoint}"
-            ),
+        error_msg = (
+            "Azure Container Registry URLs "
+            "must not end with a trailing "
+            "slash, as this can hamper DNS "
+            "lookups of the private registry endpoint. "
+            f"Got {endpoint}"
         )
+        logger.debug(f"ACR validation failed: trailing slash found - {error_msg}")
+        return (False, error_msg)
 
+    logger.debug("Parsing URL to extract domain information")
     domain = urlparse(endpoint).netloc
+    logger.debug(f"Extracted domain: '{domain}'")
 
+    logger.debug("Checking if domain ends with 'azurecr.io'")
     if not domain.endswith("azurecr.io"):
-        return (
-            False,
-            (
-                "Azure Container Registry URLs "
-                "must have the domain "
-                f"`azurecr.io`. Got `{domain}`."
-            ),
+        error_msg = (
+            "Azure Container Registry URLs "
+            "must have the domain "
+            f"`azurecr.io`. Got `{domain}`."
         )
+        logger.debug(f"ACR validation failed: invalid domain - {error_msg}")
+        return (False, error_msg)
 
+    logger.debug("Checking for required subdomain in ACR URL")
     if domain.startswith("azurecr.io"):
-        return (
-            False,
-            (
-                "Azure container registry URLs "
-                "must have a subdomain, typically "
-                "corresponding to the particular "
-                "private registry name."
-                f"Got {endpoint}"
-            ),
+        error_msg = (
+            "Azure container registry URLs "
+            "must have a subdomain, typically "
+            "corresponding to the particular "
+            "private registry name."
+            f"Got {endpoint}"
         )
+        logger.debug(f"ACR validation failed: missing subdomain - {error_msg}")
+        return (False, error_msg)
 
+    logger.debug(f"ACR endpoint validation passed: '{endpoint}' is valid")
     return (True, None)

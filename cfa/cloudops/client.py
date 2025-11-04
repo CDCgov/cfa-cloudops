@@ -40,28 +40,41 @@ def get_batch_management_client(
         >>> handler = CredentialHandler()
         >>> client = get_batch_management_client(credential_handler=handler)
     """
+    logger.debug(
+        f"Creating BatchManagementClient with credential handler: {type(credential_handler).__name__ if credential_handler else 'None'}"
+    )
 
     ch = credential_handler
     if ch is None:
+        logger.debug("No credential handler provided, creating EnvCredentialHandler")
         ch = EnvCredentialHandler()
+
+    logger.debug(f"Selected authentication method: '{ch.method}'")
+
     if ch.method == "sp":
-        return BatchManagementClient(
+        logger.debug("Using service principal credentials for BatchManagementClient")
+        client = BatchManagementClient(
             credential=ch.client_secret_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
     elif ch.method == "default":
-        return BatchManagementClient(
+        logger.debug("Using default credentials for BatchManagementClient")
+        client = BatchManagementClient(
             credential=ch.client_secret_sp_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
     else:
-        return BatchManagementClient(
+        logger.debug("Using user credentials for BatchManagementClient")
+        client = BatchManagementClient(
             credential=ch.user_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
+
+    logger.debug("BatchManagementClient created successfully")
+    return client
 
 
 def get_compute_management_client(
@@ -90,27 +103,41 @@ def get_compute_management_client(
         >>> handler = CredentialHandler()
         >>> client = get_compute_management_client(credential_handler=handler)
     """
+    logger.debug(
+        f"Creating ComputeManagementClient with credential handler: {type(credential_handler).__name__ if credential_handler else 'None'}"
+    )
+
     ch = credential_handler
     if ch is None:
+        logger.debug("No credential handler provided, creating EnvCredentialHandler")
         ch = EnvCredentialHandler()
+
+    logger.debug(f"Selected authentication method: '{ch.method}'")
+
     if ch.method == "sp":
-        return ComputeManagementClient(
+        logger.debug("Using service principal credentials for ComputeManagementClient")
+        client = ComputeManagementClient(
             credential=ch.client_secret_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
     elif ch.method == "default":
-        return ComputeManagementClient(
+        logger.debug("Using default credentials for ComputeManagementClient")
+        client = ComputeManagementClient(
             credential=ch.client_secret_sp_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
     else:
-        return ComputeManagementClient(
+        logger.debug("Using user credentials for ComputeManagementClient")
+        client = ComputeManagementClient(
             credential=ch.user_credential,
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
+
+    logger.debug("ComputeManagementClient created successfully")
+    return client
 
 
 def get_batch_service_client(
@@ -139,30 +166,45 @@ def get_batch_service_client(
         >>> handler = CredentialHandler()
         >>> client = get_batch_service_client(credential_handler=handler)
     """
+    logger.debug(
+        f"Creating BatchServiceClient with credential handler: {type(credential_handler).__name__ if credential_handler else 'None'}"
+    )
+
     ch = credential_handler
     if ch is None:
+        logger.debug("No credential handler provided, creating EnvCredentialHandler")
         ch = EnvCredentialHandler()
+
+    logger.debug(f"Selected authentication method: '{ch.method}'")
+    logger.debug(f"Using batch endpoint: {ch.azure_batch_endpoint}")
+
     if ch.method == "sp":
         logger.info("Using service principal credentials for BatchServiceClient")
-        return BatchServiceClient(
+        logger.debug("Creating BatchServiceClient with service principal credentials")
+        client = BatchServiceClient(
             credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
     elif ch.method == "default":
         logger.info("Using default credentials for BatchServiceClient")
-        return BatchServiceClient(
+        logger.debug("Creating BatchServiceClient with default credentials")
+        client = BatchServiceClient(
             credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
     else:
         logger.info("Using user credentials for BatchServiceClient")
-        return BatchServiceClient(
+        logger.debug("Creating BatchServiceClient with user credentials")
+        client = BatchServiceClient(
             credentials=ch.batch_service_principal_credentials,
             batch_url=ch.azure_batch_endpoint,
             **kwargs,
         )
+
+    logger.debug("BatchServiceClient created successfully")
+    return client
 
 
 def get_blob_service_client(
@@ -191,24 +233,39 @@ def get_blob_service_client(
         >>> handler = CredentialHandler()
         >>> client = get_blob_service_client(credential_handler=handler)
     """
+    logger.debug(
+        f"Creating BlobServiceClient with credential handler: {type(credential_handler).__name__ if credential_handler else 'None'}"
+    )
+
     ch = credential_handler
     if ch is None:
+        logger.debug("No credential handler provided, creating EnvCredentialHandler")
         ch = EnvCredentialHandler()
+
+    logger.debug(f"Selected authentication method: '{ch.method}'")
+    logger.debug(f"Using blob storage endpoint: {ch.azure_blob_storage_endpoint}")
+
     if ch.method == "sp":
-        return BlobServiceClient(
+        logger.debug("Using service principal credentials for BlobServiceClient")
+        client = BlobServiceClient(
             account_url=ch.azure_blob_storage_endpoint,
             credential=ch.client_secret_credential,
             **kwargs,
         )
     elif ch.method == "default":
-        return BlobServiceClient(
+        logger.debug("Using default credentials for BlobServiceClient")
+        client = BlobServiceClient(
             credential=ch.client_secret_sp_credential,
             account_url=ch.azure_blob_storage_endpoint,
             **kwargs,
         )
     else:
-        return BlobServiceClient(
+        logger.debug("Using user credentials for BlobServiceClient")
+        client = BlobServiceClient(
             account_url=ch.azure_blob_storage_endpoint,
             credential=ch.user_credential,
             **kwargs,
         )
+
+    logger.debug("BlobServiceClient created successfully")
+    return client

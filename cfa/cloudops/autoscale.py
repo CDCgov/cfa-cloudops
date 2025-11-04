@@ -15,6 +15,7 @@ $TargetLowPriorityNodes = 0.5*max(0,min($TargetVMs,maxNumberofVMs));
 $NodeDeallocationOption = taskcompletion;
 """
 
+# Production environment autoscale formula
 prod_autoscale_formula = """
 startingNumberOfVMs = 1;
 // set the maximum number of nodes to scale to
