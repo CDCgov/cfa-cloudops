@@ -143,17 +143,18 @@ class CloudClient:
     def create_pool(
         self,
         pool_name: str,
-        mounts=None,
-        container_image_name=None,
-        vm_size=d.default_vm_size,  # do some validation on size if too large
-        autoscale=True,
-        autoscale_formula="default",
-        dedicated_nodes=0,
-        low_priority_nodes=1,
-        max_autoscale_nodes=3,
-        task_slots_per_node=1,
-        availability_zones="regional",
-        cache_blobfuse=True,
+        mounts: list[str] | list[dict] | None = None,
+        container_image_name: str | None = None,
+        vm_size: str = d.default_vm_size,  # do some validation on size if too large
+        autoscale: bool = True,
+        autoscale_formula: str = "default",
+        dedicated_nodes: int = 0,
+        low_priority_nodes: int = 1,
+        max_autoscale_nodes: int = 3,
+        task_slots_per_node: int = 1,
+        availability_zones: str = "regional",
+        cache_blobfuse: bool = True,
+        shared_mount: str | None = None,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -163,9 +164,13 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of mount configurations as tuples of
-                (storage_container, mount_name). Each tuple specifies a blob storage
-                container to mount and the local mount point name.
+            mounts (list, optional): List of Blob Storage containers to mount to the pool.
+                The format can be a list of strings or dictionaries. For example, if you want to connect
+                to two storage containers named "input-data" and "output-results", you can provide:
+                - As strings: ["input-data", "output-results"]
+                - As dictionaries: [{"source": "input-data", "target": "/mnt/input"}, {"source": "output-results", "target": "/mnt/output"}]
+                    If provided this way as dictionaries, the value of each target is
+                    how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
@@ -211,7 +216,7 @@ class CloudClient:
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
                     vm_size="Standard_D4s_v3",
-                    mounts=[("input-data", "data"), ("output-results", "results")],
+                    mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
                     availability_zones="zonal"
@@ -222,26 +227,25 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
-        logger.debug(f"Attempting to create pool: {pool_name}")
-        # Initialize mount configuration
-        mount_config = None
-
         # Configure storage mounts if provided
-        if mounts is not None:
-            storage_containers = []
-            mount_names = []
-            for mount in mounts:
-                storage_containers.append(mount[0])
-                mount_names.append(mount[1])
-                logger.debug(f"Configured mount: container={mount[0]}, name={mount[1]}")
-            logger.debug("Generating node mount configuration.")
-            mount_config = get_node_mount_config(
-                storage_containers=storage_containers,
-                mount_names=mount_names,
-                account_names=self.cred.azure_blob_storage_account,
-                identity_references=self.cred.compute_node_identity_reference,
-                cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
-            )
+        if mounts:
+            if isinstance(mounts[0], str):
+                mount_config = get_node_mount_config(
+                    storage_containers=mounts,
+                    account_names=self.cred.azure_blob_storage_account,
+                    identity_references=self.cred.compute_node_identity_reference,
+                    cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                )
+            elif isinstance(mounts[0], dict):
+                mount_config = get_node_mount_config(
+                    storage_containers=[mount["source"] for mount in mounts],
+                    account_names=self.cred.azure_blob_storage_account,
+                    identity_references=self.cred.compute_node_identity_reference,
+                    cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                    mount_names=[mount["target"] for mount in mounts],
+                )
+            else:
+                mount_config = None
 
         # validate pool name
         pool_name = pool_name.replace(" ", "_")
@@ -528,6 +532,7 @@ class CloudClient:
         self,
         job_name: str,
         command_line: str,
+        mount_pairs: list[dict] | None = None,
         name_suffix: str = "",
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
@@ -541,6 +546,7 @@ class CloudClient:
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
+            mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task. Each dict is in the form {"source": <container_name>, "target": <target_name>}.
             name_suffix (str, optional): Suffix to append to the task ID.
             depends_on (list[str], optional): List of task IDs this task depends on.
             depends_on_range (tuple, optional): Range of task IDs this task depends on.
@@ -596,13 +602,21 @@ class CloudClient:
             logger.debug("No log saving to blob storage configured.")
 
         # get all mounts from pool info
-        self.mounts = batch_helpers.get_pool_mounts(
-            pool_name,
-            self.cred.azure_resource_group_name,
-            self.cred.azure_batch_account,
-            self.batch_mgmt_client,
-        )
-        logger.debug(f"Retrieved mounts for pool: {self.mounts}")
+        if mount_pairs is None:
+            self.mounts = batch_helpers.get_pool_mounts(
+                pool_name,
+                self.cred.azure_resource_group_name,
+                self.cred.azure_batch_account,
+                self.batch_mgmt_client,
+            )
+        else:
+            self.mounts = [
+                {
+                    "source": mount["source"],
+                    "target": helpers.format_rel_path(mount["target"]),
+                }
+                for mount in mount_pairs
+            ]
 
         logger.debug("Adding tasks to job.")
         tid = batch_helpers.add_task(

@@ -890,10 +890,14 @@ def get_pool_mounts(
         mc = pool_info.as_dict()["mount_configuration"]
         for m in mc:
             mounts.append(
-                (
-                    m["azure_blob_file_system_configuration"]["container_name"],
-                    m["azure_blob_file_system_configuration"]["relative_mount_path"],
-                )
+                {
+                    "source": m["azure_blob_file_system_configuration"][
+                        "relative_mount_path"
+                    ],
+                    "target": m["azure_blob_file_system_configuration"][
+                        "relative_mount_path"
+                    ],
+                },
             )
     except Exception as e:
         mounts = None
@@ -908,7 +912,7 @@ def add_task(
     save_logs_rel_path: str | None = None,
     logs_folder: str = "stdout_stderr",
     name_suffix: str = "",
-    mounts: list | None = None,
+    mounts: list[dict] | None = None,
     depends_on: str | list[str] | None = None,
     depends_on_range: tuple | None = None,
     run_dependent_tasks_on_fail: bool = False,
@@ -935,8 +939,8 @@ def add_task(
         logs_folder (str): Name of the folder to create for saving logs. Defaults to
             "stdout_stderr".
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
-        mounts (list[tuple[str, str]], optional): List of mount configurations as tuples
-            of (container_name, relative_mount_path).
+        mounts (list[dict], optional): List of mount configurations as dicts
+            of {"source": <container_name>, "target": <relative_mount_path>).
         depends_on (str | list[str], optional): Task ID(s) that this task depends on.
             Task will not start until dependencies complete successfully.
         depends_on_range (tuple[int, int], optional): Range of task IDs (start, end) that
@@ -1060,7 +1064,7 @@ def add_task(
                 mount_str
                 + "--mount type=bind,source="
                 + az_mount_dir
-                + f"/{mount[1]},target=/{mount[1]} "
+                + f"/{mount['source']},target=/{mount['target']} "
             )
 
     if task_id_ints:

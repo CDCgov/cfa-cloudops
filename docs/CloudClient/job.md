@@ -55,6 +55,9 @@ Depending on the pool setup, tasks can run in parallel or sequentially. If there
 The `CloudClient` class has a `add_task` method to simplify the programmatic submission of tasks to their respective job. Multiple `add_task` calls can be submitted one after the other. The following parameters can be passed to the `add_task` method:
 - job_name: name of an existing job
 - command_line: command for the desired task like you would run in a terminal
+- mount_pairs: an optional list of dictionaries to change the reference name of mounted containers. Each dictionary requires a 'source' and a 'target', where 'source is the name of the Blob container mounted to the pool, and 'target' is the name referenced in the task.
+    - example: Blob container named 'input-test', referenced as '/data/input' in the task code
+    ```mount_pairs = [{"source": "input-test", "target": "/data/input"}]```
 - name_suffix: name to append to task IDs if desired. It may help identify tasks. Optional.
 - depends_on: list of task ID(s) that this task depends on. Optional.
 - depends_on_range: if integers are used for the task IDs and the task depends on a range of tasks, the first task ID and the last task ID can be passed in tuple form. Form example if task 11 depends on tasks 1 through 10, the correct form would be (1, 10). Optional.
@@ -93,6 +96,27 @@ client.add_task(
     command_line = "python3 second_task.py",
     depends_on = [task_id],
     run_dependent_tasks_on_fail = True
+)
+```
+
+### Tasks with Mount Pairs
+
+Suppose we have the Blob containers 'input-test' and 'output-test' mounted to our pool and we have a python script that references each of these locations as '/data/input' and '/data/output', respectively. The following code could be used:
+
+```
+client.add_task(
+    job_name = "mounted-job",
+    command_line = "python3 run_script.py --inputs /data/input --outputs /data/output",
+    mount_pairs = [
+        {
+            "source": "input-test",
+            "target": "/data/input"
+        },
+        {
+            "source": "output-test",
+            "target": "/data/output"
+        }
+    ]
 )
 ```
 

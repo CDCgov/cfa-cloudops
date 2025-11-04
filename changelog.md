@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.1.0
+- significant changes to mounting structure in create_pool and add_task
+
+## v0.0.9
+- change pre-commit to enforce LF over CRLF line endings
+
 ## v0.0.8
 - added ruff.toml config file for pre-commit fixes
 

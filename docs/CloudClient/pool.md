@@ -6,7 +6,11 @@ Pools can easily be created with a `CloudClient` object while maintaining the fl
 
 - pool_name: name to call the pool. Any spaces with be replaced with "_". Required.
 - container_image_name: full name of the container image to use. Can be from Azure Container Registry, GitHub, or DockerHub. Optional but pretty necessary.
-- mounts: list of mounts to Blob Storage. The mounts are in a tuple form, where the first entry is the name of the Blob Container name, followed by the name to use as referenced in your code. Optional if not connecting to Blob Storage.
+- mounts: list of mounts to Blob Storage. Optional. There are two possible formats mounts can be passed as.
+    - list of strings. These strings are the name of the Blob containers you would like to mount to the pool. For example, if you want to mount the Blob containers 'input-test' and 'output-test' and reference those directly in tasks, they can be passed as
+    ```['input-test', 'output-test']```
+    - list of dictionaries. The dictionaries are in the form {'source': *container name*, 'target': *mount name*}. The source is the name of the Blob container and the target is how you want to reference the path in your code. For example, if we want to mount the Blob containers 'input-test' and 'output-test' and reference them via 'data/input' and 'data/output' in your code, pass the following to the `mounts` parameter:
+    ```[{'source': 'input-test', 'target': 'data/input'}, {'source': 'output-test', 'target': 'data/output'}]```
 - vm_size: the name of the VM size to use. Default is standard_d4s_v3.
 - autoscale: either True or False, depending on if autoscale or fixed number of nodes should be used. Default is True.
 - autoscale_formula: the full text of an autoscale formula. If not provided a default autoscale formula will be used if autoscale is set to True.
@@ -16,6 +20,7 @@ Pools can easily be created with a `CloudClient` object while maintaining the fl
 - task_slots_per_node: the number of task slots per node. Default is 1.
 - availability_zones: either regional or zonal policy. Default is regional.
 - cache_blobfuse: whether to cache the blobfuse connection on the node. Default is True.
+
 
 A very basic example of creating a pool with the `CloudClient` is as follows:
 ```python
@@ -42,7 +47,7 @@ client = CloudClient()
 client.create_pool(
     pool_name = "sample-pool",
     container_image_name = "python:3.10",
-    mounts = [("input-test", "input"), ("output-test", "results")],
+    mounts = [{"source": "input-test", "target": "input"}, {"source": "output-test", "target": "results"}],
     autoscale = True, # this line actually unnecessary
     max_autoscale_nodes = 10,
     cache_blobfuse = False
@@ -55,7 +60,7 @@ Say we are performing a lot of debugging in Azure Batch and need a pool to keep 
 
 - pool name "sample-pool-debug"
 - container_image_name = "my_azure_registry/azurecr.io/test_repo:latest"
-- one connection to Blob Storage to the container "input-files" which we refer to as "/data" in the code
+- one connection to Blob Storage to the container "input-files" which we refer to as "/input-files" in the code
 - fixed number of 3 low priority nodes
 - 2 task slots per node since the tasks are small
 
@@ -65,7 +70,7 @@ client = CloudClient()
 client.create_pool(
     pool_name = "sample-pool-debug",
     container_image_name = "my_azure_registry/azurecr.io/test_repo:latest",
-    mounts = [("input-files", "data")],
+    mounts = ["input-files"],
     autoscale = False,
     low_priority_nodes = 3,
     task_slots_per_node = 2
