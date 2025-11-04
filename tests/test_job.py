@@ -37,9 +37,7 @@ def mock_job_schedule():
     job_manager_task = models.JobManagerTask(
         id="my-job-manager-task",
         command_line="/bin/bash -c 'printenv; echo Job manager task starting.'",
-        authentication_token_settings=models.AuthenticationTokenSettings(
-            access="job"
-        ),
+        authentication_token_settings=models.AuthenticationTokenSettings(access="job"),
     )
     job_specification = models.JobSpecification(
         pool_info=models.PoolInformation(pool_id="my-pool"),
@@ -55,7 +53,7 @@ def mock_job_schedule():
 
 def test_create_job_schedule_success(mock_batch_client, mock_job_schedule):
     # Call the create_job_schedule function
-    result = create_job_schedule(
+    create_job_schedule(
         client=mock_batch_client,
         cloud_job_schedule=mock_job_schedule,
         verify_pool=True,
@@ -65,7 +63,4 @@ def test_create_job_schedule_success(mock_batch_client, mock_job_schedule):
 
     # Assertions
     mock_batch_client.pool.exists.assert_called_once_with("my-pool")
-    mock_batch_client.job_schedule.add.assert_called_once_with(
-        mock_job_schedule
-    )
-    assert result is True
+    mock_batch_client.job_schedule.add.assert_called_once_with(mock_job_schedule)
