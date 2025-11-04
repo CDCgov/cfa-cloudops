@@ -90,6 +90,7 @@ class CloudClient:
         use_federated: bool = False,
         **kwargs,
     ):
+        logger.debug("Initializing CloudClient.")
         # authenticate to get credentials
         if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
@@ -104,7 +105,7 @@ class CloudClient:
             self.method = "sp"
             logger.info("Using service principal credentials.")
         # get clients
-
+        logger.debug("Getting Azure clients and setting other attributes.")
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.compute_mgmt_client = get_compute_management_client(self.cred)
         self.batch_service_client = get_batch_service_client(self.cred)
@@ -116,6 +117,7 @@ class CloudClient:
         self.task_id_max = 0
 
     def check_credentials(self):
+        logger.debug("Checking credentials by listing subscriptions.")
         if self.method == "env":
             cred = self.cred.user_credential
         elif self.method == "default":
@@ -133,7 +135,9 @@ class CloudClient:
                 print(f"Subscription Name: {subscription.display_name}")
                 print(f"State: {subscription.state}")
                 print("-" * 30)
+            logger.debug("Successfully found subscriptions.")
         except Exception as e:
+            logger.exception(f"Error checking credentials: {e}")
             print(f"An error occurred: {e}")
 
     def create_pool(
@@ -218,6 +222,7 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
+        logger.debug(f"Attempting to create pool: {pool_name}")
         # Initialize mount configuration
         mount_config = None
 
@@ -228,6 +233,8 @@ class CloudClient:
             for mount in mounts:
                 storage_containers.append(mount[0])
                 mount_names.append(mount[1])
+                logger.debug(f"Configured mount: container={mount[0]}, name={mount[1]}")
+            logger.debug("Generating node mount configuration.")
             mount_config = get_node_mount_config(
                 storage_containers=storage_containers,
                 mount_names=mount_names,
@@ -238,12 +245,14 @@ class CloudClient:
 
         # validate pool name
         pool_name = pool_name.replace(" ", "_")
+        logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
         print("Verify the size of the VM is appropriate for the use case.")
         print("**Please use smaller VMs for dev/testing.**")
 
         # Get base pool configuration
+        logger.debug("Getting default pool configuration.")
         pool_config = d.get_default_pool_config(
             pool_name=pool_name,
             subnet_id=self.cred.azure_subnet_id,
@@ -255,6 +264,7 @@ class CloudClient:
         # Configure scaling settings
         if autoscale:
             # Set up autoscaling
+            logger.debug("Configuring autoscaling settings.")
             if autoscale_formula == "default":
                 # Default formula: scale based on pending tasks with max limit
                 formula = d.remaining_task_autoscale_formula(
@@ -272,6 +282,7 @@ class CloudClient:
             )
         else:
             # Set up fixed scaling
+            logger.debug("Configuring fixed scaling settings.")
             pool_config.scale_settings = models.ScaleSettings(
                 fixed_scale=models.FixedScaleSettings(
                     target_dedicated_nodes=dedicated_nodes,
@@ -280,23 +291,28 @@ class CloudClient:
             )
 
         # Configure task slots per node
+        logger.debug(f"Setting task slots per node: {task_slots_per_node}")
         pool_config.task_slots_per_node = task_slots_per_node
 
         # Configure container if image is provided
+        logger.debug("Configuring container settings.")
         if container_image_name:
             container_config = models.ContainerConfiguration(
                 type="dockerCompatible",
                 container_image_names=[container_image_name],
             )
+            logger.debug(f"Set container image: {container_image_name}")
 
             # Add container registry if available
             if hasattr(self.cred, "azure_container_registry"):
                 container_config.container_registries = [
                     self.cred.azure_container_registry
                 ]
+                logger.debug("Added azure container registry to client configuration.")
 
             d.assign_container_config(pool_config, container_config)
         else:
+            logger.error("container_image_name not provided.")
             raise ValueError("container_image_name not provided.")
 
         # Configure availability zones in the virtual machine configuration
@@ -305,21 +321,26 @@ class CloudClient:
             pool_config.deployment_configuration.virtual_machine_configuration.node_placement_configuration = models.NodePlacementConfiguration(
                 policy=models.NodePlacementPolicyType.regional
             )
+            logger.debug("Set availability zone policy to regional.")
         elif availability_zones.lower() == "zonal":
             pool_config.deployment_configuration.virtual_machine_configuration.node_placement_configuration = models.NodePlacementConfiguration(
                 policy=models.NodePlacementPolicyType.zonal
             )
+            logger.debug("Set availability zone policy to zonal.")
         else:
+            logger.error("Invalid availability_zones value provided.")
             raise ValueError("Availability zone needs to be 'zonal' or 'regional'.")
 
         try:
             # Create the pool using the batch management client
+            logger.debug("Attempting to create the pool in Azure Batch.")
             self.batch_mgmt_client.pool.create(
                 resource_group_name=self.cred.azure_resource_group_name,
                 account_name=self.cred.azure_batch_account,
                 pool_name=pool_name,
                 parameters=pool_config,
             )
+            logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
             print(f"created pool: {pool_name}")
         except Exception as e:
@@ -423,12 +444,14 @@ class CloudClient:
         """
         # save job information that will be used with tasks
         job_name = job_name.replace(" ", "")
-        logger.debug(f"job_name: {job_name}")
+        logger.debug(f"Attempting to create job: {job_name}")
 
         if pool_name:
             self.pool_name = pool_name
+            logger.debug(f"Using specified pool for job: {pool_name}")
         elif self.pool_name:
             pool_name = self.pool_name
+            logger.debug(f"Using specified pool for job: {pool_name}")
         else:
             logger.error("Please specify a pool for the job and try again.")
             raise Exception("Please specify a pool for the job and try again.")
@@ -444,17 +467,21 @@ class CloudClient:
                 if logs_folder.endswith("/"):
                     logs_folder = logs_folder[:-1]
                 self.logs_folder = logs_folder
+            logger.debug(f"Logs folder for job set to: {self.logs_folder}")
         if timeout is None:
             _to = None
+            logger.debug("No timeout set for job.")
         else:
             _to = datetime.timedelta(minutes=timeout)
+            logger.debug(f"Timeout for job set to: {_to}")
 
         on_all_tasks_complete = (
             OnAllTasksComplete.terminate_job
             if mark_complete_after_tasks_run
             else OnAllTasksComplete.no_action
         )
-
+        logger.debug(f"On all tasks complete action set to: {on_all_tasks_complete}")
+        logger.debug("Configuring job constraints.")
         job_constraints = JobConstraints(
             max_task_retry_count=task_retries,
             max_wall_clock_time=_to,
@@ -462,10 +489,13 @@ class CloudClient:
         if task_id_ints:
             self.task_id_ints = True
             self.task_id_max = 0
+            logger.debug("Using integer task IDs for job.")
         else:
             self.task_id_ints = False
+            logger.debug("Using string task IDs for job.")
 
         # add the job
+        logger.debug("Creating job add parameters.")
         job = batch_models.JobAddParameter(
             id=job_name,
             pool_info=batch_models.PoolInformation(pool_id=pool_name),
@@ -479,11 +509,13 @@ class CloudClient:
         )
 
         # Configure task retry settings
+        logger.debug("Configuring task retry settings.")
         if task_retries > 0:
             job.constraints = job.constraints or batch_models.JobConstraints()
             job.constraints.max_task_retry_count = task_retries
 
         # Create the job
+        logger.debug("Calling create_job function.")
         create_job(
             self.batch_service_client,
             job,
@@ -516,11 +548,14 @@ class CloudClient:
             container_image_name (str, optional): Container image to use for the task.
             timeout (int, optional): Maximum time in minutes for the task to run.
         """
+        logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
         job_info = self.batch_service_client.job.get(job_name)
         pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+        logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
         if container_image_name is None:
+            logger.debug("No container image name provided, retrieving from pool info.")
             if self.full_container_name is None:
                 logger.debug("Gettting full pool info")
                 pool_info = batch_helpers.get_pool_full_info(
@@ -542,8 +577,10 @@ class CloudClient:
                 logger.debug(f"Container name set to {container_name}.")
         else:
             container_name = container_image_name
+            logger.debug(f"Using provided container name: {container_name}.")
 
         if self.save_logs_to_blob:
+            logger.debug("Configuring log saving to blob storage.")
             rel_mnt_path = batch_helpers.get_rel_mnt_path(
                 blob_name=self.save_logs_to_blob,
                 pool_name=pool_name,
@@ -553,8 +590,10 @@ class CloudClient:
             )
             if rel_mnt_path != "ERROR!":
                 rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
+            logger.debug(f"Relative mount path for logs set to: {rel_mnt_path}")
         else:
             rel_mnt_path = None
+            logger.debug("No log saving to blob storage configured.")
 
         # get all mounts from pool info
         self.mounts = batch_helpers.get_pool_mounts(
@@ -563,6 +602,7 @@ class CloudClient:
             self.cred.azure_batch_account,
             self.batch_mgmt_client,
         )
+        logger.debug(f"Retrieved mounts for pool: {self.mounts}")
 
         logger.debug("Adding tasks to job.")
         tid = batch_helpers.add_task(
@@ -613,6 +653,7 @@ class CloudClient:
             multiple times with the same name is safe.
         """
         # create_container and save the container client
+        logger.debug(f"Creating blob container: {name}")
         create_storage_container_if_not_exists(name, self.blob_service_client)
         logger.debug(f"Created container client for container {name}.")
 
@@ -661,6 +702,7 @@ class CloudClient:
             The blob container must exist before uploading files. Use create_blob_container()
             to create it if needed. Files are uploaded with their directory structure preserved.
         """
+        logger.debug(f"Uploading files to container {container_name}.")
         blob.upload_to_storage_container(
             file_paths=files,
             blob_storage_container_name=container_name,
@@ -953,6 +995,7 @@ class CloudClient:
             available and authenticated. The resulting image name is stored in
             self.full_container_name for later use.
         """
+        logger.debug("Starting package_and_upload_dockerfile() function.")
         self.full_container_name = helpers.package_and_upload_dockerfile(
             registry_name, repo_name, tag, path_to_dockerfile, use_device_code
         )
@@ -1018,6 +1061,7 @@ class CloudClient:
             available and authenticated. The local image must exist before calling
             this method. The resulting image name is stored in self.full_container_name.
         """
+        logger.debug("Starting upload_docker_image() function.")
         self.full_container_name = helpers.upload_docker_image(
             image_name, registry_name, repo_name, tag, use_device_code
         )
@@ -1334,6 +1378,7 @@ class CloudClient:
             Ensure all important work is complete before deleting the pool.
             Pool deletion may take several minutes to complete.
         """
+        logger.debug(f"Attempting to delete pool {pool_name}.")
         batch_helpers.delete_pool(
             resource_group_name=self.cred.azure_resource_group_name,
             account_name=self.cred.azure_batch_account,
@@ -1496,6 +1541,7 @@ class CloudClient:
             The CSV file will be created in the current working directory. The job must
             be completed before statistics are available for all tasks.
         """
+        logger.debug(f"Downloading job stats for {job_name}.")
         batch_helpers.download_job_stats(
             job_name=job_name,
             batch_service_client=self.batch_service_client,
@@ -1538,11 +1584,14 @@ class CloudClient:
         task_strs = batch_helpers.get_tasks_from_yaml(
             base_cmd=base_cmd, file_path=file_path
         )
+        logger.debug(f"Retrieved {len(task_strs)} tasks from YAML file.")
         # submit tasks
         task_list = []
+        logger.debug("Submitting tasks to job.")
         for task_str in task_strs:
             tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
             task_list.append(tid)
+            logger.debug(f"Submitted task {tid}.")
         return task_list
 
     def download_after_job(
@@ -1581,6 +1630,7 @@ class CloudClient:
             This method blocks until the job completes. Files are downloaded to the
             specified target directory, preserving directory structure for folders.
         """
+        logger.debug("Monitoring job for completion before downloading.")
         # check job for completion
         batch_helpers.monitor_tasks(
             job_name=job_name,
@@ -1589,9 +1639,14 @@ class CloudClient:
         )
 
         # loop through blob_paths:
+        logger.debug(
+            "Job completed. Starting downloads. Making target directory if not exists."
+        )
         os.makedirs(target, exist_ok=True)
 
+        logger.debug(f"Beginning iteration over {len(blob_paths)} paths to download.")
         for path in blob_paths:
+            logger.debug(f"Processing path: {path}")
             if "." in path:
                 self.download_file(
                     src_path=path,
@@ -1643,18 +1698,22 @@ class CloudClient:
         # get topologicalsorter opject
         ts = TopologicalSorter()
         tasks = args
+        logger.debug("Building task dependency graph.")
         for task in tasks:
             ts.add(task, *task.deps)
+            logger.debug(f"Added task {task.id} with dependencies {task.deps}.")
         try:
             task_order = [*ts.static_order()]
+            logger.debug("Successfully determined task execution order.")
         except CycleError as ce:
-            logger.warn("Submitted tasks do not form a DAG.")
+            logger.warning("Submitted tasks do not form a DAG: ce")
             raise ce
         task_df = pd.DataFrame(columns=["id", "cmd", "deps"])
         # initialize df for task execution
         for i, task in enumerate(task_order):
             task_df.loc[i] = [task.id, task.cmd, task.deps]
         for task in task_order:
+            logger.debug(f"Submitting task {task.id} with command: {task.cmd}")
             tid = self.add_task(
                 job_name=job_name,
                 command_line=task.cmd,

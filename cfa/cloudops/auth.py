@@ -372,6 +372,7 @@ class DefaultCredential(BasicTokenAuthentication):
         resource_id="https://batch.core.windows.net/.default",
         **kwargs,
     ):
+        logger.debug("Initializing DefaultCredential.")
         super(DefaultCredential, self).__init__(None)
         if credential is None:
             credential = DefaultAzureCredential()
@@ -440,6 +441,7 @@ class EnvCredentialHandler(CredentialHandler):
                 If None, uses default .env file discovery.
             **kwargs: Additional keyword arguments to override specific credential attributes.
         """
+        logger.debug("Initializing EnvCredentialHandler.")
         load_env_vars(dotenv_path=dotenv_path)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
@@ -465,6 +467,7 @@ def load_env_vars(dotenv_path=None):
         >>> load_env_vars()  # Load from default .env
         >>> load_env_vars("/path/to/.env")  # Load from specific file
     """
+    logger.debug("Loading environment variables.")
     load_dotenv(dotenv_path=dotenv_path, override=True)
     # get ManagedIdentityCredential to pull SubscriptionClient
     mid_cred = ManagedIdentityCredential()
@@ -532,7 +535,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-
+        logger.debug("Initializing SPCredentialHandler.")
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 

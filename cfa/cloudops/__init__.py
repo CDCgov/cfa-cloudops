@@ -38,3 +38,5 @@ logging.basicConfig(
     datefmt="%Y-%m-%d_%H:%M:%S%z",
     handlers=handler,
 )
+
+logging.debug(f"logging set to {get_log_level()} to output: {log_status}.")
