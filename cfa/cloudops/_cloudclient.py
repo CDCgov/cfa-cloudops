@@ -224,7 +224,7 @@ class CloudClient:
             container images are accessible from the compute nodes.
         """
         # Configure storage mounts if provided
-        if mounts is not None:
+        if mounts:
             if isinstance(mounts[0], str):
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
