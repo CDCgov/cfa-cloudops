@@ -244,6 +244,14 @@ def upload_files_in_folder(
         local_root_dir=".",
         remote_root_dir=path.join(location_in_blob),
     )
+    if final_list:
+        logger.info(
+            f"Uploaded {len(final_list)} file(s) to container '{container_name}' at '{location_in_blob}'."
+        )
+    else:
+        logger.info(
+            f"No files found to upload from '{folder}' to container '{container_name}'."
+        )
     return final_list
 
 
@@ -316,7 +324,9 @@ def download_file(
                     print("Warning: File size is greater than 1 GB.")
                     cont = input("Continue? [Y/n]: ")
                     if cont.lower() != "y":
-                        logger.info("Download aborted by user")
+                        logger.info(
+                            f"Download of blob '{src_path}' aborted by user due to large file size."
+                        )
                         print("Download aborted.")
                         return None
                     else:
@@ -338,6 +348,7 @@ def download_file(
     with dest_path.open(mode="wb") as blob_download:
         blob_download.write(download_stream.readall())
         logger.debug("File downloaded successfully.")
+        logger.info(f"Downloaded blob '{src_path}' to local file '{dest_path}'.")
         if verbose:
             print(f"Downloaded {src_path} to {dest_path}")
 
@@ -814,6 +825,9 @@ def download_folder(
             verbose=verbose,
             check_size=False,
         )
+    logger.info(
+        f"Downloaded {len(flist)} file(s) from '{src_path}' in container '{container_name}' to '{dest_path}'."
+    )
     logger.debug("Download complete.")
 
 
@@ -854,7 +868,9 @@ def delete_blob_snapshots(
 
     logger.debug("Executing delete operation (including snapshots)")
     blob_client.delete_blob(delete_snapshots="include")
-    logger.info(f"Deleted {blob_name} from {container_name}.")
+    logger.info(
+        f"Deleted blob '{blob_name}' and all snapshots from container '{container_name}'."
+    )
 
 
 def delete_blob_folder(
@@ -908,7 +924,9 @@ def delete_blob_folder(
             container_name=container_name,
             blob_service_client=blob_service_client,
         )
-
+    logger.info(
+        f"Deleted {len(_files)} blob(s) from folder '{folder_path}' in container '{container_name}'."
+    )
     logger.debug(
         f"Completed deletion of folder '{folder_path}' - {len(_files)} blobs removed"
     )
@@ -1012,4 +1030,7 @@ def write_blob_stream(
         name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite
     )
     logger.debug("Blob upload completed successfully")
+    logger.info(
+        f"Uploaded blob '{blob_url}' ({data_size} bytes) to container '{container_client.container_name}'."
+    )
     return True

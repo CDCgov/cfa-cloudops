@@ -73,7 +73,7 @@ def get_batch_management_client(
             **kwargs,
         )
 
-    logger.debug("BatchManagementClient created successfully")
+    logger.info(f"BatchManagementClient created using '{ch.method}' authentication.")
     return client
 
 
@@ -136,7 +136,7 @@ def get_compute_management_client(
             **kwargs,
         )
 
-    logger.debug("ComputeManagementClient created successfully")
+    logger.info(f"ComputeManagementClient created using '{ch.method}' authentication.")
     return client
 
 
@@ -267,5 +267,7 @@ def get_blob_service_client(
             **kwargs,
         )
 
-    logger.debug("BlobServiceClient created successfully")
+    logger.info(
+        f"BlobServiceClient created using '{ch.method}' authentication at endpoint '{ch.azure_blob_storage_endpoint}'."
+    )
     return client

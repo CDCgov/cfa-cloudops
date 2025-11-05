@@ -156,6 +156,9 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
 
             if not incomplete_tasks:
                 logger.info("\nAll tasks completed.")
+                logger.info(
+                    f"Job '{job_name}' completed: {successes} successes, {failures} failures out of {completions} tasks."
+                )
                 logger.debug(
                     f"Monitoring completed after {polling_count} polling iterations"
                 )
@@ -177,6 +180,9 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
         logger.info(f"{successes} task(s) succeeded, {failures} failed.")
     else:
         logger.warning("Monitoring stopped due to timeout - not all tasks completed")
+        logger.info(
+            f"Job '{job_name}' monitoring timed out after {timeout} minutes. {completions} completed, {incompletions} remaining."
+        )
 
     # get terminate reason
     logger.debug("Checking for job termination reason")
@@ -532,7 +538,7 @@ def delete_pool(
         account_name=account_name,
         pool_name=pool_name,
     )
-    logger.info(f"Pool {pool_name} deleted.")
+    logger.info(f"Pool deletion initiated for '{pool_name}'.")
     return poller
 
 
@@ -885,6 +891,9 @@ def get_rel_mnt_path(
         )
     except Exception:
         logger.error("could not retrieve pool information.")
+        logger.info(
+            f"Could not retrieve pool info for pool '{pool_name}' in resource group '{resource_group_name}'."
+        )
         return "ERROR!"
 
     mc = pool_info.as_dict()["mount_configuration"]
@@ -898,6 +907,7 @@ def get_rel_mnt_path(
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
     logger.error(f"could not find blob {blob_name} mounted to pool.")
+    logger.info(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
     print(f"could not find blob {blob_name} mounted to pool.")
     return "ERROR!"
 
@@ -974,6 +984,9 @@ def get_pool_mounts(
         )
     except Exception:
         logger.error("could not retrieve pool information.")
+        logger.info(
+            f"Could not retrieve pool info for pool '{pool_name}' in resource group '{resource_group_name}'."
+        )
         print(f"could not retrieve pool info for {pool_name}.")
         return None
 
@@ -997,7 +1010,7 @@ def get_pool_mounts(
         logger.debug(f"Successfully retrieved {len(mounts)} mount configurations")
     except Exception as e:
         mounts = None
-        logger.info(f"could not find mounts for pool {pool_name}: {e}")
+        logger.info(f"Could not find mounts for pool '{pool_name}': {e}")
 
     return mounts
 

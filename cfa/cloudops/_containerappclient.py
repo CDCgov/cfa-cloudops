@@ -81,6 +81,9 @@ class ContainerAppClient:
             credential=self.credential, subscription_id=subscription_id
         )
         logger.debug("Client initialized.")
+        logger.info(
+            f"ContainerAppClient initialized for resource group '{self.resource_group}'."
+        )
 
     def get_job_info(self, job_name: str | None = None):
         """
@@ -103,8 +106,8 @@ class ContainerAppClient:
 
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
-                logger.debug(f"Job {job_name} found, retrieving info.")
                 job_info = i
+        logger.info(f"Retrieved info for job '{job_name}'.")
         return job_info.as_dict()
 
     def get_command_info(self, job_name: str | None = None):
@@ -128,8 +131,8 @@ class ContainerAppClient:
 
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
-                logger.debug(f"Job {job_name} found, retrieving command info.")
                 job_info = i
+        logger.info(f"Retrieved command info for job '{job_name}'.")
         logger.debug("Extracting container information.")
         c_info = job_info.__dict__["template"].__dict__["containers"]
         container_dicts = []
@@ -157,6 +160,9 @@ class ContainerAppClient:
         job_list = [
             i.name for i in self.client.jobs.list_by_resource_group(self.resource_group)
         ]
+        logger.info(
+            f"Listed {len(job_list)} jobs in resource group '{self.resource_group}'."
+        )
         logger.debug(f"Found jobs: {job_list}")
         return job_list
 
@@ -172,7 +178,7 @@ class ContainerAppClient:
         """
         logger.debug(f"Checking existence of job {job_name}.")
         if job_name in self.list_jobs():
-            logger.info(f"Container App Job {job_name} found.")
+            logger.info(f"Job '{job_name}' exists.")
             return True
         else:
             logger.info(f"Container App Job {job_name} not found.")
@@ -211,6 +217,7 @@ class ContainerAppClient:
             self.client.jobs.begin_start(
                 resource_group_name=self.resource_group, job_name=job_name
             )
+            logger.info(f"Started job '{job_name}'.")
         else:
             # raise error if command/args/env not lists
             if command is not None and not isinstance(command, list):
@@ -251,6 +258,7 @@ class ContainerAppClient:
                     job_name=job_name,
                     template=t,
                 )
+                logger.info(f"Started job '{job_name}' with custom template.")
                 logger.debug("Job start request submitted successfully.")
                 print(f"Started job {job_name}.")
             except Exception as e:
@@ -277,8 +285,11 @@ class ContainerAppClient:
                 job_name=job_name,
                 job_execution_name=job_execution_name,
             ).result()
-            logger.info(
+            print(
                 f"Job execution '{job_execution_name}' for job '{job_name}' stopped successfully."
+            )
+            logger.info(
+                f"Stopped job execution '{job_execution_name}' for job '{job_name}'."
             )
             return response
         except Exception as e:

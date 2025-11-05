@@ -94,10 +94,10 @@ def create_storage_container_if_not_exists(
             f"Container '{blob_storage_container_name}' does not exist, creating it"
         )
         container_client.create_container()
-        logger.debug(f"Container '{blob_storage_container_name}' created successfully")
+        logger.info(f"Container '{blob_storage_container_name}' created.")
         print("Container [{}] created.".format(blob_storage_container_name))
     else:
-        logger.debug(f"Container '{blob_storage_container_name}' already exists")
+        logger.info(f"Container '{blob_storage_container_name}' already exists.")
         print("Container [{}] already exists.".format(blob_storage_container_name))
 
 
@@ -168,8 +168,8 @@ def upload_to_storage_container(
             blob_client.upload_blob(upload_data, overwrite=True)
             logger.debug(f"Successfully uploaded '{file_path}'")
 
-    logger.debug(
-        f"Upload completed: {n_total_files} files uploaded to container '{blob_storage_container_name}'"
+    logger.info(
+        f"Uploaded {n_total_files} file(s) to container '{blob_storage_container_name}'."
     )
     print("Uploaded {} files to blob storage container".format(n_total_files))
 
@@ -250,8 +250,8 @@ def download_from_storage_container(
             target_file.write(download_stream.readall())
             logger.debug(f"Successfully downloaded '{file_path}'")
 
-    logger.debug(
-        f"Download completed: {n_total_files} files downloaded from container '{blob_storage_container_name}'"
+    logger.info(
+        f"Downloaded {n_total_files} file(s) from container '{blob_storage_container_name}'."
     )
     print(f"Downloaded {n_total_files} files from blob storage container")
 
@@ -818,6 +818,9 @@ def async_download_blob_folder(
         logger.error("Download cancelled by user.")
     except Exception as e:
         logger.error(f"Failed to download blob folder: {e}")
+    logger.info(
+        f"Completed async download of folder '{local_folder}' from container '{container_name}'."
+    )
     return local_folder
 
 
@@ -914,4 +917,7 @@ def async_upload_folder(
         logger.error("Upload cancelled by user.")
     except Exception as e:
         logger.error(f"Failed to upload blob folder: {e}")
+    logger.info(
+        f"Completed async upload of folder '{folder}' to container '{container_name}'."
+    )
     return folder

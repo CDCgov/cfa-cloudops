@@ -355,6 +355,7 @@ class CloudClient:
             logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
             print(f"created pool: {pool_name}")
+            logger.info(f"Pool '{pool_name}' created successfully.")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
             raise RuntimeError(error_msg)
@@ -538,6 +539,7 @@ class CloudClient:
             verify_pool=verify_pool,
             verbose=verbose,
         )
+        logger.info(f"Job '{job_name}' created successfully.")
 
     def add_task(
         self,
@@ -649,6 +651,7 @@ class CloudClient:
         )
         self.task_id_max += 1
         print(f"Added task {tid} to job {job_name}.")
+        logger.info(f"Task '{tid}' added to job '{job_name}'.")
         return tid
 
     def create_blob_container(self, name: str) -> None:
@@ -680,7 +683,7 @@ class CloudClient:
         # create_container and save the container client
         logger.debug(f"Creating blob container: {name}")
         create_storage_container_if_not_exists(name, self.blob_service_client)
-        logger.debug(f"Created container client for container {name}.")
+        logger.info(f"Blob container '{name}' created or already exists.")
 
     def upload_files(
         self,
@@ -735,6 +738,7 @@ class CloudClient:
             local_root_dir=local_root_dir,
             remote_root_dir=location_in_blob,
         )
+        logger.info(f"Uploaded files to container '{container_name}'.")
 
     def upload_folders(
         self,
@@ -817,6 +821,7 @@ class CloudClient:
             )
             _files += _uploaded_files
         logger.debug(f"uploaded {_files}")
+        logger.info(f"Uploaded folders to container '{container_name}'.")
         return _files
 
     def monitor_job(
@@ -865,7 +870,6 @@ class CloudClient:
             job_name, timeout, self.batch_service_client
         )
         print(monitor)
-
         if download_job_stats:
             batch_helpers.download_job_stats(
                 job_name=job_name,
@@ -873,6 +877,7 @@ class CloudClient:
                 file_name=None,
             )
         logger.info("Job complete.")
+        logger.info(f"Monitoring of job '{job_name}' complete.")
 
     def check_job_status(self, job_name: str) -> str:
         """Check the current status and progress of an Azure Batch job.
@@ -962,7 +967,7 @@ class CloudClient:
         """
         logger.debug(f"Attempting to delete {job_name}.")
         self.batch_service_client.job.delete(job_name)
-        logger.info(f"Job {job_name} deleted.")
+        logger.info(f"Job '{job_name}' deleted.")
 
     def package_and_upload_dockerfile(
         self,
@@ -988,7 +993,7 @@ class CloudClient:
                 relative or absolute. Default is "./Dockerfile" (Dockerfile in current directory).
             use_device_code (bool, optional): Whether to use device code authentication
                 for Azure CLI login during the upload process. Useful for environments
-                without a web browser. Default is False.
+                withouth a web browser. Default is False.
 
         Returns:
             str: Full container image name that was uploaded, in the format
@@ -1054,7 +1059,7 @@ class CloudClient:
             tag (str): Tag to assign to the uploaded Docker image (e.g., "latest", "v1.0").
             use_device_code (bool, optional): Whether to use device code authentication
                 for Azure CLI login during the upload process. Useful for environments
-                without a web browser. Default is False.
+                withouth a web browser. Default is False.
 
         Returns:
             str: Full container image name that was uploaded, in the format
@@ -1153,6 +1158,7 @@ class CloudClient:
 
         logger.debug("Attempting to download file.")
         blob_helpers.download_file(c_client, src_path, dest_path, do_check, check_size)
+        logger.info(f"Downloaded file '{src_path}' to '{dest_path}'.")
 
     def download_folder(
         self,
@@ -1222,7 +1228,7 @@ class CloudClient:
             verbose,
             check_size,
         )
-        logger.debug("finished call to download")
+        logger.info(f"Downloaded folder '{src_path}' to '{dest_path}'.")
 
     def async_download_folder(
         self,
@@ -1299,7 +1305,7 @@ class CloudClient:
             max_concurrent_downloads=max_concurrent_downloads,
             credential=cred,
         )
-        logger.debug("finished call to download")
+        logger.info(f"Asynchronously downloaded folder '{src_path}' to '{dest_path}'.")
 
     def async_upload_folder(
         self,
@@ -1368,6 +1374,9 @@ class CloudClient:
                 max_concurrent_uploads=max_concurrent_uploads,
                 credential=cred,
             )
+            logger.info(
+                f"Asynchronously uploaded folder '{folder}' to container '{container_name}'."
+            )
 
     def delete_pool(self, pool_name: str) -> None:
         """Delete an Azure Batch pool and all its compute nodes.
@@ -1410,6 +1419,7 @@ class CloudClient:
             pool_name=pool_name,
             batch_mgmt_client=self.batch_mgmt_client,
         )
+        logger.info(f"Pool '{pool_name}' deleted.")
 
     def list_blob_files(self, blob_container: str = None):
         """List all files in blob storage containers associated with the client.
@@ -1499,7 +1509,7 @@ class CloudClient:
         blob_helpers.delete_blob_snapshots(
             blob_name, container_name, self.blob_service_client
         )
-        logger.debug(f"Deleted {blob_name}.")
+        logger.info(f"Deleted blob '{blob_name}' from '{container_name}'.")
 
     def delete_blob_folder(self, folder_path: str, container_name: str):
         """Delete an entire folder and all its contents from Azure Blob Storage.
@@ -1539,7 +1549,7 @@ class CloudClient:
         blob_helpers.delete_blob_folder(
             folder_path, container_name, self.blob_service_client
         )
-        logger.debug(f"Deleted folder {folder_path}.")
+        logger.info(f"Deleted folder '{folder_path}' from '{container_name}'.")
 
     def download_job_stats(self, job_name: str, file_name: str | None = None):
         """Download job statistics for a completed Azure Batch job.
@@ -1571,6 +1581,9 @@ class CloudClient:
             job_name=job_name,
             batch_service_client=self.batch_service_client,
             file_name=file_name,
+        )
+        logger.info(
+            f"Downloaded job stats for '{job_name}' to '{file_name or job_name + '-stats.csv'}'."
         )
 
     def add_tasks_from_yaml(
@@ -1617,7 +1630,7 @@ class CloudClient:
             tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
             task_list.append(tid)
             logger.debug(f"Submitted task {tid}.")
-        return task_list
+        logger.info(f"Added {len(task_list)} tasks to job '{job_name}' from YAML file.")
 
     def download_after_job(
         self,
@@ -1685,6 +1698,9 @@ class CloudClient:
                     container_name=container_name,
                     **kwargs,
                 )
+        logger.info(
+            f"Downloaded {len(blob_paths)} paths after job '{job_name}' completed."
+        )
 
     def run_dag(self, *args: batch_helpers.Task, job_name: str, **kwargs):
         """Run a set of tasks as a directed acyclic graph (DAG) in the correct order.
@@ -1753,3 +1769,4 @@ class CloudClient:
                     else:
                         dlist.append(str(dp))
                 task_df.at[i, "deps"] = dlist
+        logger.info(f"Completed DAG run for job '{job_name}'.")

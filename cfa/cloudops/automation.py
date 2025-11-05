@@ -15,7 +15,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
     Args:
         exp_config (str): path to experiment config file (toml)
     """
-    logger.debug(f"Starting experiment execution with config: {exp_config}")
+    logger.info(f"Starting experiment execution with config: {exp_config}")
     logger.debug(f"Using dotenv_path: {dotenv_path}")
 
     # read files
@@ -78,6 +78,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
                 location_in_blob=location_in_blob,
                 container_name=container_name,
             )
+            logger.info(f"Uploaded folders: {folders} to container: {container_name}")
             logger.debug("Folder upload completed")
         if "files" in exp_toml["upload"].keys():
             files = exp_toml["upload"]["files"]
@@ -87,6 +88,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
                 location_in_blob=location_in_blob,
                 container_name=container_name,
             )
+            logger.info(f"Uploaded files: {files} to container: {container_name}")
             logger.debug("File upload completed")
     else:
         logger.debug("No upload section found in experiment config")
@@ -119,7 +121,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
         logs_folder=logs_folder,
         task_retries=task_retries,
     )
-    logger.debug(f"Job '{job_name}' created successfully")
+    logger.info(f"Job '{job_name}' created successfully.")
 
     # create the tasks for the experiment
     logger.debug("Creating tasks for experiment")
@@ -143,6 +145,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
             base_cmd=ex["base_cmd"],
             file_path=ex["exp_yaml"],
         )
+        logger.info("Tasks added from YAML successfully.")
         logger.debug("Tasks added from YAML successfully")
     else:
         logger.debug("Processing experiment tasks with parameter combinations")
@@ -166,12 +169,14 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
                 command_line=command_line,
                 container_image_name=container,
             )
+        logger.info(f"Successfully added {len(v_v)} experiment tasks")
         logger.debug(f"Successfully added {len(v_v)} experiment tasks")
 
     if "monitor_job" in exp_toml["job"].keys():
         if exp_toml["job"]["monitor_job"] is True:
             logger.debug(f"Starting job monitoring for: {job_name}")
             client.monitor_job(job_name)
+            logger.debug(f"Completed monitoring job: {job_name}")
         else:
             logger.debug("Job monitoring disabled in configuration")
     else:
@@ -246,6 +251,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs) -> Non
                 location_in_blob=location_in_blob,
                 container_name=container_name,
             )
+            logger.info(f"Uploaded folders: {folders} to container: {container_name}")
             logger.debug("Folder upload completed")
         if "files" in task_toml["upload"].keys():
             files = task_toml["upload"]["files"]
@@ -255,6 +261,7 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs) -> Non
                 location_in_blob=location_in_blob,
                 container_name=container_name,
             )
+            logger.info(f"Uploaded files: {files} to container: {container_name}")
             logger.debug("File upload completed")
     else:
         logger.debug("No upload section found in task config")

@@ -119,6 +119,9 @@ def package_and_upload_dockerfile(
         This function requires Docker to be installed and the Azure CLI to be available and authenticated.
         The resulting image name is returned as a string for use in Azure Batch pools or jobs.
     """
+    logger.info(
+        f"Packaging and uploading Dockerfile to {registry_name}.azurecr.io/{repo_name}:{tag}"
+    )
     logger.debug(
         f"Starting package_and_upload_dockerfile with parameters: registry_name='{registry_name}', repo_name='{repo_name}', tag='{tag}', path_to_dockerfile='{path_to_dockerfile}', use_device_code={use_device_code}"
     )
@@ -140,7 +143,7 @@ def package_and_upload_dockerfile(
 
     if dockerfile_exists and d:
         full_container_name = f"{registry_name}.azurecr.io/{repo_name}:{tag}"
-        logger.info(f"full container name: {full_container_name}")
+        logger.info(f"Full container name: {full_container_name}")
         logger.debug(
             f"Constructed full container name from components: {registry_name}.azurecr.io/{repo_name}:{tag}"
         )
@@ -152,7 +155,7 @@ def package_and_upload_dockerfile(
         )
         logger.debug(f"Executing Docker build command: {build_command}")
         sp.run(build_command, shell=True)
-        logger.debug("Docker build command completed")
+        logger.info(f"Built Docker image: {full_container_name}")
         # Upload container to registry
         # upload with device login if desired
         logger.debug("Starting Azure authentication and ACR upload process")
@@ -167,6 +170,7 @@ def package_and_upload_dockerfile(
             logger.debug(f"Executing Azure CLI command: {auth_command}")
             sp.run(auth_command, shell=True)
 
+        logger.info(f"Authenticated to Azure and ACR: {registry_name}")
         acr_login_command = f"az acr login --name {registry_name}"
         logger.debug(f"Executing ACR login command: {acr_login_command}")
         sp.run(acr_login_command, shell=True)
@@ -176,6 +180,7 @@ def package_and_upload_dockerfile(
         push_command = f"docker push {full_container_name}"
         logger.debug(f"Executing Docker push command: {push_command}")
         sp.run(push_command, shell=True)
+        logger.info(f"Pushed Docker image to ACR: {full_container_name}")
         logger.debug(f"Successfully pushed container to ACR: {full_container_name}")
 
         return full_container_name
@@ -239,8 +244,9 @@ def upload_docker_image(
         This function requires Docker to be installed and the Azure CLI to be available and authenticated.
         The resulting image name is returned as a string for use in Azure Batch pools or jobs.
     """
-    logger.debug(
-        f"Starting upload_docker_image with parameters: image_name='{image_name}', registry_name='{registry_name}', repo_name='{repo_name}', tag='{tag}', use_device_code={use_device_code}"
+
+    logger.info(
+        f"Uploading Docker image '{image_name}' to {registry_name}.azurecr.io/{repo_name}:{tag}"
     )
 
     full_container_name = f"{registry_name}.azurecr.io/{repo_name}:{tag}"
@@ -290,6 +296,7 @@ def upload_docker_image(
         logger.debug(f"Executing Azure CLI command: {auth_command}")
         sp.run(auth_command, shell=True)
 
+    logger.info(f"Authenticated to Azure and ACR: {registry_name}")
     acr_login_command = f"az acr login --name {registry_name}"
     logger.debug(f"Executing ACR login command: {acr_login_command}")
     sp.run(acr_login_command, shell=True)
@@ -299,7 +306,7 @@ def upload_docker_image(
     push_command = f"docker push {full_container_name}"
     logger.debug(f"Executing Docker push command: {push_command}")
     sp.run(push_command, shell=True)
-    logger.debug(f"Successfully pushed container to ACR: {full_container_name}")
+    logger.info(f"Pushed Docker image to ACR: {full_container_name}")
 
     return full_container_name
 

@@ -255,6 +255,9 @@ class CredentialHandler:
             cred,
         )
         logger.debug("Retrieved service principal secret from Azure Key Vault.")
+        logger.info(
+            f"Retrieved secret '{self.azure_keyvault_sp_secret_id}' from Azure Key Vault."
+        )
         return secret
 
     @cached_property
