@@ -1631,6 +1631,7 @@ class CloudClient:
             task_list.append(tid)
             logger.debug(f"Submitted task {tid}.")
         logger.info(f"Added {len(task_list)} tasks to job '{job_name}' from YAML file.")
+        return task_list
 
     def download_after_job(
         self,
