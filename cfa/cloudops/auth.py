@@ -262,7 +262,7 @@ class CredentialHandler:
 
     @cached_property
     def default_credential(self):
-        logger.debug
+        logger.debug("Creating DefaultCredential.")
         return DefaultCredential()
 
     @cached_property
