@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.1.1
+- increase logging throughout the library
+
 ## v0.1.0
 - significant changes to mounting structure in create_pool and add_task
 
