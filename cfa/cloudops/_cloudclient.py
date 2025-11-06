@@ -1,7 +1,7 @@
 import datetime
+import inspect
 import logging
 import os
-import uuid
 from graphlib import CycleError, TopologicalSorter
 
 import networkx as nx
@@ -1816,13 +1816,25 @@ class CloudClient:
                 client.generate_dag(t1, t2, t3, t4, file_name="dag_job.txt")
         """
 
+        # Access the caller's local variables
+        caller_variables = list(inspect.currentframe().f_back.f_locals.items())
         tasks = args
-        for index, task in enumerate(tasks):
-            try:
-                if str(uuid.UUID(task.id)) == task.id:
-                    task.id = f"task_{index}"
-            except ValueError:
-                continue
+        task_mapping = {}
+        for task in tasks:
+            for name, val in caller_variables:
+                if val is task:
+                    task_mapping[name] = val
+
+        def apply_mapping(task_id, mapping):
+            for name, val in mapping.items():
+                if val.id == task_id:
+                    return name
+            return None
+
+        for task in tasks:
+            task.id = apply_mapping(task.id, task_mapping)
+            for dep in task.deps:
+                dep.id = apply_mapping(dep.id, task_mapping)
 
         graph = nx.DiGraph()
         for task in tasks:
