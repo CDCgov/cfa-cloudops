@@ -127,6 +127,7 @@ Once jobs are running (or not) we can monitor the job in the terminal. This will
 - job_name: name of the job to monitor
 - timeout: time in minutes to monitor the job
 - download_job_stats: whether to download stats from the job when it completes. Default is False.
+- download_task_output: whether to download the stdout and stderr locally when each task in the job completes. Default False.
 
 ### Example
 
@@ -138,9 +139,24 @@ client = CloudClient()
 client.monitor_job(
     job_name = "running-job-example",
     timeout = 60,
-    download_job_stats = False
     )
 ```
+
+To monitor the same job and locally save the task output, we can run the following. Let's say this job has three tasks included in the job.
+```
+client.monitor_job(
+    job_name = "running-job-example",
+    timeout = 60,
+    download_task_output = True
+    )
+```
+The outputs will be saved to a folder called 'running-job-example_output' and contain the following 6 files (2 per task):
+- running-job-example--1_stdout.txt
+- running-job-example--1_stderr.txt
+- running-job-example--2_stdout.txt
+- running-job-example--2_stderr.txt
+- running-job-example--3_stdout.txt
+- running-job-example--3_stderr.txt
 
 ## Checking Job Status
 
