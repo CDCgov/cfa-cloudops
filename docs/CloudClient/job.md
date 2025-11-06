@@ -180,3 +180,81 @@ There are times when it's desired to delete a job, whether after it completes/fa
 ```python
 client.delete_job("running-job-example")
 ```
+
+## Runnings Jobs on a Schedule
+
+The `CloudClient` class has a method called `create_job_schedule` which should be used for programmatically running jobs on a schedule in your specified Azure Batch account. The following parameters can be passed to the method for specifying the job schedule:
+
+- job_schedule_name: name of the job schedule to create. Spaces will be replaced with dashes.
+- pool_name: name of Azure batch pool where the job's tasks will run. The pool must exist before job schedule is created.
+- command: Docker command that will be run by the job manager task of the job created by the job schedule.
+- timeout: maximum time in seconds that the job can run before being terminated. Default is 30 seconds.
+- start_window: interval during which job must be run. Otherwise job will be created upon next recurrence of the schedule.
+- recurrence_interval: a recurring cadence for running the specified job
+- do_not_run_until: disable the schedule until the specified time
+- do_not_run_after: disable the schedule after the specified time
+- exist_ok: whether to allow the job schedule creation if a schedule with the same name already exists. Default is False.
+- verify_pool: whether to check if the pool exists.
+- verbose: whether to be verbose as the job schedule gets created.
+
+### The Simplest Example
+For users just looking to get started with this job schedule creation, the following can be run to create a job after every 15 minutes on schedule called 'test-schedule' using the 'test-pool' Azure batch pool.
+```python
+import datetime
+
+client = CloudClient()
+client.create_job_schedule(
+    job_schedule_name = 'test-schedule',
+    pool_name = 'test-pool',
+    command = "cmd /c echo Hello world from the job schedule!",
+    recurrence_interval = datetime.timedelta(minutes=15)
+)
+```
+
+### A Complex Example
+Suppose we want the same job to run every 1 hour during the last week of March 2026. If the previous job is still running after 15 minutes, then next job will be skipped. In this case, the following should be run:
+```python
+import datetime
+
+
+client = CloudClient()
+client.create_job_schedule(
+    job_schedule_name = "test-schedule",
+    pool_name = 'test-pool',
+    command = "cmd /c echo Hello world from the job schedule!",
+    recurrence_interval = datetime.timedelta(hours=1),
+    start_window = datetime.timedelta(minutes=15),
+    do_not_run_until = "2026-03-23 00:00:00",
+    do_not_run_after = "2026-03-31 00:00:00",
+)
+```
+
+## Deleting a Job Schedule
+
+If it becomes necessary to remove recurring interval or scheduled start/end for a job, this can be accomplished with `delete_job_schedule` method and providing the name of the job schedule to delete. This will only delete the schedule. It will not delete the job.
+
+### Example:
+
+```python
+client.delete_job_schedule("test-schedule")
+```
+
+## Suspending a Job Schedule
+
+Instead of permanently deleting a job schedule, the job schedule can be temporarily suspended with the `suspend_job_schedule` method and providing the name of the job schedule to suspend.
+
+### Example:
+
+```python
+client.suspend_job_schedule("test-schedule")
+```
+
+## Resuming a Job Schedule
+
+A suspended job schedule can be resumed with the `resume_job_schedule` method and providing the name of the job schedule to resume.
+
+### Example:
+
+```python
+client.resume_job_schedule("test-schedule")
+```
