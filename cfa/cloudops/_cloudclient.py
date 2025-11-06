@@ -928,6 +928,7 @@ class CloudClient:
         job_name: str,
         timeout: int | None = None,
         download_job_stats: bool = False,
+        download_task_output: bool = False,
     ) -> None:
         """Monitor the execution of tasks in an Azure Batch job.
 
@@ -943,6 +944,8 @@ class CloudClient:
             download_job_stats (bool, optional): Whether to download comprehensive job
                 statistics when the job completes. Statistics include task execution
                 times, resource usage, and success/failure rates. Default is False.
+            download_task_output (bool, optional): Whether to download the stdout and stderr of
+                each task when the task completes.Default is False.
 
         Example:
             Monitor a job with default settings:
@@ -966,7 +969,10 @@ class CloudClient:
         # monitor the tasks
         logger.debug(f"starting to monitor job {job_name}.")
         monitor = batch_helpers.monitor_tasks(
-            job_name, timeout, self.batch_service_client
+            job_name,
+            timeout,
+            self.batch_service_client,
+            download_task_output=download_task_output,
         )
         print(monitor)
         if download_job_stats:
