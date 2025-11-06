@@ -1,8 +1,10 @@
 import datetime
 import logging
 import os
+import uuid
 from graphlib import CycleError, TopologicalSorter
 
+import networkx as nx
 import pandas as pd
 from azure.batch import models as batch_models
 from azure.batch.models import (
@@ -1789,6 +1791,51 @@ class CloudClient:
                     **kwargs,
                 )
 
+    def generate_dag(self, *args: batch_helpers.Task, file_name: str):
+        """Creates an ASCII represention of a set of tasks as directed acyclic graph (DAG) in the correct order.
+
+        Accepts multiple Task objects, determines their execution order using topological
+        sorting, generates a graph and saves it into a text file
+
+        Args:
+            *args: batch_helpers.Task objects representing tasks and their dependencies.
+            file_name (str): Name of the file where graph will be stored.
+            **kwargs: Additional keyword arguments passed to add_task().
+
+        Example:
+            Generate diagram for DAG of tasks:
+
+                client = CloudClient()
+                t1 = Task("python step1.py", id='task1')
+                t2 = Task("python step2.py", id='task2')
+                t3 = Task("python step3.py") # id will be auto-assigned with task prefix
+                t4 = Task("python step4.py")
+                t2.after(t1)
+                t3.after(t1)
+                t4.after([t2, t3])
+                client.generate_dag(t1, t2, t3, t4, file_name="dag_job.txt")
+        """
+
+        tasks = args
+        for index, task in enumerate(tasks):
+            try:
+                if str(uuid.UUID(task.id)) == task.id:
+                    task.id = f"task_{index}"
+            except ValueError:
+                continue
+
+        graph = nx.DiGraph()
+        for task in tasks:
+            for predecessor in task.deps:
+                graph.add_edge(predecessor.id, task.id)
+        nx.write_network_text(
+            graph,
+            with_labels=False,
+            vertical_chains=True,
+            ascii_only=True,
+            path=file_name,
+        )
+
     def run_dag(self, *args: batch_helpers.Task, job_name: str, **kwargs):
         """Run a set of tasks as a directed acyclic graph (DAG) in the correct order.
 
@@ -1831,7 +1878,7 @@ class CloudClient:
         try:
             task_order = [*ts.static_order()]
         except CycleError as ce:
-            logger.warn("Submitted tasks do not form a DAG.")
+            logger.warning("Submitted tasks do not form a DAG.")
             raise ce
         task_df = pd.DataFrame(columns=["id", "cmd", "deps"])
         # initialize df for task execution
