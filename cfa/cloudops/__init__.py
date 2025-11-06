@@ -22,15 +22,20 @@ FORMAT = "[%(levelname)s] %(asctime)s: %(message)s"
 log_status = os.getenv("LOG_OUTPUT")
 if log_status is None:
     handler = [logging.StreamHandler(sys.stdout)]
+    logger.info("Logging output set to stdout only.")
 elif log_status.lower().startswith("both"):
     handler = [logging.StreamHandler(sys.stdout), logging.FileHandler(logfile)]
+    logger.info("Logging output set to both stdout and file.")
 elif log_status.lower().startswith("file"):
     handler = [logging.FileHandler(logfile)]
+    logger.info("Logging output set to file only.")
 elif log_status.lower().startswith("std"):
     handler = [logging.StreamHandler(sys.stdout)]
+    logger.info("Logging output set to stdout only.")
 else:
     print(f"Did not recognize {log_status}. Setting to stdout.")
     handler = [logging.StreamHandler(sys.stdout)]
+
 
 logging.basicConfig(
     level=get_log_level(),
@@ -38,3 +43,5 @@ logging.basicConfig(
     datefmt="%Y-%m-%d_%H:%M:%S%z",
     handlers=handler,
 )
+logger.info("Logging configuration complete.")
+logging.debug(f"logging set to {get_log_level()} to output: {log_status}.")

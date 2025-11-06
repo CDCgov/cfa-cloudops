@@ -44,11 +44,14 @@ def walk_folder(folder: str) -> list | None:
             all_files = walk_folder("/path/to/project")
             python_files = [f for f in all_files if f.endswith('.py')]
     """
+    logger.debug(f"Starting folder walk for path: '{folder}'")
     file_list = []
     for dirname, _, fname in walk(folder):
+        logger.debug(f"Processing directory: '{dirname}' with {len(fname)} files")
         for f in fname:
             _path = path.join(dirname, f)
             file_list.append(_path)
+    logger.debug(f"Folder walk completed. Found {len(file_list)} total files")
     return file_list
 
 
@@ -123,19 +126,24 @@ def upload_files_in_folder(
     # check that include and exclude extensions are not both used, format if exist
     if include_extensions is not None:
         include_extensions = format_extensions(include_extensions)
+        logger.debug(f"Formatted include extensions: {include_extensions}")
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
+        logger.debug(f"Formatted exclude extensions: {exclude_extensions}")
+
     if include_extensions is not None and exclude_extensions is not None:
         logger.error("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
+
     if exclude_patterns is not None:
         exclude_patterns = (
             [exclude_patterns]
             if not isinstance(exclude_patterns, list)
             else exclude_patterns
         )
+        logger.debug(f"Exclude patterns configured: {exclude_patterns}")
     # check container exists
     logger.debug(f"Checking Blob container {container_name} exists.")
     # create container client
@@ -175,32 +183,59 @@ def upload_files_in_folder(
         )
         return None
     file_list = walk_folder(folder)
+    logger.debug(f"Initial file list contains {len(file_list)} files")
+
     # create sublist matching include_extensions and exclude_extensions
     flist = []
     if include_extensions is None:
         if exclude_extensions is not None:
+            logger.debug("Filtering files by exclude extensions")
             # find files that don't contain the specified extensions
             for _file in file_list:
-                if os.path.splitext(_file)[1] not in exclude_extensions:
+                file_ext = os.path.splitext(_file)[1]
+                if file_ext not in exclude_extensions:
                     flist.append(_file)
+                else:
+                    logger.debug(f"Excluding file '{_file}' (extension: {file_ext})")
         else:  # this is for no specified extensions to include of exclude
+            logger.debug("No extension filtering - including all files")
             flist = file_list
     else:
+        logger.debug("Filtering files by include extensions")
         # include only specified extension files
         for _file in file_list:
-            if os.path.splitext(_file)[1] in include_extensions:
+            file_ext = os.path.splitext(_file)[1]
+            if file_ext in include_extensions:
                 flist.append(_file)
+            else:
+                logger.debug(
+                    f"Excluding file '{_file}' (extension: {file_ext} not in include list)"
+                )
+
+    logger.debug(f"After extension filtering: {len(flist)} files remain")
+
     # iteratively call the upload_blob_file function to upload individual files
     final_list = []
+    excluded_by_pattern = 0
+
     for file in flist:
         # if a pattern from exclude_patterns is found, skip uploading this file
         if exclude_patterns is not None and any(
             pattern in file for pattern in exclude_patterns
         ):
             # dont upload this file if an excluded pattern is found within
+            excluded_by_pattern += 1
+            logger.debug(f"Excluding file '{file}' due to pattern match")
             continue
         else:
             final_list.append(file)
+
+    if excluded_by_pattern > 0:
+        logger.debug(f"Excluded {excluded_by_pattern} files due to pattern matching")
+
+    logger.debug(f"Final upload list contains {len(final_list)} files")
+
+    for file in final_list:
         logger.debug(f"Calling upload_blob_file for {file}")
     upload_to_storage_container(
         file_paths=final_list,
@@ -209,6 +244,14 @@ def upload_files_in_folder(
         local_root_dir=".",
         remote_root_dir=path.join(location_in_blob),
     )
+    if final_list:
+        logger.info(
+            f"Uploaded {len(final_list)} file(s) to container '{container_name}' at '{location_in_blob}'."
+        )
+    else:
+        logger.info(
+            f"No files found to upload from '{folder}' to container '{container_name}'."
+        )
     return final_list
 
 
@@ -263,27 +306,49 @@ def download_file(
         - The download will overwrite existing files at the destination
         - Uses binary mode for reliable transfer of all file types
     """
+    logger.debug(
+        f"Downloading file from '{src_path}' to '{dest_path}', check_size={check_size}, do_check={do_check}"
+    )
+
     # check size
     if check_size:
+        logger.debug("Checking blob size before download")
         lblobs = c_client.list_blobs(name_starts_with=src_path)
         for blob in lblobs:
             if blob.name == src_path:
                 t_size = blob.size
+                logger.debug(f"Blob size: {t_size} bytes ({ns(t_size)})")
                 print("Size of file to download: ", ns(t_size))
                 if t_size > 1e9:
+                    logger.warning(f"Large file detected: {ns(t_size)} (>1GB)")
                     print("Warning: File size is greater than 1 GB.")
                     cont = input("Continue? [Y/n]: ")
                     if cont.lower() != "y":
+                        logger.info(
+                            f"Download of blob '{src_path}' aborted by user due to large file size."
+                        )
                         print("Download aborted.")
                         return None
+                    else:
+                        logger.debug("User confirmed large file download")
+                break
+    else:
+        logger.debug("Skipping size check")
+
+    logger.debug("Creating download stream")
     download_stream = read_blob_stream(
         src_path, container_client=c_client, do_check=do_check
     )
+
     dest_path = Path(dest_path)
+    logger.debug(f"Creating destination directory: {dest_path.parents[0]}")
     dest_path.parents[0].mkdir(parents=True, exist_ok=True)
+
+    logger.debug(f"Writing blob data to local file: {dest_path}")
     with dest_path.open(mode="wb") as blob_download:
         blob_download.write(download_stream.readall())
-        logger.debug("File downloaded.")
+        logger.debug("File downloaded successfully.")
+        logger.info(f"Downloaded blob '{src_path}' to local file '{dest_path}'.")
         if verbose:
             print(f"Downloaded {src_path} to {dest_path}")
 
@@ -314,17 +379,23 @@ def get_container_client(account_name: str, container_name: str) -> ContainerCli
         should be used in environments where managed identity is available (e.g.,
         Azure VMs, Container Instances, App Service).
     """
-    config = {
-        "Storage": {
-            "storage_account_url": f"https://{account_name}.blob.core.windows.net"
-        }
-    }
+    logger.debug(
+        f"Creating container client for account '{account_name}', container '{container_name}'"
+    )
+    storage_url = f"https://{account_name}.blob.core.windows.net"
+    logger.debug(f"Using storage account URL: '{storage_url}'")
+
+    config = {"Storage": {"storage_account_url": storage_url}}
+    logger.debug("Initializing blob service client with managed identity credential")
     blob_service_client = get_blob_service_client(
         config=config, credential=ManagedIdentityCredential()
     )
+
+    logger.debug(f"Getting container client for container '{container_name}'")
     container_client = blob_service_client.get_container_client(
         container=container_name
     )
+    logger.debug("Container client created successfully")
     return container_client
 
 
@@ -374,18 +445,32 @@ def read_blob_stream(
                 container_name="logs"
             )
     """
+    logger.debug(f"Reading blob stream for: '{blob_url}'")
+
     if container_client:
-        pass
+        logger.debug("Using provided container client")
     elif container_name and account_name:
+        logger.debug(
+            f"Creating container client for account '{account_name}', container '{container_name}'"
+        )
         container_client = get_container_client(account_name, container_name)
     else:
+        logger.error("No container client or account/container names provided")
         raise ValueError(
             "Either container name and account name or container client must be provided."
         )
 
-    if do_check and not check_blob_existence(container_client, blob_url):
-        raise ValueError(f"Source blob: {blob_url} does not exist.")
+    if do_check:
+        logger.debug(f"Checking blob existence for: '{blob_url}'")
+        if not check_blob_existence(container_client, blob_url):
+            logger.error(f"Source blob '{blob_url}' does not exist")
+            raise ValueError(f"Source blob: {blob_url} does not exist.")
+    else:
+        logger.debug("Skipping blob existence check")
+
+    logger.debug(f"Creating download stream for blob: '{blob_url}'")
     download_stream = container_client.download_blob(blob=blob_url)
+    logger.debug("Download stream created successfully")
     return download_stream
 
 
@@ -574,14 +659,19 @@ def instantiate_container_client(
                 blob_service_client=blob_client
             )
     """
-    logger.debug("Creating container client for getting Blob info.")
+    logger.debug(
+        f"Instantiating container client for container '{container_name}' with account '{account_name}'"
+    )
+
     if container_client:
-        pass
+        logger.debug("Using provided container client")
     elif blob_service_client and container_name:
+        logger.debug("Creating container client from existing blob service client")
         container_client = blob_service_client.get_container_client(
             container=container_name
         )
     elif container_name and account_name:
+        logger.debug(f"Creating new blob service client for account '{account_name}'")
         config = {
             "Storage": {
                 "storage_account_url": f"https://{account_name}.blob.core.windows.net"
@@ -590,14 +680,17 @@ def instantiate_container_client(
         blob_service_client = get_blob_service_client(
             config=config, credential=ManagedIdentityCredential()
         )
+        logger.debug("Creating container client from new blob service client")
         container_client = blob_service_client.get_container_client(
             container=container_name
         )
     else:
+        logger.error("Insufficient parameters provided for container client creation")
         raise ValueError(
             "Either container name, account name, container client or blob service client must be provided."
         )
-    logger.debug("Container client created. Listing Blob info.")
+
+    logger.debug("Container client created successfully")
     return container_client
 
 
@@ -732,6 +825,9 @@ def download_folder(
             verbose=verbose,
             check_size=False,
         )
+    logger.info(
+        f"Downloaded {len(flist)} file(s) from '{src_path}' in container '{container_name}' to '{dest_path}'."
+    )
     logger.debug("Download complete.")
 
 
@@ -761,11 +857,20 @@ def delete_blob_snapshots(
         This operation is irreversible. All snapshots of the blob will be deleted.
         Ensure you have backed up any important data before deletion.
     """
+    logger.debug(
+        f"Deleting blob '{blob_name}' and all snapshots from container '{container_name}'"
+    )
+
+    logger.debug("Creating blob client for deletion operation")
     blob_client = blob_service_client.get_blob_client(
         container=container_name, blob=blob_name
     )
+
+    logger.debug("Executing delete operation (including snapshots)")
     blob_client.delete_blob(delete_snapshots="include")
-    logger.info(f"Deleted {blob_name} from {container_name}.")
+    logger.info(
+        f"Deleted blob '{blob_name}' and all snapshots from container '{container_name}'."
+    )
 
 
 def delete_blob_folder(
@@ -797,18 +902,34 @@ def delete_blob_folder(
         folder will be permanently deleted. Ensure you have backed up any important
         data before deletion.
     """
+    logger.debug(
+        f"Deleting blob folder '{folder_path}' from container '{container_name}'"
+    )
+
     # create container client
+    logger.debug("Creating container client for folder deletion")
     c_client = blob_service_client.get_container_client(container=container_name)
+
     # list out files in folder
+    logger.debug(f"Listing blobs with prefix '{folder_path}'")
     blob_names = c_client.list_blob_names(name_starts_with=folder_path)
     _files = [blob for blob in blob_names]
+    logger.debug(f"Found {len(_files)} blobs to delete in folder '{folder_path}'")
+
     # call delete_blob_snapshots for each file
-    for file in _files:
+    for i, file in enumerate(_files, 1):
+        logger.debug(f"Deleting blob {i}/{len(_files)}: '{file}'")
         delete_blob_snapshots(
             blob_name=file,
             container_name=container_name,
             blob_service_client=blob_service_client,
         )
+    logger.info(
+        f"Deleted {len(_files)} blob(s) from folder '{folder_path}' in container '{container_name}'."
+    )
+    logger.debug(
+        f"Completed deletion of folder '{folder_path}' - {len(_files)} blobs removed"
+    )
 
 
 def walk_blobs_in_container(
@@ -818,12 +939,21 @@ def walk_blobs_in_container(
     blob_service_client: BlobServiceClient = None,
     container_client: ContainerClient = None,
 ):
-    return instantiate_container_client(
+    logger.debug(
+        f"Walking blobs in container '{container_name}' with prefix '{name_starts_with}'"
+    )
+
+    container_client = instantiate_container_client(
         container_name=container_name,
         account_name=account_name,
         blob_service_client=blob_service_client,
         container_client=container_client,
-    ).walk_blobs(name_starts_with)
+    )
+
+    logger.debug("Starting blob walk operation")
+    blobs = container_client.walk_blobs(name_starts_with)
+    logger.debug("Blob walk completed")
+    return blobs
 
 
 def write_blob_stream(
@@ -858,9 +988,19 @@ def write_blob_stream(
         ValueError:
             When no blobs exist with the specified name (src_path)
     """
+    data_type = type(data).__name__
+    data_size = len(data) if hasattr(data, "__len__") else "unknown"
+    logger.debug(
+        f"Writing blob stream to '{blob_url}', data type: {data_type}, size: {data_size}"
+    )
+    logger.debug(f"Upload options: append_blob={append_blob}, overwrite={overwrite}")
+
     if container_client:
-        pass
+        logger.debug("Using provided container client")
     elif container_name and account_name:
+        logger.debug(
+            f"Creating container client for account '{account_name}', container '{container_name}'"
+        )
         config = {
             "Storage": {
                 "storage_account_url": f"https://{account_name}.blob.core.windows.net"
@@ -873,14 +1013,24 @@ def write_blob_stream(
             container=container_name
         )
     else:
+        logger.error("No container client or account/container names provided")
         raise ValueError(
             "Either container name and account name or container client must be provided."
         )
+
     if append_blob:
         blob_type = BlobType.APPENDBLOB
+        logger.debug("Using APPENDBLOB type for blob creation")
     else:
         blob_type = BlobType.BLOCKBLOB
+        logger.debug("Using BLOCKBLOB type for blob creation")
+
+    logger.debug(f"Uploading blob data to '{blob_url}'")
     container_client.upload_blob(
         name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite
+    )
+    logger.debug("Blob upload completed successfully")
+    logger.info(
+        f"Uploaded blob '{blob_url}' ({data_size} bytes) to container '{container_client.container_name}'."
     )
     return True

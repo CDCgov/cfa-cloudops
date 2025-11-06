@@ -111,6 +111,7 @@ class CredentialHandler:
             >>> handler.azure_batch_endpoint
             'https://mybatchaccount.eastus.batch.azure.com'
         """
+        logger.debug("Constructing Azure Batch endpoint URL.")
         self.require_attr(
             [
                 "azure_batch_account",
@@ -118,11 +119,16 @@ class CredentialHandler:
             ],
             goal="Azure batch endpoint URL",
         )
-        return construct_batch_endpoint(
+        logger.debug(
+            "All required attributes present for Azure Batch endpoint URL. Constructing..."
+        )
+        endpoint = construct_batch_endpoint(
             self.azure_batch_account,
             self.azure_batch_location,
             self.azure_batch_endpoint_subdomain,
         )
+        logger.debug(f"Constructed Azure Batch endpoint URL: {endpoint}")
+        return endpoint
 
     @property
     def azure_blob_storage_endpoint(self) -> str:
@@ -140,6 +146,7 @@ class CredentialHandler:
             >>> handler.azure_blob_storage_endpoint
             'https://mystorageaccount.blob.core.windows.net'
         """
+        logger.debug("Constructing Azure Blob account endpoint URL.")
         self.require_attr(
             [
                 "azure_blob_storage_account",
@@ -147,10 +154,15 @@ class CredentialHandler:
             ],
             goal="Azure blob storage endpoint URL",
         )
-        return construct_blob_account_endpoint(
+        logger.debug(
+            "All required attributes present for Azure Blob endpoint URL. Constructing..."
+        )
+        endpoint = construct_blob_account_endpoint(
             self.azure_blob_storage_account,
             self.azure_blob_storage_endpoint_subdomain,
         )
+        logger.debug(f"Constructed Azure Blob endpoint URL: {endpoint}")
+        return endpoint
 
     @property
     def azure_container_registry_endpoint(self) -> str:
@@ -168,6 +180,7 @@ class CredentialHandler:
             >>> handler.azure_container_registry_endpoint
             'myregistry.azurecr.io'
         """
+        logger.debug("Constructing Azure Container Registry endpoint URL.")
         self.require_attr(
             [
                 "azure_container_registry_account",
@@ -175,10 +188,17 @@ class CredentialHandler:
             ],
             goal="Azure container registry endpoint URL",
         )
-        return construct_azure_container_registry_endpoint(
+        logger.debug(
+            "All required attributes present for Azure Container Registry endpoint URL. Constructing..."
+        )
+        registry_endpoint = construct_azure_container_registry_endpoint(
             self.azure_container_registry_account,
             self.azure_container_registry_domain,
         )
+        logger.debug(
+            f"Constructed Azure Container Registry endpoint URL: {registry_endpoint}"
+        )
+        return registry_endpoint
 
     @cached_property
     def user_credential(self) -> ManagedIdentityCredential:
@@ -192,6 +212,7 @@ class CredentialHandler:
             >>> credential = handler.user_credential
             >>> # Use credential with Azure SDK clients
         """
+        logger.debug("Creating ManagedIdentityCredential for user.")
         return ManagedIdentityCredential()
 
     @cached_property
@@ -207,24 +228,41 @@ class CredentialHandler:
             >>> handler.azure_keyvault_sp_secret_id = "my-secret"
             >>> secret = handler.service_principal_secret
         """
+        logger.debug("Retrieving service principal secret from Azure Key Vault.")
         self.require_attr(
             ["azure_keyvault_endpoint", "azure_keyvault_sp_secret_id"],
             goal="service_principal_secret",
         )
         if self.method == "default":
+            logger.debug(
+                "Using default credential method for service principal secret."
+            )
             cred = self.default_credential
         elif self.method == "sp":
+            logger.debug(
+                "Using service principal credential method for service principal secret."
+            )
             return self.azure_client_secret
         else:
+            logger.debug("Using user credential method for service principal secret.")
             cred = self.user_credential
-        return get_sp_secret(
+        logger.debug(
+            "All required attributes present for service principal secret. Retrieving..."
+        )
+        secret = get_sp_secret(
             self.azure_keyvault_endpoint,
             self.azure_keyvault_sp_secret_id,
             cred,
         )
+        logger.debug("Retrieved service principal secret from Azure Key Vault.")
+        logger.info(
+            f"Retrieved secret '{self.azure_keyvault_sp_secret_id}' from Azure Key Vault."
+        )
+        return secret
 
     @cached_property
     def default_credential(self):
+        logger.debug("Creating DefaultCredential.")
         return DefaultCredential()
 
     @cached_property
@@ -240,6 +278,7 @@ class CredentialHandler:
             >>> credentials = handler.batch_service_principal_credentials
             >>> # Use with Azure Batch client
         """
+        logger.debug("Creating ServicePrincipalCredentials for Azure Batch.")
         self.require_attr(
             [
                 "azure_tenant_id",
@@ -248,12 +287,17 @@ class CredentialHandler:
             ],
             goal="batch_service_principal_credentials",
         )
-        return ServicePrincipalCredentials(
+        logger.debug(
+            "All required attributes present for Azure Batch Service Principal credentials. Creating..."
+        )
+        spcred = ServicePrincipalCredentials(
             client_id=self.azure_client_id,
             tenant=self.azure_tenant_id,
             secret=self.service_principal_secret,
             resource=self.azure_batch_resource_url,
         )
+        logger.debug("Created ServicePrincipalCredentials for Azure Batch.")
+        return spcred
 
     @cached_property
     def client_secret_sp_credential(self):
@@ -268,12 +312,18 @@ class CredentialHandler:
             >>> credential = handler.client_secret_sp_credential
             >>> # Use with Azure SDK clients
         """
+        logger.debug("Creating ClientSecretCredential using service principal secret.")
         self.require_attr(["azure_tenant_id", "azure_client_id"])
-        return ClientSecretCredential(
+        logger.debug(
+            "All required attributes present for ClientSecretCredential. Creating..."
+        )
+        cscred = ClientSecretCredential(
             tenant_id=self.azure_tenant_id,
             client_secret=self.service_principal_secret,
             client_id=self.azure_client_id,
         )
+        logger.debug("Created ClientSecretCredential using service principal secret.")
+        return cscred
 
     @cached_property
     def client_secret_credential(self):
@@ -289,6 +339,7 @@ class CredentialHandler:
             >>> handler.azure_client_secret = "client-secret" #pragma: allowlist secret
             >>> credential = handler.client_secret_credential
         """
+        logger.debug("Creating ClientSecretCredential using azure_client_secret.")
         self.require_attr(
             [
                 "azure_tenant_id",
@@ -296,11 +347,16 @@ class CredentialHandler:
                 "azure_client_secret",
             ]
         )
-        return ClientSecretCredential(
+        logger.debug(
+            "All required attributes present for ClientSecretCredential. Creating..."
+        )
+        client_sec_cred = ClientSecretCredential(
             tenant_id=self.azure_tenant_id,
             client_secret=self.azure_client_secret,
             client_id=self.azure_client_id,
         )
+        logger.debug("Created ClientSecretCredential using azure_client_secret.")
+        return client_sec_cred
 
     @cached_property
     def compute_node_identity_reference(self):
@@ -317,13 +373,19 @@ class CredentialHandler:
             >>> handler.azure_user_assigned_identity = "/subscriptions/.../resourceGroups/..."
             >>> identity_ref = handler.compute_node_identity_reference
         """
+        logger.debug("Creating ComputeNodeIdentityReference.")
         self.require_attr(
             ["azure_user_assigned_identity"],
             goal="Compute node identity reference",
         )
-        return models.ComputeNodeIdentityReference(
+        logger.debug(
+            "All required attributes present for ComputeNodeIdentityReference. Creating..."
+        )
+        comp_id_ref = models.ComputeNodeIdentityReference(
             resource_id=self.azure_user_assigned_identity
         )
+        logger.debug("Created ComputeNodeIdentityReference.")
+        return comp_id_ref
 
     @cached_property
     def azure_container_registry(self):
@@ -345,6 +407,7 @@ class CredentialHandler:
             >>> # Set required attributes...
             >>> registry = handler.azure_container_registry
         """
+        logger.debug("Creating Azure Container Registry ContainerRegistry instance.")
         self.require_attr(
             [
                 "azure_container_registry_account",
@@ -353,16 +416,23 @@ class CredentialHandler:
             ],
             goal=("Azure Container Registry `ContainerRegistry` instance"),
         )
-
+        logger.debug(
+            "All required attributes present for Azure Container Registry. Validating endpoint..."
+        )
         valid, msg = is_valid_acr_endpoint(self.azure_container_registry_endpoint)
         if not valid:
+            logger.error(f"Invalid Azure Container Registry endpoint: {msg}")
             raise ValueError(msg)
-
-        return models.ContainerRegistry(
+        logger.debug(
+            "Azure Container Registry endpoint is valid. Creating ContainerRegistry instance..."
+        )
+        cont_reg = models.ContainerRegistry(
             user_name=self.azure_container_registry_account,
             registry_server=self.azure_container_registry_endpoint,
             identity_reference=self.compute_node_identity_reference,
         )
+        logger.debug("Created Azure Container Registry ContainerRegistry instance.")
+        return cont_reg
 
 
 class DefaultCredential(BasicTokenAuthentication):
@@ -372,13 +442,16 @@ class DefaultCredential(BasicTokenAuthentication):
         resource_id="https://batch.core.windows.net/.default",
         **kwargs,
     ):
+        logger.debug("Initializing DefaultCredential.")
         super(DefaultCredential, self).__init__(None)
         if credential is None:
+            logger.debug("No credential provided, using DefaultAzureCredential.")
             credential = DefaultAzureCredential()
         self.credential = credential
         self._policy = BearerTokenCredentialPolicy(credential, resource_id, **kwargs)
 
     def _make_request(self):
+        logger.debug("Making fake PipelineRequest to obtain token.")
         return PipelineRequest(
             HttpRequest("CredentialWrapper", "https://batch.core.windows.net"),
             PipelineContext(None),
@@ -387,20 +460,22 @@ class DefaultCredential(BasicTokenAuthentication):
     def set_token(self):
         """Ask the azure-core BearerTokenCredentialPolicy policy to get a token.
         Using the policy gives us for free the caching system of azure-core.
-        We could make this code simpler by using private method, but by definition
-        I can't assure they will be there forever, so mocking a fake call to the policy
-        to extract the token, using 100% public API."""
+        """
+        logger.debug("Setting token using BearerTokenCredentialPolicy.")
         request = self._make_request()
         self._policy.on_request(request)
         # Read Authorization, and get the second part after Bearer
         token = request.http_request.headers["Authorization"].split(" ", 1)[1]
         self.token = {"access_token": token}
+        logger.debug("Set the token.")
 
     def get_token(self, *scopes, **kwargs):
         # Pass get_token call to credential
+        logger.debug("Getting token from underlying credential.")
         return self.credential.get_token(*scopes, **kwargs)
 
     def signed_session(self, session=None):
+        logger.debug("Creating signed session with updated token.")
         self.set_token()
         return super(DefaultCredential, self).signed_session(session)
 
@@ -440,6 +515,7 @@ class EnvCredentialHandler(CredentialHandler):
                 If None, uses default .env file discovery.
             **kwargs: Additional keyword arguments to override specific credential attributes.
         """
+        logger.debug("Initializing EnvCredentialHandler.")
         load_env_vars(dotenv_path=dotenv_path)
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
@@ -465,6 +541,7 @@ def load_env_vars(dotenv_path=None):
         >>> load_env_vars()  # Load from default .env
         >>> load_env_vars("/path/to/.env")  # Load from specific file
     """
+    logger.debug("Loading environment variables.")
     load_dotenv(dotenv_path=dotenv_path, override=True)
     # get ManagedIdentityCredential to pull SubscriptionClient
     mid_cred = ManagedIdentityCredential()
@@ -532,7 +609,7 @@ class SPCredentialHandler(CredentialHandler):
             >>> # Using custom .env file
             >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
         """
-
+        logger.debug("Initializing SPCredentialHandler.")
         # load env vars, including client secret if available
         load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -547,6 +624,9 @@ class SPCredentialHandler(CredentialHandler):
                 logger.warning(f"Environment variable {mandatory} was not provided")
 
         # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
+        logger.debug(
+            "Setting azure_tenant_id, azure_subscription_id, azure_client_id, and azure_client_secret."
+        )
         self.azure_tenant_id = (
             azure_tenant_id
             if azure_tenant_id is not None
@@ -592,24 +672,35 @@ class DefaultCredentialHandler(CredentialHandler):
         dotenv_path: str | None = None,
         **kwargs,
     ) -> None:
+        logger.debug("Initializing DefaultCredentialHandler.")
+        logger.debug("Loading environment variables.")
         load_dotenv(dotenv_path=dotenv_path)
+        logger.debug(
+            "Retrieving Azure subscription information using DefaultCredential."
+        )
         d_cred = DefaultCredential()
         sub_c = SubscriptionClient(d_cred)
         sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
         if sub_id is None:
+            logger.error("AZURE_SUBSCRIPTION_ID not found in environment variables.")
             raise ValueError("AZURE_SUBSCRIPTION_ID not found in env variables.")
         subscription = [
             sub for sub in sub_c.subscriptions.list() if sub.subscription_id == sub_id
         ]
         # pull info if sub exists
+        logger.debug("Pulling subscription information.")
         if subscription:
             subscription = subscription[0]
             os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
+            logger.debug("Set AZURE_RESOURCE_GROUP_NAME from subscription information.")
         else:
+            logger.error(
+                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+            )
             raise ValueError(
                 f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
             )
-
+        logger.debug("Setting environment variables.")
         d.set_env_vars()
 
         get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
@@ -647,10 +738,12 @@ def get_sp_secret(
         ... )
     """
     if user_credential is None:
+        logger.debug("No user_credential provided, using ManagedIdentityCredential.")
         user_credential = ManagedIdentityCredential()
 
     secret_client = SecretClient(vault_url=vault_url, credential=user_credential)
     sp_secret = secret_client.get_secret(vault_sp_secret_id).value
+    logger.debug("Retrieved service principal secret from Azure Key Vault.")
 
     return sp_secret
 
@@ -685,15 +778,17 @@ def get_client_secret_sp_credential(
         ...     "application-id"
         ... )
     """
+    logger.debug("Getting SP secret for service principal.")
     sp_secret = get_sp_secret(
         vault_url, vault_sp_secret_id, user_credential=user_credential
     )
+    logger.debug("Creating ClientSecretCredential for service principal using secret.")
     sp_credential = ClientSecretCredential(
         tenant_id=tenant_id,
         client_id=application_id,
         client_secret=sp_secret,
     )
-
+    logger.debug("Created ClientSecretCredential for service principal.")
     return sp_credential
 
 
@@ -731,8 +826,12 @@ def get_service_principal_credentials(
         ...     "application-id"
         ... )
     """
+    logger.debug("Getting SP secret for service principal.")
     sp_secret = get_sp_secret(
         vault_url, vault_sp_secret_id, user_credential=user_credential
+    )
+    logger.debug(
+        "Creating ServicePrincipalCredentials for service principal using secret."
     )
     sp_credential = ServicePrincipalCredentials(
         tenant=tenant_id,
@@ -740,6 +839,7 @@ def get_service_principal_credentials(
         secret=sp_secret,
         resource=resource_url,
     )
+    logger.debug("Created ServicePrincipalCredentials for service principal.")
 
     return sp_credential
 
@@ -770,8 +870,10 @@ def get_compute_node_identity_reference(
         >>> handler = CredentialHandler()
         >>> identity_ref = get_compute_node_identity_reference(handler)
     """
+    logger.debug("Getting ComputeNodeIdentityReference from CredentialHandler.")
     ch = credential_handler
     if ch is None:
+        logger.debug("No CredentialHandler provided, using EnvCredentialHandler.")
         ch = EnvCredentialHandler()
-
+    logger.debug("Retrieving compute_node_identity_reference from CredentialHandler.")
     return ch.compute_node_identity_reference

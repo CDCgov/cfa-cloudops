@@ -42,14 +42,27 @@ def format_extensions(extension):
             formatted = format_extensions([".pdf", "docx"])
             # Returns: [".pdf", ".docx"]
     """
+    logger.debug(
+        f"Formatting extensions: {extension} (type: {type(extension).__name__})"
+    )
+
     if isinstance(extension, str):
         extension = [extension]
+        logger.debug("Converted single extension string to list")
+
     ext = []
     for _ext in extension:
         if _ext.startswith("."):
             ext.append(_ext)
+            logger.debug(f"Extension '{_ext}' already has leading period")
         else:
-            ext.append("." + _ext)
+            formatted_ext = "." + _ext
+            ext.append(formatted_ext)
+            logger.debug(
+                f"Added leading period to extension: '{_ext}' -> '{formatted_ext}'"
+            )
+
+    logger.debug(f"Final formatted extensions: {ext}")
     return ext
 
 
@@ -69,13 +82,22 @@ def create_storage_container_if_not_exists(
         >>> create_storage_container_if_not_exists("my-container", client)
         Container [my-container] created.
     """
+    logger.debug(f"Checking if container '{blob_storage_container_name}' exists")
+
     container_client = blob_service_client.get_container_client(
         container=blob_storage_container_name
     )
+
+    logger.debug("Container client created, checking container existence")
     if not container_client.exists():
+        logger.debug(
+            f"Container '{blob_storage_container_name}' does not exist, creating it"
+        )
         container_client.create_container()
+        logger.info(f"Container '{blob_storage_container_name}' created.")
         print("Container [{}] created.".format(blob_storage_container_name))
     else:
+        logger.info(f"Container '{blob_storage_container_name}' already exists.")
         print("Container [{}] already exists.".format(blob_storage_container_name))
 
 
@@ -118,24 +140,37 @@ def upload_to_storage_container(
         Uploading file 0 of 2
         Uploaded 2 files to blob storage container
     """
+    logger.debug(f"Starting upload to container '{blob_storage_container_name}'")
+    logger.debug(f"Local root: '{local_root_dir}', Remote root: '{remote_root_dir}'")
 
     file_paths = ensure_listlike(file_paths)
-
     n_total_files = len(file_paths)
+
+    logger.debug(f"Uploading {n_total_files} files to blob storage")
 
     for i_file, file_path in enumerate(file_paths):
         if i_file % (1 + int(n_total_files / 10)) == 0:
             print("Uploading file {} of {}".format(i_file, n_total_files))
+            logger.debug(f"Upload progress: {i_file}/{n_total_files} files completed")
 
         local_file_path = os.path.join(local_root_dir, file_path)
         remote_file_path = os.path.join(remote_root_dir, file_path)
 
+        logger.debug(f"Uploading '{local_file_path}' -> '{remote_file_path}'")
+
         blob_client = blob_service_client.get_blob_client(
             container=blob_storage_container_name, blob=remote_file_path
         )
+
+        logger.debug(f"Created blob client for '{remote_file_path}'")
+
         with open(local_file_path, "rb") as upload_data:
             blob_client.upload_blob(upload_data, overwrite=True)
+            logger.debug(f"Successfully uploaded '{file_path}'")
 
+    logger.info(
+        f"Uploaded {n_total_files} file(s) to container '{blob_storage_container_name}'."
+    )
     print("Uploaded {} files to blob storage container".format(n_total_files))
 
 
@@ -181,27 +216,43 @@ def download_from_storage_container(
         Downloading file 0 of 2
         Downloaded 2 files from blob storage container
     """
+    logger.debug(f"Starting download from container '{blob_storage_container_name}'")
+    logger.debug(f"Local root: '{local_root_dir}', Remote root: '{remote_root_dir}'")
 
     file_paths = ensure_listlike(file_paths)
     n_total_files = len(file_paths)
 
+    logger.debug(f"Downloading {n_total_files} files from blob storage")
+
     if blob_service_client is None:
+        logger.debug("No blob service client provided, creating one")
         blob_service_client = get_blob_service_client(**kwargs)
+        logger.debug("Blob service client created successfully")
 
     for i_file, file_path in enumerate(file_paths):
         if i_file % (1 + int(n_total_files / 10)) == 0:
             print(f"Downloading file {i_file} of {n_total_files}")
+            logger.debug(f"Download progress: {i_file}/{n_total_files} files completed")
 
         local_file_path = os.path.join(local_root_dir, file_path)
         remote_file_path = os.path.join(remote_root_dir, file_path)
 
+        logger.debug(f"Downloading '{remote_file_path}' -> '{local_file_path}'")
+
         blob_client = blob_service_client.get_blob_client(
             container=blob_storage_container_name, blob=remote_file_path
         )
+
+        logger.debug(f"Created blob client for '{remote_file_path}'")
+
         with open(local_file_path, "wb") as target_file:
             download_stream = blob_client.download_blob()
             target_file.write(download_stream.readall())
+            logger.debug(f"Successfully downloaded '{file_path}'")
 
+    logger.info(
+        f"Downloaded {n_total_files} file(s) from container '{blob_storage_container_name}'."
+    )
     print(f"Downloaded {n_total_files} files from blob storage container")
 
 
@@ -266,6 +317,13 @@ def get_node_mount_config(
         >>> len(mount_configs)
         2
     """
+    logger.debug(
+        f"Creating node mount configuration for containers: {storage_containers}"
+    )
+    logger.debug(f"Account names: {account_names}")
+    logger.debug(f"Shared relative mount path: '{shared_relative_mount_path}'")
+    logger.debug(f"Cache blobfuse: {cache_blobfuse}")
+
     storage_containers = ensure_listlike(storage_containers)
     account_names = ensure_listlike(account_names)
     identity_references = ensure_listlike(identity_references)
@@ -274,10 +332,16 @@ def get_node_mount_config(
     n_accounts = len(account_names)
     n_identity_refs = len(identity_references)
 
+    logger.debug(
+        f"Processing {n_containers} containers, {n_accounts} accounts, {n_identity_refs} identity references"
+    )
+
     if mount_names is None:
         mount_names = storage_containers
+        logger.debug("Using container names as mount names")
     else:
         mount_names = ensure_listlike(mount_names)
+        logger.debug(f"Using custom mount names: {mount_names}")
     n_mount_names = len(mount_names)
 
     if n_mount_names != n_containers:
@@ -327,13 +391,24 @@ def get_node_mount_config(
         os.path.join(shared_relative_mount_path, mount_name)
         for mount_name in mount_names
     ]
+    logger.debug(f"Generated relative mount paths: {relative_mount_paths}")
+
     if cache_blobfuse:
         blob_str = ""
+        logger.debug("Caching enabled - no direct_io option")
     else:
         blob_str = " -o direct_io"
+        logger.debug("Caching disabled - adding direct_io option")
 
-    return [
-        models.MountConfiguration(
+    mount_configs = []
+    for account_name, container_name, relative_mount_path, identity_reference in zip(
+        account_names, storage_containers, relative_mount_paths, identity_references
+    ):
+        logger.debug(
+            f"Creating mount config: container '{container_name}' from account '{account_name}' -> '{relative_mount_path}'"
+        )
+
+        mount_config = models.MountConfiguration(
             azure_blob_file_system_configuration=(
                 models.AzureBlobFileSystemConfiguration(
                     account_name=account_name,
@@ -345,18 +420,10 @@ def get_node_mount_config(
                 )
             )
         )
-        for (
-            account_name,
-            container_name,
-            relative_mount_path,
-            identity_reference,
-        ) in zip(
-            account_names,
-            storage_containers,
-            relative_mount_paths,
-            identity_references,
-        )
-    ]
+        mount_configs.append(mount_config)
+
+    logger.debug(f"Created {len(mount_configs)} mount configurations")
+    return mount_configs
 
 
 async def _async_download_blob_to_file(
@@ -381,21 +448,37 @@ async def _async_download_blob_to_file(
         - Uses streaming to keep memory bounded to roughly one chunk per download.
         - Designed for use with anyio TaskGroup for higher-level concurrency control.
     """
+    logger.debug(f"Starting async download: '{blob_name}' -> '{local_file_path}'")
+
     # The semaphore helps us limit the total number of concurrent downloads to avoid
     # overwhelming the system with too many simultaneous I/O operations.
     # The total number is limited by the number passed in when the semaphore is created.
     async with semaphore:
+        logger.debug(f"Acquired semaphore for download: '{blob_name}'")
         try:
+            logger.debug(f"Creating blob client for: '{blob_name}'")
             blob_client = container_client.get_blob_client(blob_name)
+
+            logger.debug(
+                f"Creating directory structure for: '{local_file_path.parent}'"
+            )
             await local_file_path.parent.mkdir(parents=True, exist_ok=True)
 
+            logger.debug(f"Starting blob download stream for: '{blob_name}'")
             download_stream = blob_client.download_blob()
             content = download_stream.readall()
+
+            logger.debug(f"Writing {len(content)} bytes to: '{local_file_path}'")
             async with await local_file_path.open("wb") as f:
                 await f.write(content)
+
+            logger.debug(
+                f"Successfully downloaded: '{blob_name}' ({len(content)} bytes)"
+            )
         except Exception as e:
             # Clean up partial file on failure
             if await local_file_path.exists():
+                logger.debug(f"Cleaning up partial file: '{local_file_path}'")
                 await local_file_path.unlink()
             logger.error(
                 f"Failed to download blob {blob_name} to {local_file_path}: {e}"
@@ -424,11 +507,20 @@ async def _async_upload_file_to_blob(
     Notes:
         - Uses a semaphore to control concurrency.
     """
+    logger.debug(f"Starting async upload: '{local_file_path}' -> '{blob_name}'")
+
     async with semaphore:
+        logger.debug(f"Acquired semaphore for upload: '{local_file_path}'")
         try:
+            logger.debug(f"Creating blob client for: '{blob_name}'")
             blob_client = container_client.get_blob_client(blob_name)
+
+            logger.debug(f"Opening file for upload: '{local_file_path}'")
             async with await local_file_path.open("rb") as f:
+                logger.debug(f"Uploading blob data to: '{blob_name}'")
                 await blob_client.upload_blob(f, overwrite=True)
+
+            logger.debug(f"Successfully uploaded: '{local_file_path}' -> '{blob_name}'")
         except Exception as e:
             logger.error(
                 f"Failed to upload file {local_file_path} to blob {blob_name}: {e}"
@@ -466,32 +558,60 @@ async def _async_download_blob_folder(
         - Blob folder structure is preserved in the local directory.
         - Blobs not matching the pattern are skipped with logged messages.
     """
+    logger.debug(f"Starting async blob folder download to: '{local_folder}'")
+    logger.debug(f"Max concurrent downloads: {max_concurrent_downloads}")
+    logger.debug(f"Name prefix filter: '{name_starts_with}'")
+    logger.debug(f"Include extensions: {include_extensions}")
+    logger.debug(f"Exclude extensions: {exclude_extensions}")
+
     semaphore = anyio.Semaphore(max_concurrent_downloads)
+
     if include_extensions is not None and exclude_extensions is not None:
         logger.error("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None
+
     if include_extensions is not None:
+        logger.debug("Formatting include extensions")
         include_extensions = format_extensions(include_extensions)
     if exclude_extensions is not None:
+        logger.debug("Formatting exclude extensions")
         exclude_extensions = format_extensions(exclude_extensions)
 
     # Gather all matching blobs and calculate total size
+    logger.debug("Enumerating blobs in container")
     matching_blobs = []
     total_size = 0
     gb = 1e9
+
     for blob_obj in container_client.list_blobs(name_starts_with=name_starts_with):
         blob_name = blob_obj.name
         ext = Path(blob_name).suffix
+
         if include_extensions is not None:
             if ext not in include_extensions:
+                logger.debug(
+                    f"Skipping blob '{blob_name}' - extension '{ext}' not in include list"
+                )
                 continue
         if exclude_extensions is not None:
             if ext in exclude_extensions:
+                logger.debug(
+                    f"Skipping blob '{blob_name}' - extension '{ext}' in exclude list"
+                )
                 continue
+
         matching_blobs.append(blob_name)
-        total_size += getattr(blob_obj, "size", 0)
+        blob_size = getattr(blob_obj, "size", 0)
+        total_size += blob_size
+        logger.debug(
+            f"Added blob '{blob_name}' to download list (size: {blob_size} bytes)"
+        )
+
+    logger.debug(
+        f"Found {len(matching_blobs)} matching blobs, total size: {total_size} bytes"
+    )
 
     print(f"Total size of files to download: {total_size / gb:.2f} GB")
     if total_size > 2 * gb and check_size:
@@ -652,18 +772,32 @@ def async_download_blob_folder(
         Preserves blob folder structure in the local directory.
         Handles cleanup of Azure credentials automatically.
     """
+    logger.debug(
+        f"Starting async blob folder download from container '{container_name}'"
+    )
+    logger.debug(f"Storage account URL: {storage_account_url}")
+    logger.debug(f"Local folder: {local_folder}")
+    logger.debug(f"Max concurrent downloads: {max_concurrent_downloads}")
 
     async def _runner(credential) -> None:
         if credential is None:
+            logger.debug("No credential provided, using ManagedIdentityCredential")
             credential = ManagedIdentityCredential()
+        else:
+            logger.debug("Using provided credential")
+
         try:
+            logger.debug("Creating blob service client")
             with BlobServiceClient(
                 account_url=storage_account_url,
                 credential=credential,
             ) as blob_service_client:
+                logger.debug(f"Creating container client for '{container_name}'")
                 container_client = blob_service_client.get_container_client(
                     container_name
                 )
+
+                logger.debug("Starting async blob folder download operation")
                 await _async_download_blob_folder(
                     container_client=container_client,
                     local_folder=anyio.Path(local_folder),
@@ -684,6 +818,9 @@ def async_download_blob_folder(
         logger.error("Download cancelled by user.")
     except Exception as e:
         logger.error(f"Failed to download blob folder: {e}")
+    logger.info(
+        f"Completed async download of folder '{local_folder}' from container '{container_name}'."
+    )
     return local_folder
 
 
@@ -722,13 +859,27 @@ def async_upload_folder(
         - Preserves folder structure in the blob container.
         - Handles cleanup of Azure credentials automatically.
     """
+    logger.debug(
+        f"Starting async folder upload from '{folder}' to container '{container_name}'"
+    )
+    logger.debug(f"Storage account URL: {storage_account_url}")
+    logger.debug(f"Target location in blob: '{location_in_blob}'")
+    logger.debug(f"Max concurrent uploads: {max_concurrent_uploads}")
+    logger.debug(f"Include extensions: {include_extensions}")
+    logger.debug(f"Exclude extensions: {exclude_extensions}")
 
     async def _runner(credential):
         if credential is None:
+            logger.debug("No credential provided, using ManagedIdentityCredential")
             credential = ManagedIdentityCredential()
+        else:
+            logger.debug("Using provided credential")
+
         try:
             logger.debug(f"Resolved upload folder path: {folder}")
             logger.debug(f"Target container name: {container_name}")
+
+            logger.debug("Creating blob service client")
             blob_service_client = BlobServiceClient(
                 account_url=storage_account_url,
                 credential=credential,
@@ -738,6 +889,8 @@ def async_upload_folder(
                     "Failed to create BlobServiceClient. Check your storage_account_url and credentials."
                 )
                 raise RuntimeError("Failed to create BlobServiceClient.")
+
+            logger.debug(f"Creating container client for '{container_name}'")
             container_client = blob_service_client.get_container_client(container_name)
             if container_client is None:
                 logger.error(
@@ -764,4 +917,7 @@ def async_upload_folder(
         logger.error("Upload cancelled by user.")
     except Exception as e:
         logger.error(f"Failed to upload blob folder: {e}")
+    logger.info(
+        f"Completed async upload of folder '{folder}' to container '{container_name}'."
+    )
     return folder

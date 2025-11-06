@@ -52,8 +52,17 @@ def create_bind_mount_string(
         >>> print(mount_str)
         '--mount type=bind,source=/mnt/batch/tasks/fsmounts/data,target=/app/data'
     """
+    logger.debug(
+        f"Creating bind mount string: az_mount_dir='{az_mount_dir}', source_path='{source_path}', target_path='{target_path}'"
+    )
+
     mount_template = "--mount type=bind,source={}/{},target={}"
-    return mount_template.format(az_mount_dir, source_path, target_path)
+    logger.debug(f"Using mount template: '{mount_template}'")
+
+    mount_string = mount_template.format(az_mount_dir, source_path, target_path)
+    logger.debug(f"Generated bind mount string: '{mount_string}'")
+
+    return mount_string
 
 
 def get_container_settings(
@@ -105,21 +114,51 @@ def get_container_settings(
         >>> print(settings.image_name)
         'myregistry.azurecr.io/myapp:latest'
     """
+    logger.debug(f"Creating container settings for image: '{container_image_name}'")
+    logger.debug(
+        f"Parameters: az_mount_dir='{az_mount_dir}', working_directory={working_directory}"
+    )
+    logger.debug(
+        f"Mount pairs: {mount_pairs}, additional_options='{additional_options}'"
+    )
+
+    if registry:
+        logger.debug(f"Using private container registry: {registry.registry_server}")
+    else:
+        logger.debug("No private container registry specified, using default registry")
 
     ctr_r_opts = additional_options
+    logger.debug(f"Starting with base container run options: '{ctr_r_opts}'")
 
-    for pair in mount_pairs:
-        ctr_r_opts += " " + create_bind_mount_string(
-            az_mount_dir, pair["source"], pair["target"]
-        )
+    if mount_pairs:
+        logger.debug(f"Processing {len(mount_pairs)} mount pairs")
+        for i, pair in enumerate(mount_pairs):
+            logger.debug(
+                f"Processing mount pair {i + 1}: source='{pair['source']}', target='{pair['target']}'"
+            )
+            mount_string = create_bind_mount_string(
+                az_mount_dir, pair["source"], pair["target"]
+            )
+            ctr_r_opts += " " + mount_string
+            logger.debug(f"Updated container run options: '{ctr_r_opts}'")
+    else:
+        logger.debug("No mount pairs to process")
 
-    return TaskContainerSettings(
+    logger.debug(f"Final container run options: '{ctr_r_opts}'")
+
+    container_settings = TaskContainerSettings(
         image_name=container_image_name,
         working_directory=working_directory,
         container_run_options=ctr_r_opts,
         registry=registry,
         **kwargs,
     )
+
+    logger.debug(
+        f"Created TaskContainerSettings with image '{container_image_name}' and {len(ctr_r_opts.split()) if ctr_r_opts else 0} run options"
+    )
+
+    return container_settings
 
 
 def output_task_files_to_blob(
@@ -179,33 +218,67 @@ def output_task_files_to_blob(
         >>> print(output_file.file_pattern)
         '*.log'
     """
+    logger.debug(f"Creating output file configuration for pattern: '{file_pattern}'")
+    logger.debug(
+        f"Target blob container: '{blob_container}' in account: '{blob_account}'"
+    )
+    logger.debug(f"Upload path: '{path}', upload condition: '{upload_condition}'")
+    logger.debug(f"Blob endpoint subdomain: '{blob_endpoint_subdomain}'")
+
     if compute_node_identity_reference is None:
+        logger.debug("No compute node identity reference provided, obtaining default")
         compute_node_identity_reference = get_compute_node_identity_reference()
+        logger.debug("Successfully obtained default compute node identity reference")
+    else:
+        logger.debug("Using provided compute node identity reference")
+
+    logger.debug(
+        f"Validating compute node identity reference type: {type(compute_node_identity_reference)}"
+    )
     if not isinstance(compute_node_identity_reference, ComputeNodeIdentityReference):
-        raise TypeError(
+        error_msg = (
             "compute_node_identity_reference "
             "must be an instance of "
             "ComputeNodeIdentityReference. "
             f"Got {type(compute_node_identity_reference)}."
         )
+        logger.debug(f"Type validation failed: {error_msg}")
+        raise TypeError(error_msg)
+
+    logger.debug("Compute node identity reference validation successful")
+
+    container_url = construct_blob_container_endpoint(
+        blob_container,
+        blob_account,
+        blob_endpoint_subdomain,
+    )
+    logger.debug(f"Constructed container URL: '{container_url}'")
+
     container = OutputFileBlobContainerDestination(
-        container_url=construct_blob_container_endpoint(
-            blob_container,
-            blob_account,
-            blob_endpoint_subdomain,
-        ),
+        container_url=container_url,
         path=path,
         identity_reference=compute_node_identity_reference,
     )
-    destination = OutputFileDestination(container=container)
-    upload_options = OutputFileUploadOptions(upload_condition=upload_condition)
+    logger.debug(f"Created OutputFileBlobContainerDestination with path: '{path}'")
 
-    return OutputFile(
+    destination = OutputFileDestination(container=container)
+    logger.debug("Created OutputFileDestination wrapper")
+
+    upload_options = OutputFileUploadOptions(upload_condition=upload_condition)
+    logger.debug(f"Created upload options with condition: '{upload_condition}'")
+
+    output_file = OutputFile(
         file_pattern=file_pattern,
         destination=destination,
         upload_options=upload_options,
         **kwargs,
     )
+
+    logger.debug(
+        f"Successfully created OutputFile for pattern '{file_pattern}' -> '{blob_container}/{path or ''}'"
+    )
+
+    return output_file
 
 
 def get_task_config(
@@ -291,37 +364,95 @@ def get_task_config(
         >>> print(task.id)
         'my-task-002'
     """
+    logger.debug(f"Creating task configuration for task ID: '{task_id}'")
+    logger.debug(f"Base command line: '{base_call}'")
+
+    if container_settings:
+        logger.debug(
+            f"Container settings provided: image='{container_settings.image_name}'"
+        )
+        if hasattr(container_settings, "registry") and container_settings.registry:
+            logger.debug(
+                f"Using private registry: {container_settings.registry.registry_server}"
+            )
+    else:
+        logger.debug("No container settings provided, task will run on host")
+
     if user_identity is None:
+        logger.debug(
+            "No user identity provided, creating automatic admin user identity"
+        )
         user_identity = UserIdentity(
             auto_user=batchmodels.AutoUserSpecification(
                 scope=batchmodels.AutoUserScope.pool,
                 elevation_level=batchmodels.ElevationLevel.admin,
             )
         )
+        logger.debug(
+            "Created automatic user identity with pool scope and admin elevation"
+        )
+    else:
+        logger.debug("Using provided user identity")
+
     if output_files is None:
         output_files = []
+        logger.debug("No output files provided, initializing empty list")
+    else:
+        logger.debug(
+            f"Output files provided: {len(ensure_listlike(output_files))} files"
+        )
 
     if log_blob_container is not None:
+        logger.debug(
+            f"Log blob container specified: '{log_blob_container}' in account '{log_blob_account}'"
+        )
+        logger.debug(
+            f"Log configuration: subdir='{log_subdir}', pattern='{log_file_pattern}', condition='{log_upload_condition}'"
+        )
+
         if log_subdir is None:
             log_subdir = ""
+            logger.debug("No log subdirectory specified, using container root")
+
+        log_path = Path(log_subdir, task_id).as_posix()
+        logger.debug(f"Log files will be saved to path: '{log_path}'")
+
         log_output_files = output_task_files_to_blob(
             file_pattern=log_file_pattern,
             blob_container=log_blob_container,
             blob_account=log_blob_account,
-            path=Path(log_subdir, task_id).as_posix(),
+            path=log_path,
             upload_condition=log_upload_condition,
             compute_node_identity_reference=log_compute_node_identity_reference,
         )
+        logger.debug("Successfully created log output file configuration")
     else:
         log_output_files = []
+        logger.debug(
+            "No log blob container specified, task logs will not be persisted to blob storage"
+        )
+
+    total_output_files = ensure_listlike(output_files) + ensure_listlike(
+        log_output_files
+    )
+    logger.debug(
+        f"Total output files configured: {len(total_output_files)} ({len(ensure_listlike(output_files))} custom + {len(ensure_listlike(log_output_files))} log files)"
+    )
+
+    if kwargs:
+        logger.debug(f"Additional TaskAddParameter kwargs: {list(kwargs.keys())}")
 
     task_config = TaskAddParameter(
         id=task_id,
         command_line=base_call,
         container_settings=container_settings,
         user_identity=user_identity,
-        output_files=ensure_listlike(output_files) + ensure_listlike(log_output_files),
+        output_files=total_output_files,
         **kwargs,
+    )
+
+    logger.debug(
+        f"Successfully created TaskAddParameter for task '{task_id}' with {len(total_output_files)} output files"
     )
 
     return task_config
