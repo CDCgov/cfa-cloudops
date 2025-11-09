@@ -84,6 +84,7 @@ class CredentialHandler:
             AttributeError: A non-None value for attribute azure_tenant_id is required...
         """
         attributes = ensure_listlike(attributes)
+        err_msgs = []
         for attr in attributes:
             attr_val = getattr(self, attr)
             if attr_val is None:
@@ -92,7 +93,9 @@ class CredentialHandler:
                     if goal is not None
                     else "for this operation."
                 )
-                raise AttributeError(err_msg)
+                err_msgs.append(err_msg)
+        if err_msgs:
+            raise AttributeError("\n".join(err_msgs))
 
     @property
     def azure_batch_endpoint(self) -> str:
