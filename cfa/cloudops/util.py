@@ -35,16 +35,26 @@ def lookup_service_principal(display_name: str) -> list:
         >>> if sp_list:
         ...     print(f"Found {len(sp_list)} service principal(s)")
         ...     print(f"App ID: {sp_list[0]['appId']}")
-        ... else:
+        >>> else:
         ...     print("No service principal found")
     """
+    logger.debug(
+        f"Looking up Azure service principal with display name: '{display_name}'"
+    )
+
     try:
         command = [f"az ad sp list --display-name {display_name}"]
+        logger.debug(f"Executing Azure CLI command: {command[0]}")
+
         result = subprocess.check_output(
             command, shell=True, universal_newlines=True, text=True
         )
+        logger.debug(
+            f"Azure CLI command executed successfully, result length: {len(result)} characters"
+        )
+
     except Exception as e:
-        raise RuntimeError(
+        error_msg = (
             "Attempt to search available Azure "
             "service principals via the "
             "`az ad sp list` command produced an "
@@ -52,8 +62,21 @@ def lookup_service_principal(display_name: str) -> list:
             "command line interface (CLI) installed "
             "and in your PATH as `az`, and that you "
             "are authenticated via `az login`"
-        ) from e
+        )
+        logger.debug(f"Azure CLI command failed: {str(e)}")
+        raise RuntimeError(error_msg) from e
+
+    logger.debug("Parsing JSON response from Azure CLI")
     parsed = json.loads(result)
+    logger.debug(f"Successfully parsed JSON, found {len(parsed)} service principal(s)")
+
+    if parsed:
+        logger.debug(
+            f"Service principal details: {[sp.get('appId', 'No appId') for sp in parsed]}"
+        )
+    else:
+        logger.debug("No service principals found matching the display name")
+
     return parsed
 
 
@@ -88,7 +111,19 @@ def ensure_listlike(x: any) -> MutableSequence:
         >>> print(result)
         [42]
     """
-    return x if isinstance(x, MutableSequence) else [x]
+    logger.debug(f"Ensuring input is list-like: type={type(x)}, value={repr(x)}")
+
+    is_mutable_sequence = isinstance(x, MutableSequence)
+    logger.debug(f"Input is MutableSequence: {is_mutable_sequence}")
+
+    if is_mutable_sequence:
+        logger.debug(f"Returning original MutableSequence with {len(x)} items")
+        return x
+    else:
+        logger.debug("Converting single item to list")
+        result = [x]
+        logger.debug(f"Created list with 1 item: {repr(result)}")
+        return result
 
 
 def sku_to_dict(sku: SupportedSku):
@@ -111,13 +146,40 @@ def sku_to_dict(sku: SupportedSku):
         >>> print(sku_dict['family_name'])  # e.g., 'standardDSv3Family'
         >>> print(sku_dict.get('vCPUs'))  # e.g., '2' (from capabilities)
     """
-    return dict(
+    logger.debug(
+        f"Converting SupportedSku to dictionary: name='{sku.name}', family='{sku.family_name}'"
+    )
+    logger.debug(f"SKU batch support end of life: {sku.batch_support_end_of_life}")
+
+    if hasattr(sku, "capabilities") and sku.capabilities:
+        capabilities_count = len(sku.capabilities)
+        logger.debug(f"Processing {capabilities_count} SKU capabilities")
+        capabilities_dict = {c.name: c.value for c in sku.capabilities}
+        logger.debug(f"SKU capabilities: {list(capabilities_dict.keys())}")
+    else:
+        logger.debug("No SKU capabilities found")
+        capabilities_dict = {}
+
+    if hasattr(sku, "additional_properties") and sku.additional_properties:
+        logger.debug(
+            f"Additional properties present: {list(sku.additional_properties.keys())}"
+        )
+    else:
+        logger.debug("No additional properties found")
+
+    result_dict = dict(
         name=sku.name,
         family_name=sku.family_name,
         batch_support_end_of_life=sku.batch_support_end_of_life,
         additional_properties=sku.additional_properties,
-        **{c.name: c.value for c in sku.capabilities},
+        **capabilities_dict,
     )
+
+    logger.debug(
+        f"Successfully converted SKU to dictionary with {len(result_dict)} keys"
+    )
+
+    return result_dict
 
 
 def lookup_available_vm_skus_for_batch(
@@ -161,23 +223,58 @@ def lookup_available_vm_skus_for_batch(
         >>> print(f"Found {len(raw_skus)} available VM SKUs")
         >>> print(f"First SKU: {raw_skus[0].name}")
     """
+    logger.debug("Looking up available VM SKUs for batch service")
+    logger.debug(
+        f"Parameters: client={client is not None}, to_dict={to_dict}, try_env={try_env}"
+    )
+
+    if kwargs:
+        logger.debug(f"Additional kwargs provided: {list(kwargs.keys())}")
+
     if client is None:
+        logger.debug("No client provided, creating BatchManagementClient")
         from .client import get_batch_management_client
 
         client = get_batch_management_client(config_dict=config_dict, try_env=try_env)
-    result = [
-        item
-        for item in client.location.list_supported_virtual_machine_skus(
-            location_name=get_config_val(
-                "azure_batch_location",
-                config_dict=config_dict,
-                try_env=try_env,
-            ),
+        logger.debug("Successfully created BatchManagementClient")
+    else:
+        logger.debug("Using provided BatchManagementClient")
+
+    batch_location = get_config_val(
+        "azure_batch_location",
+        config_dict=config_dict,
+        try_env=try_env,
+    )
+    logger.debug(f"Using Azure Batch location: '{batch_location}'")
+
+    logger.debug("Calling Azure API to list supported virtual machine SKUs")
+    try:
+        sku_iterator = client.location.list_supported_virtual_machine_skus(
+            location_name=batch_location,
             **kwargs,
         )
-    ]
+        result = [item for item in sku_iterator]
+        logger.debug(f"Successfully retrieved {len(result)} VM SKUs from Azure API")
+
+    except Exception as e:
+        logger.debug(f"Failed to retrieve VM SKUs from Azure API: {str(e)}")
+        raise
+
+    if result:
+        sample_sku_names = [sku.name for sku in result[:3]]
+        logger.debug(f"Sample SKU names: {sample_sku_names}")
+    else:
+        logger.debug("No VM SKUs returned from Azure API")
 
     if to_dict:
+        logger.debug("Converting SupportedSku objects to dictionaries")
         result = [sku_to_dict(x) for x in result]
+        logger.debug(f"Successfully converted {len(result)} SKUs to dictionaries")
+    else:
+        logger.debug("Returning raw SupportedSku objects")
+
+    logger.debug(
+        f"Returning {len(result)} VM SKUs (as {'dictionaries' if to_dict else 'SupportedSku objects'})"
+    )
 
     return result

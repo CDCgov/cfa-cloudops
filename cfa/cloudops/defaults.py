@@ -38,6 +38,10 @@ def remaining_task_autoscale_formula(
         ... )
         >>> print("cappedPoolSize = 20" in formula)  # True
     """
+    logger.debug(
+        f"Generating autoscale formula with parameters: task_sample_interval_minutes={task_sample_interval_minutes}, max_number_vms={max_number_vms}"
+    )
+
     autoscale_formula_template = """// In this example, the pool size
     // is adjusted based on the number of tasks in the queue.
     // Note that both comments and line breaks are acceptable in formula strings.
@@ -55,9 +59,14 @@ def remaining_task_autoscale_formula(
     // Set node deallocation mode - keep nodes active only until tasks finish
     $NodeDeallocationOption = taskcompletion;"""
 
+    logger.debug("Formatting autoscale formula template with provided parameters")
     autoscale_formula = autoscale_formula_template.format(
         task_sample_interval_minutes=task_sample_interval_minutes,
         max_number_vms=max_number_vms,
+    )
+
+    logger.debug(
+        f"Generated autoscale formula with {len(autoscale_formula)} characters, capped at {max_number_vms} VMs with {task_sample_interval_minutes}min intervals"
     )
 
     return autoscale_formula
@@ -143,25 +152,74 @@ def set_env_vars():
         >>> print(os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"])
         'azurecr.io'
     """
+    logger.debug("Setting default Azure environment variables")
+
     # save default values
+    logger.debug("Setting Azure service endpoint subdomains and URLs")
     os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"] = "batch.azure.com/"
+    logger.debug(
+        f"Set AZURE_BATCH_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_BATCH_ENDPOINT_SUBDOMAIN']}"
+    )
+
     os.environ["AZURE_BATCH_RESOURCE_URL"] = "https://batch.core.windows.net/"
+    logger.debug(
+        f"Set AZURE_BATCH_RESOURCE_URL = {os.environ['AZURE_BATCH_RESOURCE_URL']}"
+    )
+
     os.environ["AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN"] = "vault.azure.net"
+    logger.debug(
+        f"Set AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN']}"
+    )
+
     os.environ["AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN"] = "blob.core.windows.net/"
+    logger.debug(
+        f"Set AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN']}"
+    )
+
     os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"] = "azurecr.io"
+    logger.debug(
+        f"Set AZURE_CONTAINER_REGISTRY_DOMAIN = {os.environ['AZURE_CONTAINER_REGISTRY_DOMAIN']}"
+    )
+
     # create new variables as a function of env vars
+    logger.debug(
+        "Creating derived environment variables from existing Azure account settings"
+    )
+
+    batch_account = os.getenv("AZURE_BATCH_ACCOUNT")
+    batch_location = os.getenv("AZURE_BATCH_LOCATION")
     os.environ["AZURE_BATCH_ENDPOINT"] = (
-        f"https://{os.getenv('AZURE_BATCH_ACCOUNT')}.{os.getenv('AZURE_BATCH_LOCATION')}.{default_azure_batch_endpoint_subdomain}"
+        f"https://{batch_account}.{batch_location}.{default_azure_batch_endpoint_subdomain}"
     )
+    logger.debug(
+        f"Set AZURE_BATCH_ENDPOINT = {os.environ['AZURE_BATCH_ENDPOINT']} (from account: {batch_account}, location: {batch_location})"
+    )
+
+    keyvault_name = os.getenv("AZURE_KEYVAULT_NAME")
     os.environ["AZURE_KEYVAULT_ENDPOINT"] = (
-        f"https://{os.getenv('AZURE_KEYVAULT_NAME')}.{default_azure_keyvault_endpoint_subdomain}"
+        f"https://{keyvault_name}.{default_azure_keyvault_endpoint_subdomain}"
     )
+    logger.debug(
+        f"Set AZURE_KEYVAULT_ENDPOINT = {os.environ['AZURE_KEYVAULT_ENDPOINT']} (from keyvault: {keyvault_name})"
+    )
+
+    blob_account = os.getenv("AZURE_BLOB_STORAGE_ACCOUNT")
     os.environ["AZURE_BLOB_STORAGE_ENDPOINT"] = (
-        f"https://{os.getenv('AZURE_BLOB_STORAGE_ACCOUNT')}.{default_azure_blob_storage_endpoint_subdomain}"
+        f"https://{blob_account}.{default_azure_blob_storage_endpoint_subdomain}"
     )
+    logger.debug(
+        f"Set AZURE_BLOB_STORAGE_ENDPOINT = {os.environ['AZURE_BLOB_STORAGE_ENDPOINT']} (from account: {blob_account})"
+    )
+
+    registry_account = os.getenv("AZURE_CONTAINER_REGISTRY_ACCOUNT")
     os.environ["ACR_TAG_PREFIX"] = (
-        f"{os.getenv('AZURE_CONTAINER_REGISTRY_ACCOUNT')}.{default_azure_container_registry_domain}/"
+        f"{registry_account}.{default_azure_container_registry_domain}/"
     )
+    logger.debug(
+        f"Set ACR_TAG_PREFIX = {os.environ['ACR_TAG_PREFIX']} (from registry: {registry_account})"
+    )
+
+    logger.debug("Completed setting all default Azure environment variables")
 
 
 def get_default_pool_identity(
@@ -186,12 +244,25 @@ def get_default_pool_identity(
         >>> print(identity.type)
         <PoolIdentityType.user_assigned: 'UserAssigned'>
     """
-    return models.BatchPoolIdentity(
+    logger.debug(
+        f"Creating default pool identity for user-assigned identity: {user_assigned_identity}"
+    )
+
+    logger.debug("Setting pool identity type to UserAssigned")
+    logger.debug("Creating UserAssignedIdentities object for the provided identity")
+
+    pool_identity = models.BatchPoolIdentity(
         type=models.PoolIdentityType.user_assigned,
         user_assigned_identities={
             user_assigned_identity: models.UserAssignedIdentities()
         },
     )
+
+    logger.debug(
+        f"Successfully created BatchPoolIdentity with type: {pool_identity.type}"
+    )
+
+    return pool_identity
 
 
 def get_default_pool_config(
@@ -228,14 +299,36 @@ def get_default_pool_config(
         >>> print(pool.vm_size)
         'standard_d4s_v3'
     """
-    return models.Pool(
-        identity=get_default_pool_identity(user_assigned_identity),
+    logger.debug(f"Creating default pool configuration with name: '{pool_name}'")
+    logger.debug(
+        f"Additional kwargs provided: {list(kwargs.keys()) if kwargs else 'None'}"
+    )
+
+    logger.debug("Getting default pool identity")
+    pool_identity = get_default_pool_identity(user_assigned_identity)
+
+    logger.debug(
+        f"Using default pool config with: {list(default_pool_config_dict.keys())}"
+    )
+
+    # Merge configurations: defaults first, then kwargs overrides
+    merged_config = {**default_pool_config_dict, **kwargs}
+    logger.debug(f"Final configuration keys: {list(merged_config.keys())}")
+
+    pool = models.Pool(
+        identity=pool_identity,
         display_name=pool_name,
         network_configuration=models.NetworkConfiguration(
             subnet_id=subnet_id, **default_network_config_dict
         ),
-        **{**default_pool_config_dict, **kwargs},
+        **merged_config,
     )
+
+    logger.debug(
+        f"Successfully created Pool with display_name: '{pool.display_name}', vm_size: {getattr(pool, 'vm_size', 'unknown')}"
+    )
+
+    return pool
 
 
 def assign_container_config(
@@ -259,7 +352,24 @@ def assign_container_config(
         >>> # Pool is modified in place and returned
         >>> assert modified_pool is pool
     """
+    logger.debug(
+        f"Assigning container configuration to pool: {getattr(pool_config, 'display_name', 'unknown')}"
+    )
+    logger.debug(
+        f"Container configuration type: {getattr(container_config, 'type', 'unknown')}"
+    )
+
+    logger.debug(
+        "Accessing pool deployment configuration virtual machine configuration"
+    )
+
     (
         pool_config.deployment_configuration.virtual_machine_configuration.container_configuration
     ) = container_config
+
+    logger.debug(
+        "Successfully assigned container configuration to pool (in-place modification)"
+    )
+    logger.debug("Pool object modified and will be returned")
+
     return pool_config

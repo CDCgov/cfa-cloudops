@@ -83,6 +83,7 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
     # count tasks and print to user the starting value
     # as tasks complete, print which complete
     # print remaining number of tasks
+    logger.debug(f"Retrieving initial task list for job '{job_name}'")
     tasks = list(batch_client.task.list(job_name))
 
     # get total tasks
@@ -93,19 +94,31 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
     # initialize job complete status
     completed = False
     completions, incompletions, running, successes, failures = 0, 0, 0, 0, 0
+
+    logger.debug(f"Getting initial job state for '{job_name}'")
     job = batch_client.job.get(job_name)
+    logger.debug(f"Initial job state: {job.as_dict()['state']}")
+
+    polling_count = 0
     while job.as_dict()["state"] != "completed" and not completed:
         if datetime.datetime.now() < timeout_expiration:
+            polling_count += 1
+            logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
             time.sleep(5)  # Polling interval
+
+            logger.debug(f"Retrieving current task list (poll #{polling_count})")
             tasks = list(batch_client.task.list(job_name))
+
             incomplete_tasks = [
                 task for task in tasks if task.state != batch_models.TaskState.completed
             ]
             incompletions = len(incomplete_tasks)
+
             completed_tasks = [
                 task for task in tasks if task.state == batch_models.TaskState.completed
             ]
             completions = len(completed_tasks)
+
             running_tasks = [
                 task for task in tasks if task.state == batch_models.TaskState.running
             ]
@@ -143,9 +156,20 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
 
             if not incomplete_tasks:
                 logger.info("\nAll tasks completed.")
+                logger.info(
+                    f"Job '{job_name}' completed: {successes} successes, {failures} failures out of {completions} tasks."
+                )
+                logger.debug(
+                    f"Monitoring completed after {polling_count} polling iterations"
+                )
                 completed = True
                 break
             job = batch_client.job.get(job_name)
+        else:
+            logger.warning(f"Monitoring timeout reached after {timeout} minutes")
+            logger.debug(
+                f"Final status: {completions} completed, {incompletions} remaining"
+            )
 
     end_time = datetime.datetime.now().replace(microsecond=0)
 
@@ -154,11 +178,20 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
             "All tasks have reached 'Completed' state within the timeout period."
         )
         logger.info(f"{successes} task(s) succeeded, {failures} failed.")
+    else:
+        logger.warning("Monitoring stopped due to timeout - not all tasks completed")
+        logger.info(
+            f"Job '{job_name}' monitoring timed out after {timeout} minutes. {completions} completed, {incompletions} remaining."
+        )
+
     # get terminate reason
+    logger.debug("Checking for job termination reason")
     if "terminate_reason" in job.as_dict()["execution_info"].keys():
         terminate_reason = job.as_dict()["execution_info"]["terminate_reason"]
+        logger.debug(f"Job terminate reason: {terminate_reason}")
     else:
         terminate_reason = None
+        logger.debug("No job termination reason found")
 
     runtime = end_time - start_time
     logger.info(f"Monitoring ended: {end_time}. Total elapsed time: {runtime}.")
@@ -217,11 +250,18 @@ def download_job_stats(
         The file is created in the current working directory. Tasks that haven't
         completed may not have all timing information available.
     """
+    logger.debug(f"Downloading job statistics for job: {job_name}")
     if file_name is None:
         file_name = f"{job_name}-stats"
+        logger.debug(f"Using default filename: {file_name}")
+    else:
+        logger.debug(f"Using custom filename: {file_name}")
+
+    logger.debug("Retrieving task list from batch service")
     r = batch_service_client.task.list(
         job_id=job_name,
     )
+    logger.debug("Task list retrieved successfully")
 
     fields = [
         "task_id",
@@ -254,7 +294,9 @@ def download_job_stats(
         with open(rf"{file_name}.csv", "a") as f:
             writer = csv.writer(f, delimiter="|")
             writer.writerow(fields)
-            logger.debug("wrote task to job statistic csv.")
+            logger.debug(f"Wrote task {item.id} statistics to CSV")
+
+    logger.debug(f"Job statistics download completed. File saved as: {file_name}.csv")
     print(f"Downloaded job statistics report to {file_name}.csv.")
 
 
@@ -381,8 +423,13 @@ def check_job_complete(job_name: str, batch_client: object) -> bool:
         A completed job may still have failed tasks. Use get_completed_tasks()
         or monitor_tasks() to get detailed success/failure information.
     """
+    logger.debug(f"Checking completion status for job: {job_name}")
     job = batch_client.job.get(job_name)
-    return job.state == batch_models.JobState.completed
+    is_complete = job.state == batch_models.JobState.completed
+    logger.debug(
+        f"Job {job_name} completion status: {is_complete} (state: {job.state})"
+    )
+    return is_complete
 
 
 def get_job_state(job_name: str, batch_client: object) -> str:
@@ -424,8 +471,11 @@ def get_job_state(job_name: str, batch_client: object) -> str:
         Possible job states include: active, completed, completed, terminating,
         terminated. The exact states depend on the Azure Batch service version.
     """
+    logger.debug(f"Retrieving state for job: {job_name}")
     job = batch_client.job.get(job_name)
-    return str(job.state)
+    state = str(job.state)
+    logger.debug(f"Job {job_name} current state: {state}")
+    return state
 
 
 def delete_pool(
@@ -488,7 +538,7 @@ def delete_pool(
         account_name=account_name,
         pool_name=pool_name,
     )
-    logger.info(f"Pool {pool_name} deleted.")
+    logger.info(f"Pool deletion initiated for '{pool_name}'.")
     return poller
 
 
@@ -525,20 +575,31 @@ def get_args_from_yaml(file_path: str) -> list[str]:
         Flag arguments are handled by appending the flag only if the value is not empty.
         This function is typically used to generate task commands for batch jobs.
     """
+    logger.debug(f"Parsing YAML file for arguments: {file_path}")
     with open(file_path) as f:
         raw_griddle = yaml.safe_load(f)
+    logger.debug("YAML file loaded successfully")
+
     griddle = griddler.parse(raw_griddle)
     parameter_sets = griddle.to_dicts()
+    logger.debug(f"Generated {len(parameter_sets)} parameter combinations")
+
     output = []
-    for i in parameter_sets:
+    for i, param_set in enumerate(parameter_sets):
         full_cmd = ""
-        for key, value in i.items():
+        logger.debug(f"Processing parameter set {i + 1}: {param_set}")
+        for key, value in param_set.items():
             if key.endswith("(flag)"):
                 if value != "":
                     full_cmd += f""" --{key.split("(flag)")[0]}"""
+                    logger.debug(f"Added flag: --{key.split('(flag)')[0]}")
             else:
                 full_cmd += f" --{key} {value}"
+                logger.debug(f"Added parameter: --{key} {value}")
         output.append(full_cmd)
+        logger.debug(f"Generated command arguments: {full_cmd}")
+
+    logger.debug(f"Total argument sets generated: {len(output)}")
     return output
 
 
@@ -574,10 +635,19 @@ def get_tasks_from_yaml(base_cmd: str, file_path: str) -> list[str]:
         This function is useful for generating Azure Batch task commands from a grid
         search or parameter sweep defined in YAML.
     """
+    logger.debug(f"Generating task commands with base command: '{base_cmd}'")
+    logger.debug(f"Using YAML file: {file_path}")
+
     cmds = []
     arg_list = get_args_from_yaml(file_path)
-    for s in arg_list:
-        cmds.append(f"{base_cmd} {s}")
+    logger.debug(f"Generated {len(arg_list)} argument combinations")
+
+    for i, args in enumerate(arg_list):
+        full_cmd = f"{base_cmd} {args}"
+        cmds.append(full_cmd)
+        logger.debug(f"Task {i + 1}: {full_cmd}")
+
+    logger.debug(f"Total task commands generated: {len(cmds)}")
     return cmds
 
 
@@ -600,19 +670,33 @@ def get_full_container_image_name(
     Returns:
         str: The full image name to use in Azure Batch pool.
     """
+    logger.debug(f"Constructing full container image name for: {container_name}")
+    logger.debug(f"Registry type: {registry}")
+
     if registry.lower() == "azure":
         if not acr_name:
+            logger.error("ACR name not provided for Azure Container Registry")
             raise ValueError("acr_name must be provided for Azure Container Registry.")
-        return f"{acr_name}.azurecr.io/{container_name}"
+        full_name = f"{acr_name}.azurecr.io/{container_name}"
+        logger.debug(f"Azure registry image name: {full_name}")
+        return full_name
     elif registry.lower().startswith("docker"):
-        return f"{container_name}"
+        full_name = f"{container_name}"
+        logger.debug(f"Docker Hub image name: {full_name}")
+        return full_name
     elif registry.lower() == "github":
         if not github_org:
+            logger.error(
+                "GitHub organization not provided for GitHub Container Registry"
+            )
             raise ValueError(
                 "github_org must be provided for GitHub Container Registry."
             )
-        return f"ghcr.io/{github_org.lower()}/{container_name}"
+        full_name = f"ghcr.io/{github_org.lower()}/{container_name}"
+        logger.debug(f"GitHub registry image name: {full_name}")
+        return full_name
     else:
+        logger.error(f"Unsupported registry type: {registry}")
         raise ValueError(
             "Unsupported registry type. Use 'azure', 'docker', or 'github'."
         )
@@ -792,7 +876,13 @@ def get_rel_mnt_path(
         the specified blob container. If the container is not mounted or the pool
         cannot be accessed, it returns "ERROR!".
     """
+    logger.debug(
+        f"Getting relative mount path for blob '{blob_name}' in pool '{pool_name}'"
+    )
     try:
+        logger.debug(
+            f"Retrieving pool info for resource group '{resource_group_name}', account '{account_name}'"
+        )
         pool_info = get_pool_full_info(
             resource_group_name=resource_group_name,
             account_name=account_name,
@@ -801,15 +891,23 @@ def get_rel_mnt_path(
         )
     except Exception:
         logger.error("could not retrieve pool information.")
+        logger.info(
+            f"Could not retrieve pool info for pool '{pool_name}' in resource group '{resource_group_name}'."
+        )
         return "ERROR!"
+
     mc = pool_info.as_dict()["mount_configuration"]
+    logger.debug(f"Searching through {len(mc)} mount configurations")
+
     for m in mc:
         if m["azure_blob_file_system_configuration"]["container_name"] == blob_name:
             rel_mnt_path = m["azure_blob_file_system_configuration"][
                 "relative_mount_path"
             ]
+            logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
     logger.error(f"could not find blob {blob_name} mounted to pool.")
+    logger.info(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
     print(f"could not find blob {blob_name} mounted to pool.")
     return "ERROR!"
 
@@ -874,6 +972,9 @@ def get_pool_mounts(
         If the pool information cannot be retrieved due to access issues or if the
         pool does not exist, this function returns None and logs an error.
     """
+    logger.debug(
+        f"Getting mount configurations for pool '{pool_name}' in resource group '{resource_group_name}'"
+    )
     try:
         pool_info = get_pool_full_info(
             resource_group_name=resource_group_name,
@@ -883,25 +984,34 @@ def get_pool_mounts(
         )
     except Exception:
         logger.error("could not retrieve pool information.")
+        logger.info(
+            f"Could not retrieve pool info for pool '{pool_name}' in resource group '{resource_group_name}'."
+        )
         print(f"could not retrieve pool info for {pool_name}.")
         return None
+
     mounts = []
     try:
         mc = pool_info.as_dict()["mount_configuration"]
+        logger.debug(f"Processing {len(mc)} mount configurations")
+
         for m in mc:
-            mounts.append(
-                {
-                    "source": m["azure_blob_file_system_configuration"][
-                        "relative_mount_path"
-                    ],
-                    "target": m["azure_blob_file_system_configuration"][
-                        "relative_mount_path"
-                    ],
-                },
-            )
+            mount_info = {
+                "source": m["azure_blob_file_system_configuration"][
+                    "relative_mount_path"
+                ],
+                "target": m["azure_blob_file_system_configuration"][
+                    "relative_mount_path"
+                ],
+            }
+            mounts.append(mount_info)
+            logger.debug(f"Added mount: {mount_info}")
+
+        logger.debug(f"Successfully retrieved {len(mounts)} mount configurations")
     except Exception as e:
         mounts = None
-        logger.info(f"could not find mounts for pool {pool_name}: {e}")
+        logger.info(f"Could not find mounts for pool '{pool_name}': {e}")
+
     return mounts
 
 
@@ -989,17 +1099,24 @@ def add_task(
         Mount configurations allow access to blob storage from within the container.
         Log saving creates timestamped files in the specified blob storage location.
     """
-    logger.debug(f"Adding task to job {job_name}.")
+    logger.debug(
+        f"Adding task to job '{job_name}' with base ID '{task_id_base}', suffix '{name_suffix}'"
+    )
+    logger.debug(
+        f"Task parameters: timeout={timeout}, mounts={len(mounts) if mounts else 0}, container={full_container_name}"
+    )
 
     # convert command line to string if given as list
     if isinstance(command_line, list):
         cmd_str = " ".join(command_line)
-        logger.debug("Docker command converted to string")
+        logger.debug(f"Docker command converted from list to string: '{cmd_str}'")
     else:
         cmd_str = command_line
+        logger.debug(f"Using command string directly: '{cmd_str}'")
 
     # Add a task to the job
     az_mount_dir = "$AZ_BATCH_NODE_MOUNTS_DIR"
+    logger.debug("Creating user identity with admin privileges")
     user_identity = batch_models.UserIdentity(
         auto_user=batch_models.AutoUserSpecification(
             scope=batch_models.AutoUserScope.pool,
@@ -1012,9 +1129,14 @@ def add_task(
         # Create a TaskDependencies object to pass in
         if isinstance(depends_on, str):
             depends_on = [depends_on]
-            logger.debug("Adding task dependency.")
+            logger.debug(f"Adding task dependency on single task: {depends_on}")
+        else:
+            logger.debug(f"Adding task dependencies on multiple tasks: {depends_on}")
         task_deps = batch_models.TaskDependencies(task_ids=depends_on)
     if depends_on_range is not None:
+        logger.debug(
+            f"Adding task dependency on range: {depends_on_range[0]} to {depends_on_range[1]}"
+        )
         task_deps = batch_models.TaskDependencies(
             task_id_ranges=[
                 batch_models.TaskIdRange(
@@ -1024,10 +1146,13 @@ def add_task(
             ]
         )
 
+    logger.debug("Configuring exit conditions and dependency behavior")
     no_exit_options = ExitOptions(
         dependency_action=DependencyAction.satisfy, job_action=JobAction.none
     )
+
     if run_dependent_tasks_on_fail:
+        logger.debug("Configured to run dependent tasks on failure")
         exit_conditions = ExitConditions(
             exit_codes=[
                 ExitCodeMapping(code=0, exit_options=no_exit_options),
@@ -1038,6 +1163,7 @@ def add_task(
             default=no_exit_options,
         )
     else:
+        logger.debug("Configured to block dependent tasks on failure")
         terminate_exit_options = ExitOptions(
             dependency_action=DependencyAction.block,
             job_action=JobAction.none,
@@ -1069,8 +1195,10 @@ def add_task(
 
     if task_id_ints:
         task_id = str(task_id_max + 1)
+        logger.debug(f"Generated integer-based task ID: '{task_id}'")
     else:
         task_id = f"{task_id_base}-{name_suffix}-{str(task_id_max + 1)}"
+        logger.debug(f"Generated string-based task ID: '{task_id}'")
 
     if save_logs_rel_path is not None:
         if save_logs_rel_path == "ERROR!":
@@ -1080,39 +1208,51 @@ def add_task(
             )
             full_cmd = cmd_str
         else:
-            logger.debug("using rel path to save logs")
+            logger.debug(
+                f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
+            )
             t = datetime.datetime.now(zi("America/New_York"))
             s_time = t.strftime("%Y%m%d_%H%M%S")
             if not save_logs_rel_path.startswith("/"):
                 save_logs_rel_path = "/" + save_logs_rel_path
             _folder = f"{save_logs_rel_path}/{logs_folder}/"
             sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
+            logger.debug(f"Logs will be saved to: '{sout}'")
             full_cmd = (
                 f"""/bin/bash -c "mkdir -p {_folder}; {cmd_str} 2>&1 | tee {sout}" """
             )
+            logger.debug(f"Modified command for log capture: '{full_cmd}'")
     else:
+        logger.debug("No log saving configured - using command as-is")
         full_cmd = cmd_str
 
-    # add contstraints
+    # add constraints
     if timeout is None:
         _to = None
+        logger.debug("No timeout constraints configured")
     else:
         _to = datetime.timedelta(minutes=timeout)
+        logger.debug(f"Task timeout constraint set to {timeout} minutes")
 
     task_constraints = TaskConstraints(max_wall_clock_time=_to)
     command_line = full_cmd
-    logger.debug(f"Adding task {task_id}")
+    logger.debug(f"Final command line for task {task_id}: '{command_line}'")
 
     # if full container name is none, pull info from job
+    container_name = f"{job_name}_{str(task_id_max + 1)}"
+    container_run_options = f"--name={container_name} --rm " + mount_str
+    logger.debug(
+        f"Container settings: image='{full_container_name}', run_options='{container_run_options}'"
+    )
 
     # Create the task parameter
+    logger.debug("Creating task parameter object")
     task_param = batch_models.TaskAddParameter(
         id=task_id,
         command_line=command_line,
         container_settings=batch_models.TaskContainerSettings(
             image_name=full_container_name,
-            container_run_options=f"--name={job_name}_{str(task_id_max + 1)} --rm "
-            + mount_str,
+            container_run_options=container_run_options,
         ),
         user_identity=user_identity,
         constraints=task_constraints,
@@ -1122,8 +1262,9 @@ def add_task(
     )
 
     # Add the task to the job
+    logger.debug(f"Submitting task '{task_id}' to Azure Batch service")
     batch_client.task.add(job_id=job_name, task=task_param)
-    logger.debug(f"Task '{task_id}' added to job '{job_name}'.")
+    logger.debug(f"Task '{task_id}' successfully added to job '{job_name}'")
     return task_id
 
 

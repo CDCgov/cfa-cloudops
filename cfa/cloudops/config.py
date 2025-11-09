@@ -40,12 +40,19 @@ def try_get_val_from_dict(
         >>> print(value)  # None
         >>> print(error)  # "Could not find a configuration value..."
     """
+    logger.debug(
+        f"Attempting to get configuration value for key '{key}' from config dictionary"
+    )
+
     if value_name is None:
         value_name = key
+
+    logger.debug(f"Using value name '{value_name}' for config lookup")
 
     result = config_dict.get(key, None)
 
     if result is None:
+        logger.debug(f"Key '{key}' not found in configuration dictionary")
         message = (
             "Could not find a configuration value "
             f"for '{value_name}' under the "
@@ -53,6 +60,9 @@ def try_get_val_from_dict(
             "configuration dictionary."
         )
     else:
+        logger.debug(
+            f"Successfully retrieved value for key '{key}' from configuration dictionary"
+        )
         message = None
 
     return result, message
@@ -87,12 +97,19 @@ def try_get_val_from_env(
         >>> print(value)  # None
         >>> print(error)  # "Could not find a valid configuration value..."
     """
+    logger.debug(
+        f"Attempting to get configuration value from environment variable '{env_variable_name}'"
+    )
+
     if value_name is None:
         value_name = env_variable_name
+
+    logger.debug(f"Using value name '{value_name}' for environment variable lookup")
 
     result = os.environ.get(env_variable_name, None)
 
     if result is None:
+        logger.debug(f"Environment variable '{env_variable_name}' not found or empty")
         message = (
             "Could not find a valid configuration "
             f"value for '{value_name}' "
@@ -102,6 +119,9 @@ def try_get_val_from_env(
             "environment variable was found."
         )
     else:
+        logger.debug(
+            f"Successfully retrieved value from environment variable '{env_variable_name}'"
+        )
         message = None
 
     return result, message
@@ -158,6 +178,10 @@ def get_config_val(
         >>> value = get_config_val("db", env_variable_name="DATABASE_URL")
         >>> print(value)  # "localhost:5432"
     """
+    logger.debug(f"Getting configuration value for key '{key}'")
+    logger.debug(
+        f"Parameters: config_dict={'provided' if config_dict is not None else 'None'}, try_env={try_env}, env_variable_name={env_variable_name}, value_name={value_name}"
+    )
 
     if value_name is None:
         value_name = key
@@ -177,20 +201,39 @@ def get_config_val(
         )
 
     if config_dict is not None:
+        logger.debug(f"Attempting to get value from config dictionary for key '{key}'")
         dict_result, dict_msg = try_get_val_from_dict(
             key=key,
             config_dict=config_dict,
             value_name=value_name,
         )
+        if dict_result is not None:
+            logger.debug(
+                f"Successfully found value in config dictionary for key '{key}'"
+            )
+        else:
+            logger.debug(f"Value not found in config dictionary for key '{key}'")
 
     if try_env:
+        logger.debug(
+            f"Attempting to get value from environment variable '{env_variable_name}'"
+        )
         env_result, env_msg = try_get_val_from_env(
             env_variable_name=env_variable_name, value_name=value_name
         )
+        if env_result is not None:
+            logger.debug(
+                f"Successfully found value in environment variable '{env_variable_name}'"
+            )
+        else:
+            logger.debug(
+                f"Value not found in environment variable '{env_variable_name}'"
+            )
 
     result = dict_result if dict_result is not None else env_result
 
     if result is None:
+        logger.debug("No configuration value found in any source")
         if config_dict is not None:
             err_msg = dict_msg + (
                 (" Also searched environment variables. " + env_msg) if try_env else ""
@@ -198,5 +241,12 @@ def get_config_val(
         else:
             err_msg = env_msg
         logger.debug(err_msg)
+    else:
+        source = (
+            "config dictionary" if dict_result is not None else "environment variables"
+        )
+        logger.debug(
+            f"Configuration value successfully resolved from {source} for '{value_name}'"
+        )
 
     return result
