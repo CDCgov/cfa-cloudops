@@ -38,6 +38,9 @@ def monitor_tasks(
         timeout (int): Maximum time in minutes to monitor before timing out. If None,
             defaults to 480 minutes (8 hours).
         batch_client (object): Azure Batch service client instance for API calls.
+        download_task_output (bool): Whether to download stdout and stderr from each
+            completed task. If True, saves output files to a directory named
+            "{job_name}_output". Defaults to False.
 
     Returns:
         dict: Dictionary containing monitoring results with the following keys:

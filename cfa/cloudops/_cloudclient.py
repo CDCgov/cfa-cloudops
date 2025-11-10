@@ -945,7 +945,7 @@ class CloudClient:
                 statistics when the job completes. Statistics include task execution
                 times, resource usage, and success/failure rates. Default is False.
             download_task_output (bool, optional): Whether to download the stdout and stderr of
-                each task when the task completes.Default is False.
+                each task when the task completes. Default is False.
 
         Example:
             Monitor a job with default settings:
