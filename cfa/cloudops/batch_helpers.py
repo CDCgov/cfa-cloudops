@@ -1,6 +1,7 @@
 import csv
 import datetime
 import logging
+import os
 import time
 import uuid
 from zoneinfo import ZoneInfo as zi
@@ -20,7 +21,12 @@ from azure.batch.models import (
 logger = logging.getLogger(__name__)
 
 
-def monitor_tasks(job_name: str, timeout: int, batch_client: object):
+def monitor_tasks(
+    job_name: str,
+    timeout: int,
+    batch_client: object,
+    download_task_output: bool = False,
+) -> dict:
     """Monitor tasks running in an Azure Batch job until completion or timeout.
 
     Continuously monitors the progress of all tasks in a job, providing real-time
@@ -32,6 +38,9 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
         timeout (int): Maximum time in minutes to monitor before timing out. If None,
             defaults to 480 minutes (8 hours).
         batch_client (object): Azure Batch service client instance for API calls.
+        download_task_output (bool): Whether to download stdout and stderr from each
+            completed task. If True, saves output files to a directory named
+            "{job_name}_output". Defaults to False.
 
     Returns:
         dict: Dictionary containing monitoring results with the following keys:
@@ -93,6 +102,7 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
     # pool setup and status
     # initialize job complete status
     completed = False
+    previously_completed = []
     completions, incompletions, running, successes, failures = 0, 0, 0, 0, 0
 
     logger.debug(f"Getting initial job state for '{job_name}'")
@@ -133,6 +143,29 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
                     failures += 1
                 elif task.as_dict()["execution_info"]["result"] == "success":
                     successes += 1
+                if download_task_output:
+                    os.makedirs(f"{job_name}_output", exist_ok=True)
+                    if task.id not in previously_completed:
+                        stdout = batch_client.file.get_from_task(
+                            job_name, task.id, "stdout.txt"
+                        )
+                        stderr = batch_client.file.get_from_task(
+                            job_name, task.id, "stderr.txt"
+                        )
+                        with open(
+                            os.path.join(f"{job_name}_output", f"{task.id}_stdout.txt"),
+                            "w",
+                        ) as f:
+                            for data in stdout:
+                                f.write(data.decode("utf-8"))
+                        with open(
+                            os.path.join(f"{job_name}_output", f"{task.id}_stderr.txt"),
+                            "w",
+                        ) as f:
+                            for data in stderr:
+                                f.write(data.decode("utf-8"))
+                        print(f"\nOutput saved from task {task.id}")
+                        previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
             print(
                 "monitor runtime:",
