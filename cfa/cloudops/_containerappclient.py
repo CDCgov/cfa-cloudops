@@ -33,10 +33,10 @@ class ContainerAppClient:
         Initialize a ContainerAppClient for Azure Container Apps jobs.
 
         Args:
-            dotenv_path (str, optional): Path to a .env file to load environment variables.
-            resource_group (str, optional): Azure resource group name. If None, uses env var AZURE_RESOURCE_GROUP_NAME.
-            subscription_id (str, optional): Azure subscription ID. If None, uses env var AZURE_SUBSCRIPTION_ID.
-            job_name (str, optional): Job name for Container App Job.
+            dotenv_path (str | None): Path to a .env file to load environment variables. Optional.
+            resource_group (str | None): Azure resource group name. If None, uses env var AZURE_RESOURCE_GROUP_NAME. Optional.
+            subscription_id (str | None): Azure subscription ID. If None, uses env var AZURE_SUBSCRIPTION_ID. Optional.
+            job_name (str | None): Job name for Container App Job. Optional.
 
         Raises:
             ValueError: If required parameters are missing and not set in environment variables.
@@ -90,7 +90,7 @@ class ContainerAppClient:
         Retrieve detailed information about a specific Container App job.
 
         Args:
-            job_name (str): Name of the job to retrieve information for.
+            job_name (str | None): Name of the job to retrieve information for. If None, uses instance job_name. Optional.
 
         Returns:
             dict: Dictionary containing job details.
@@ -115,7 +115,7 @@ class ContainerAppClient:
         Get command, image, and environment details for containers in a job.
 
         Args:
-            job_name (str): Name of the job to inspect.
+            job_name (str | None): Name of the job to inspect. If None, uses instance job_name. Optional.
 
         Returns:
             list[dict]: List of container info dicts (name, image, command, args, env).
@@ -195,10 +195,10 @@ class ContainerAppClient:
         Start a Container App job, optionally overriding command, args, or environment.
 
         Args:
-            job_name (str, optional): Name of the job to start. If None, uses default job_name.
-            command (list[str], optional): Command to run in the container.
-            args (list[str], optional): Arguments for the command.
-            env (list[str], optional): Environment variables for the container.
+            job_name (str | None): Name of the job to start. If None, uses instance job_name. Optional.
+            command (list[str] | None): Command to run in the container. Optional.
+            args (list[str] | None): Arguments for the command. Optional.
+            env (list[str] | None): Environment variables for the container. Optional.
 
         Raises:
             ValueError: If required parameters are missing or not in correct format.

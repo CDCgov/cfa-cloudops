@@ -939,6 +939,31 @@ def walk_blobs_in_container(
     blob_service_client: BlobServiceClient = None,
     container_client: ContainerClient = None,
 ):
+    """
+    Walk blobs in a container, optionally filtering by name prefix.
+
+    Iterates through blobs in the specified container, optionally filtering by a prefix, and returns an iterator of blob objects.
+
+    Args:
+        container_name (str, optional): Name of the blob container to walk.
+        account_name (str, optional): Azure storage account name.
+        name_starts_with (str, optional): Prefix filter for blob names.
+        blob_service_client (BlobServiceClient, optional): Azure Blob service client.
+        container_client (ContainerClient, optional): Azure Container client instance.
+
+    Returns:
+        Iterator: Iterator of blob objects matching the criteria.
+
+    Example:
+        Walk all blobs in a container:
+
+            blobs = walk_blobs_in_container(
+                container_name="data",
+                blob_service_client=client
+            )
+            for blob in blobs:
+                print(blob.name)
+    """
     logger.debug(
         f"Walking blobs in container '{container_name}' with prefix '{name_starts_with}'"
     )
@@ -966,11 +991,11 @@ def write_blob_stream(
     overwrite: bool = True,
 ) -> bool:
     """
-    Write a stream into a file in Azure Blob storage
+    Write a string or bytes stream into a file in Azure Blob storage.
 
     Args:
-        data (stream):
-            [Required] File contents as stream
+        data (str or bytes):
+            [Required] File contents as a string or bytes object.
         blob_url (str):
             [Required] Path within the container to the desired file (including filename)
         account_name (str):
@@ -982,7 +1007,7 @@ def write_blob_stream(
         append_blob (bool):
             [Optional] Append to an existing blob or create a new one. Default False
         overwrite (bool):
-            [Optional] Delete existing blob if it exists and create a new one in its place. If append_blob is False and overwrite is False, an ResourceExistsError will be raised if the blob already exists. Default True
+            [Optional] Delete existing blob if it exists and create a new one in its place. If append_blob is False and overwrite is False, a ResourceExistsError will be raised if the blob already exists. Default True
 
     Raises:
         ValueError:

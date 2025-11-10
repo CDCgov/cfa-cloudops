@@ -1065,7 +1065,8 @@ def add_task(
     task_id_ints: bool = False,
     timeout: int | None = None,
 ) -> str:
-    """Add a task to an Azure Batch job with comprehensive configuration options.
+    """
+    Add a task to an Azure Batch job with comprehensive configuration options.
 
     Creates and adds a task to the specified job with support for dependencies,
     container execution, mount configurations, log saving, and timeout constraints.
@@ -1084,8 +1085,8 @@ def add_task(
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
         mounts (list[dict], optional): List of mount configurations as dicts
             of {"source": <container_name>, "target": <relative_mount_path>).
-        depends_on (str | list[str], optional): Task ID(s) that this task depends on.
-            Task will not start until dependencies complete successfully.
+        depends_on (str | list[str] | None, optional): Task ID(s) that this task depends on.
+            Can be a single string, a list of strings, or None. Task will not start until dependencies complete successfully.
         depends_on_range (tuple[int, int], optional): Range of task IDs (start, end) that
             this task depends on. Alternative to depends_on.
         run_dependent_tasks_on_fail (bool): If True, dependent tasks will run even if

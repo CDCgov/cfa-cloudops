@@ -1,10 +1,8 @@
 import datetime
-import inspect
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
 
-import networkx as nx
 import pandas as pd
 from azure.batch import models as batch_models
 from azure.batch.models import (
@@ -34,7 +32,7 @@ from .client import (
     get_blob_service_client,
     get_compute_management_client,
 )
-from .job import create_job, create_job_schedule
+from .job import create_job
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +91,14 @@ class CloudClient:
         **kwargs,
     ):
         logger.debug("Initializing CloudClient.")
-        # authenticate to get credentials
+
+        """Initialize the CloudClient.
+
+        Args:
+            dotenv_path (str, optional): Path to .env file containing environment variables. Defaults to None.
+            use_sp (bool, optional): Whether to use Service Principal authentication (True) or environment-based authentication (False). Defaults to False.
+            use_federated (bool, optional): Whether to use Federated authentication (True) or environment-based authentication (False). Defaults to False.
+        """  # authenticate to get credentials
         if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
             self.method = "env"
@@ -119,6 +124,9 @@ class CloudClient:
         self.task_id_max = 0
 
     def check_credentials(self):
+        """
+        Check the credentials by listing subscriptions.
+        """
         logger.debug("Checking credentials by listing subscriptions.")
         if self.method == "env":
             cred = self.cred.user_credential
@@ -156,7 +164,7 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
-    ):
+    ) -> None:
         """Create a pool in Azure Batch with the specified configuration.
 
         A pool is a collection of compute nodes (virtual machines) on which your tasks run.
@@ -165,9 +173,15 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of mount configurations as tuples of
-                (storage_container, mount_name). Each tuple specifies a blob storage
-                container to mount and the local mount point name.
+            mounts (list, optional): List of Blob Storage             mounts (list, optional): List of mount configurations as strings or dictionaries.
+                If provided, the specified Blob Storage containers will be mounted to
+                the compute nodes in the pool. The format can be:
+                    - List of strings: ["container1", "container2"]
+                    - List of dictionaries: [{"source": "container1", "target": "/mnt/container1"}, ...]rovide:
+                - As strings: ["input-data", "output-results"]
+                - As dictionaries: [{"source": "input-data", "target": "/mnt/input"}, {"source": "output-results", "target": "/mnt/output"}]
+                    If provided this way as dictionaries, the value of each target is
+                    how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
@@ -203,8 +217,7 @@ class CloudClient:
                 client = CloudClient()
                 client.create_pool(
                     pool_name="my-compute-pool",
-                    container_image_name="myapp:latest",
-                    vm_size="Standard_D2s_v3"
+                    container_image_nam="myapp:lates "output-data"rd_D2s_v3"
                 )
 
             Create a pool with storage mounts and fixed scaling:
@@ -213,7 +226,7 @@ class CloudClient:
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
                     vm_size="Standard_D4s_v3",
-                    mounts=[("input-data", "data"), ("output-results", "results")],
+                    mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
                     availability_zones="zonal"
@@ -238,7 +251,7 @@ class CloudClient:
                 )
                 logger.debug("Generated mount configuration from string list.")
             elif isinstance(mounts[0], dict):
-                logger.debug("Mounts provided as list of dicts.")
+                logger.debug
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
@@ -372,7 +385,7 @@ class CloudClient:
         exist_ok: bool = False,
         verify_pool: bool = True,
         verbose: bool = False,
-    ):
+    ) -> None:
         """Create a job in Azure Batch to run tasks on a specified pool.
 
         A job is a collection of tasks that run on compute nodes in a pool. Jobs provide
@@ -408,6 +421,11 @@ class CloudClient:
                 Default is None (no timeout).
             exist_ok (bool, optional): Whether to allow the job creation if a job with the
                 same name already exists. Default is False.
+            verify_pool (bool, optional): Whether to verify that the specified pool exists
+                before creating the job. If True, an error will be raised if the pool does not
+                exist. Default is True.
+            verbose (bool, optional): Whether to enable verbose logging during job creation.
+                Default is False.
 
         Raises:
             RuntimeError: If the job creation fails due to Azure Batch service errors,
@@ -539,143 +557,43 @@ class CloudClient:
         )
         logger.info(f"Job '{job_name}' created successfully.")
 
-    def create_job_schedule(
-        self,
-        job_schedule_name: str,
-        pool_name: str,
-        command: str,
-        timeout: int = 30,
-        start_window: datetime.timedelta = None,
-        recurrence_interval: datetime.timedelta = None,
-        do_not_run_until: str = None,
-        do_not_run_after: str = None,
-        exist_ok=False,
-        verify_pool: bool = True,
-        verbose=False,
-    ):
-        """Create a job schedule in Azure Batch to run a job on a specified pool.
-
-        An job schedule is a service resource that automates the creation of recurring jobs.
-        Instead of manually submitting the same job each time it needs to run,
-        you can create a job schedule that handles the process automatically on a defined cadence
-
-        Args:
-            job_schedule_name (str): Unique display name for the job. Must be unique within the Batch
-                account. Can contain letters, numbers, hyphens, and underscores. Cannot
-                exceed 1024 characters. Spaces will be automatically replaced with dashes.
-            pool_name (str): Name of Azure batch pool where the job's tasks will run. The pool must exist before job schedule is created.
-            command (str): Docker command that will be run by the job manager task of the job created by the job schedule.
-            timeout (int, optional): The maximum time that the server can spend processing the request, in seconds.
-                Default is 30 seconds.
-            start_window (timedelta): If a Job is not created within the startWindow interval, then the 'opportunity' is lost;
-                no Job will be created until the next recurrence of the schedule.
-            recurrence_interval (timedelta): Specify a recurring interval for running the specified job
-            do_not_run_until (str): Disable the schedule until the specified time
-            do_not_run_after (str): Disable the schedule after the specified time
-            exist_ok (bool, optional): Whether to allow the job schedule creation if a job schedule with the
-                same name already exists. Default is False.
-
-        Raises:
-            RuntimeError: If the job schedule creation fails due to Azure Batch service errors,
-                authentication issues, or invalid parameters.
-            ValueError: If the job schedule ID is invalid
-
-        Example:
-            Create a simple job schedule with default timeout of 30 seconds and recurrence interval of 10 minutes
-
-                client = CloudClient()
-                client.create_job_schedule(
-                    job_schedule_name="Data Processing Job Schedule",
-                    pool_name="my-test-pool-1",
-                    command="python process_data.py",
-                    recurrence_interval=datetime.timedelta(minutes=10)
-                )
-
-            Create a simple job schedule with timeout of 900 seconds, recurrence interval of 2 hours. Job must be run before 11 PM on December 31st, 2025.
-
-                client = CloudClient()
-                client.create_job_schedule(
-                    job_schedule_name="Data Processing Job Schedule",
-                    pool_name="my-test-pool-2",
-                    command="python process_data.py",
-                    timeout=900,
-                    recurrence_interval=datetime.timedelta(hours=2),
-                    do_not_run_after="2025-12-31 23:00:00"
-                )
-        """
-        job_schedule_id = job_schedule_name.replace(" ", "-").lower()
-        logger.debug(f"job_schedule_id: {job_schedule_id}")
-
-        job_specification = batch_models.JobSpecification(
-            pool_info=batch_models.PoolInformation(pool_id=pool_name),
-            on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
-            job_manager_task=batch_models.JobManagerTask(
-                id=f"{job_schedule_id}-job", command_line=command
-            ),
-        )
-
-        do_not_run_after_datetime = None
-        if do_not_run_after:
-            do_not_run_after_datetime = datetime.datetime.strptime(
-                do_not_run_after, d.default_datetime_format
-            )
-        do_not_run_until_datetime = None
-        if do_not_run_until:
-            do_not_run_until_datetime = datetime.datetime.strptime(
-                do_not_run_until, d.default_datetime_format
-            )
-        schedule = batch_models.Schedule(
-            start_window=start_window,
-            recurrence_interval=recurrence_interval,
-            do_not_run_until=do_not_run_until_datetime,
-            do_not_run_after=do_not_run_after_datetime,
-        )
-
-        # add the job schedule
-        job_schedule_add_param = batch_models.JobScheduleAddParameter(
-            id=job_schedule_id,
-            display_name=job_schedule_name,
-            schedule=schedule,
-            job_specification=job_specification,
-        )
-
-        job_schedule_add_options = batch_models.JobScheduleAddOptions(
-            timeout=timeout,
-        )
-
-        # Create the job
-        create_job_schedule(
-            self.batch_service_client,
-            job_schedule_add_param,
-            exist_ok=exist_ok,
-            verify_pool=verify_pool,
-            verbose=verbose,
-            job_schedule_add_options=job_schedule_add_options,
-        )
-
     def add_task(
         self,
         job_name: str,
         command_line: str,
+        mount_pairs: list[dict] | None = None,
         name_suffix: str = "",
-        depends_on: str | None = None,
+        depends_on: str | list[str] | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
         container_image_name: str = None,
         timeout: int | None = None,
-    ):
+    ) -> str:
         """
         Add a task to an Azure Batch job.
 
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
+            mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task. Each dict is in the form {"source": <container_name>, "target": <target_name>}.
             name_suffix (str, optional): Suffix to append to the task ID.
-            depends_on (list[str], optional): List of task IDs this task depends on.
+            depends_on (str, list[str], optional): List of task IDs this task depends on.
             depends_on_range (tuple, optional): Range of task IDs this task depends on.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails.
             container_image_name (str, optional): Container image to use for the task.
             timeout (int, optional): Maximum time in minutes for the task to run.
+
+        Returns:
+            str: The ID of the added task.
+
+        Example:
+            Add a simple task to a job:
+                client = CloudClient()
+                task_id = client.add_task(
+                    job_name="data-processing-job",
+                    command_line="python process_data.py --input input.txt --output output.txt"
+                )
+                print(f"Added task with ID: {task_id}")
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
@@ -725,12 +643,21 @@ class CloudClient:
             logger.debug("No log saving to blob storage configured.")
 
         # get all mounts from pool info
-        self.mounts = batch_helpers.get_pool_mounts(
-            pool_name,
-            self.cred.azure_resource_group_name,
-            self.cred.azure_batch_account,
-            self.batch_mgmt_client,
-        )
+        if mount_pairs is None:
+            self.mounts = batch_helpers.get_pool_mounts(
+                pool_name,
+                self.cred.azure_resource_group_name,
+                self.cred.azure_batch_account,
+                self.batch_mgmt_client,
+            )
+        else:
+            self.mounts = [
+                {
+                    "source": mount["source"],
+                    "target": helpers.format_rel_path(mount["target"]),
+                }
+                for mount in mount_pairs
+            ]
 
         logger.debug("Adding tasks to job.")
         tid = batch_helpers.add_task(
@@ -857,7 +784,7 @@ class CloudClient:
         Supports filtering by file extensions and patterns to control which files are uploaded.
 
         Args:
-            folder_names (list[str]): List of local folder paths to upload. Each folder
+            folder_names (str / list[str]): List of local folder paths to upload. Each folder
                 will be recursively uploaded with its directory structure preserved.
             container_name (str): Name of the blob storage container to upload to. The
                 container must already exist.
@@ -930,7 +857,6 @@ class CloudClient:
         job_name: str,
         timeout: int | None = None,
         download_job_stats: bool = False,
-        download_task_output: bool = False,
     ) -> None:
         """Monitor the execution of tasks in an Azure Batch job.
 
@@ -946,8 +872,6 @@ class CloudClient:
             download_job_stats (bool, optional): Whether to download comprehensive job
                 statistics when the job completes. Statistics include task execution
                 times, resource usage, and success/failure rates. Default is False.
-            download_task_output (bool, optional): Whether to download the stdout and stderr of
-                each task when the task completes. Default is False.
 
         Example:
             Monitor a job with default settings:
@@ -971,10 +895,7 @@ class CloudClient:
         # monitor the tasks
         logger.debug(f"starting to monitor job {job_name}.")
         monitor = batch_helpers.monitor_tasks(
-            job_name,
-            timeout,
-            self.batch_service_client,
-            download_task_output=download_task_output,
+            job_name, timeout, self.batch_service_client
         )
         print(monitor)
         if download_job_stats:
@@ -1075,75 +996,6 @@ class CloudClient:
         logger.debug(f"Attempting to delete {job_name}.")
         self.batch_service_client.job.delete(job_name)
         logger.info(f"Job '{job_name}' deleted.")
-
-    def delete_job_schedule(self, job_schedule_id: str) -> None:
-        """Delete an Azure Batch job schedule.
-
-        Permanently removes a job schedule from the Batch account.
-
-        Args:
-            job_schedule_id (str): Name/ID of the job schedule to delete. The job schedule must exist.
-
-        Raises:
-            RuntimeError: If the job schedule deletion fails due to Azure Batch service errors
-                or if the job schedule does not exist.
-
-        Example:
-            Delete a completed job chedule:
-
-                client = CloudClient()
-                client.delete_job_schedule("my-job-schedule")
-
-        Warning:
-            This operation is irreversible.
-        """
-        logger.debug(f"Attempting to delete schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.delete(job_schedule_id)
-        logger.info(f"Job schedule {job_schedule_id} deleted.")
-
-    def resume_job_schedule(self, job_schedule_id: str) -> None:
-        """Resumes a suspended Azure Batch job schedule.
-
-        Enables a job schedule in the Batch account.
-
-        Args:
-            job_schedule_id (str): Name/ID of the job schedule to resume. The job schedule must exist.
-
-        Raises:
-            RuntimeError: If the job schedule suspension fails due to Azure Batch service errors
-                or if the job schedule does not exist.
-
-        Example:
-            Delete a completed job chedule:
-
-                client = CloudClient()
-                client.resume_job_schedule("my-job-schedule")
-        """
-        logger.debug(f"Attempting to resume schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.enable(job_schedule_id)
-        logger.info(f"Job schedule {job_schedule_id} resumed.")
-
-    def suspend_job_schedule(self, job_schedule_id: str) -> None:
-        """Suspends an active Azure Batch job schedule until it is resumed.
-
-        Disables a job schedule in the Batch account.
-
-        Args:
-            job_schedule_id (str): Name/ID of the job schedule to suspend. The job schedule must exist.
-
-        Raises:
-            RuntimeError: If the job schedule suspension fails due to Azure Batch service errors
-                or if the job schedule does not exist.
-
-        Example:
-            Delete a completed job chedule:
-
-                client = CloudClient()
-                client.suspend_job_schedule("my-job-schedule")
-        """
-        logger.debug(f"Attempting to suspend schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.disable(job_schedule_id)
-        logger.info(f"Job schedule {job_schedule_id} suspended.")
 
     def package_and_upload_dockerfile(
         self,
@@ -1491,7 +1343,7 @@ class CloudClient:
         exclude_extensions: str | list | None = None,
         location_in_blob: str = ".",
         max_concurrent_uploads: int = 20,
-    ):
+    ) -> None:
         """Upload entire folders to an Azure Blob Storage container asynchronously.
 
         Recursively uploads all files from specified folders to a blob storage container
@@ -1597,7 +1449,7 @@ class CloudClient:
         )
         logger.info(f"Pool '{pool_name}' deleted.")
 
-    def list_blob_files(self, blob_container: str = None):
+    def list_blob_files(self, blob_container: str = None) -> list[str] | None:
         """List all files in blob storage containers associated with the client.
 
         Retrieves a list of all blob files from either a specified container or from
@@ -1650,7 +1502,7 @@ class CloudClient:
                 filenames += _files
         return filenames
 
-    def delete_blob_file(self, blob_name: str, container_name: str):
+    def delete_blob_file(self, blob_name: str, container_name: str) -> None:
         """Delete a specific file from Azure Blob Storage.
 
         Permanently removes a file and all its snapshots from the specified blob
@@ -1687,7 +1539,7 @@ class CloudClient:
         )
         logger.info(f"Deleted blob '{blob_name}' from '{container_name}'.")
 
-    def delete_blob_folder(self, folder_path: str, container_name: str):
+    def delete_blob_folder(self, folder_path: str, container_name: str) -> None:
         """Delete an entire folder and all its contents from Azure Blob Storage.
 
         Recursively removes all files within the specified folder path from the blob
@@ -1727,7 +1579,7 @@ class CloudClient:
         )
         logger.info(f"Deleted folder '{folder_path}' from '{container_name}'.")
 
-    def download_job_stats(self, job_name: str, file_name: str | None = None):
+    def download_job_stats(self, job_name: str, file_name: str | None = None) -> None:
         """Download job statistics for a completed Azure Batch job.
 
         Downloads detailed statistics for all tasks in the specified job and saves them
@@ -1807,7 +1659,6 @@ class CloudClient:
             task_list.append(tid)
             logger.debug(f"Submitted task {tid}.")
         logger.info(f"Added {len(task_list)} tasks to job '{job_name}' from YAML file.")
-        return task_list
 
     def download_after_job(
         self,
@@ -1816,7 +1667,7 @@ class CloudClient:
         target: str,
         container_name: str,
         **kwargs,
-    ):
+    ) -> None:
         """Download files or directories from blob storage after a job completes.
 
         Waits for the specified job to complete, then downloads the specified files or
@@ -1879,64 +1730,7 @@ class CloudClient:
             f"Downloaded {len(blob_paths)} paths after job '{job_name}' completed."
         )
 
-    def generate_dag(self, *args: batch_helpers.Task, file_name: str):
-        """Creates an ASCII represention of a set of tasks as directed acyclic graph (DAG) in the correct order.
-
-        Accepts multiple Task objects, determines their execution order using topological
-        sorting, generates a graph and saves it into a text file
-
-        Args:
-            *args: batch_helpers.Task objects representing tasks and their dependencies.
-            file_name (str): Name of the file where graph will be stored.
-            **kwargs: Additional keyword arguments passed to add_task().
-
-        Example:
-            Generate diagram for DAG of tasks:
-
-                client = CloudClient()
-                t1 = Task("python step1.py", id='task1')
-                t2 = Task("python step2.py", id='task2')
-                t3 = Task("python step3.py") # id will be auto-assigned with task prefix
-                t4 = Task("python step4.py")
-                t2.after(t1)
-                t3.after(t1)
-                t4.after([t2, t3])
-                client.generate_dag(t1, t2, t3, t4, file_name="dag_job.txt")
-        """
-
-        # Access the caller's local variables
-        caller_variables = list(inspect.currentframe().f_back.f_locals.items())
-        tasks = args
-        task_mapping = {}
-        for task in tasks:
-            for name, val in caller_variables:
-                if val is task:
-                    task_mapping[name] = val
-
-        def apply_mapping(task_id, mapping):
-            for name, val in mapping.items():
-                if val.id == task_id:
-                    return name
-            return None
-
-        for task in tasks:
-            task.id = apply_mapping(task.id, task_mapping)
-            for dep in task.deps:
-                dep.id = apply_mapping(dep.id, task_mapping)
-
-        graph = nx.DiGraph()
-        for task in tasks:
-            for predecessor in task.deps:
-                graph.add_edge(predecessor.id, task.id)
-        nx.write_network_text(
-            graph,
-            with_labels=False,
-            vertical_chains=True,
-            ascii_only=True,
-            path=file_name,
-        )
-
-    def run_dag(self, *args: batch_helpers.Task, job_name: str, **kwargs):
+    def run_dag(self, *args: batch_helpers.Task, job_name: str, **kwargs) -> None:
         """Run a set of tasks as a directed acyclic graph (DAG) in the correct order.
 
         Accepts multiple Task objects, determines their execution order using topological
@@ -1981,7 +1775,7 @@ class CloudClient:
             task_order = [*ts.static_order()]
             logger.debug("Successfully determined task execution order.")
         except CycleError as ce:
-            logger.warning("Submitted tasks do not form a DAG.")
+            logger.warning("Submitted tasks do not form a DAG: ce")
             raise ce
         task_df = pd.DataFrame(columns=["id", "cmd", "deps"])
         # initialize df for task execution

@@ -675,6 +675,17 @@ class DefaultCredentialHandler(CredentialHandler):
         dotenv_path: str | None = None,
         **kwargs,
     ) -> None:
+        """
+        Initialize a DefaultCredentialHandler for Azure authentication.
+
+        Loads environment variables from a .env file and retrieves Azure subscription information using DefaultAzureCredential.
+
+        Args:
+            dotenv_path (str | None): Path to .env file to load environment variables from. If None, uses default .env file discovery. Optional.
+            **kwargs: Additional keyword arguments to override specific credential attributes.
+        Raises:
+            ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables or subscription cannot be found.
+        """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
         load_dotenv(dotenv_path=dotenv_path)
