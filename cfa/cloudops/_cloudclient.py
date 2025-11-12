@@ -173,15 +173,15 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of Blob Storage             mounts (list, optional): List of mount configurations as strings or dictionaries.
-                If provided, the specified Blob Storage containers will be mounted to
-                the compute nodes in the pool. The format can be:
+            mounts (list, optional): List of mount configurations for Blob Storage containers.
+                If provided, the specified containers will be mounted to the compute nodes in the pool.
+                The format can be either:
                     - List of strings: ["container1", "container2"]
-                    - List of dictionaries: [{"source": "container1", "target": "/mnt/container1"}, ...]rovide:
-                - As strings: ["input-data", "output-results"]
-                - As dictionaries: [{"source": "input-data", "target": "/mnt/input"}, {"source": "output-results", "target": "/mnt/output"}]
-                    If provided this way as dictionaries, the value of each target is
-                    how you reference the mount path in your container.
+                    - List of dictionaries: [{"source": "container1", "target": "/mnt/container1"}, ...]
+                For example:
+                    - As strings: ["input-data", "output-results"]
+                    - As dictionaries: [{"source": "input-data", "target": "/mnt/input"}, {"source": "output-results", "target": "/mnt/output"}]
+                When using dictionaries, the "target" value specifies the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
