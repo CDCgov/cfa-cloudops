@@ -1,12 +1,101 @@
+import builtins
+from unittest.mock import MagicMock, patch
+
+import anyio
 import pytest
 from azure.batch import models
+from azure.storage.blob import BlobProperties
 
-from cfa.cloudops.blob import get_node_mount_config
+from cfa.cloudops.blob import (
+    _async_download_blob_folder,
+    _async_upload_blob_folder,
+    async_download_blob_folder,
+    async_upload_folder,
+    download_from_storage_container,
+    get_node_mount_config,
+    upload_to_storage_container,
+)
+
+
+class MockLogger:
+    def __init__(self, name: str):
+        self.name = name
+        self.messages = []
+        self.handlers = []
+
+    def debug(self, message):
+        self.messages.append(("DEBUG", message))
+
+    def info(self, message):
+        self.messages.append(("INFO", message))
+
+    def warning(self, message):
+        self.messages.append(("WARNING", message))
+
+    def error(self, message):
+        self.messages.append(("ERROR", message))
+
+    def addHandler(self, handler):
+        if handler not in self.handlers:
+            self.handlers.append(handler)
+
+    def removeHandler(self, handler):
+        if handler in self.handlers:
+            self.handlers.remove(handler)
+
+    def assert_logged(self, level, message):
+        assert (level, message) in self.messages, (
+            f"Expected log ({level}, {message}) not found."
+        )
+
+
+@pytest.fixture(autouse=True)
+def mock_logging(monkeypatch):
+    """
+    Monkeypatch the logging library to use a mock logger.
+    """
+    mock_logger = MockLogger(name=__name__)
+    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
+    return mock_logger
+
+
+@pytest.fixture
+def mock_get_container_client():
+    with patch(
+        "azure.storage.blob.ContainerClient",
+        return_value=MagicMock(),
+    ) as mock_client:
+        fake_blob_properties = [
+            {"name": "my_test_1.txt", "size": 100},
+            {"name": "my_test_2.txt", "size": 200},
+            {"name": "not_my_test_1.csv", "size": 250},
+            {"name": "not_my_test_2.json", "size": 50},
+            {"name": "large_file_1.parquet", "size": 1e9},
+            {"name": "large_file_2.parquet", "size": 2e9},
+        ]
+        fake_blobs = []
+        for fake in fake_blob_properties:
+            fake_blob = BlobProperties()
+            fake_blob.name = fake["name"]
+            fake_blob.size = fake["size"]
+            fake_blobs.append(fake_blob)
+
+        mock_client.list_blobs = MagicMock(return_value=fake_blobs)
+        yield mock_client
 
 
 @pytest.fixture
 def mock_compute_node():
     return models.ComputeNodeIdentityReference(resource_id="mock-resource-id")
+
+
+@pytest.fixture
+def mock_get_blob_service_client():
+    with patch(
+        "cfa.cloudops._cloudclient.get_blob_service_client",
+        return_value=MagicMock(),
+    ) as mock_client:
+        yield mock_client
 
 
 def test_get_node_mount_config_success(mock_compute_node):
@@ -65,3 +154,138 @@ def test_get_node_mount_config_errors(mock_compute_node):
     assert str(excinfo.value).startswith(
         "Must either provide a single `identity_references`value"
     )
+
+
+@pytest.mark.asyncio
+async def test__async_download_blob_folder_success(
+    monkeypatch, mock_get_container_client, mock_logging
+):
+    local_folder = anyio.Path("testdata")
+    monkeypatch.setattr(builtins, "input", lambda _: "Y")
+    with patch.object(builtins, "print", return_value=True) as mock_print:
+        await _async_download_blob_folder(
+            container_client=mock_get_container_client,
+            local_folder=local_folder,
+            max_concurrent_downloads=10,
+        )
+        mock_print.assert_called_with(
+            "Warning: Total size of files to download is greater than 2 GB."
+        )
+    await _async_download_blob_folder(
+        container_client=mock_get_container_client,
+        local_folder=local_folder,
+        max_concurrent_downloads=10,
+        name_starts_with="my_test",
+        include_extensions=".txt",
+    )
+    await _async_download_blob_folder(
+        container_client=mock_get_container_client,
+        local_folder=local_folder,
+        max_concurrent_downloads=10,
+        exclude_extensions=".parquet",
+    )
+    assert mock_logging.messages == []
+
+
+@pytest.mark.asyncio
+async def test__async_download_blob_folder_fail(monkeypatch, mock_get_container_client):
+    local_folder = anyio.Path("testdata")
+    with pytest.raises(Exception) as excinfo:
+        await _async_download_blob_folder(
+            container_client=mock_get_container_client,
+            local_folder=local_folder,
+            max_concurrent_downloads=10,
+            include_extensions=".txt",
+            exclude_extensions=".json",
+        )
+        assert str(excinfo.value) == (
+            "Attempt to create job schedule my-job-schedule on pool my-pool, but could not find the requested pool. "
+            "Check that this pool id is correct and that a pool with that id exists"
+        )
+    monkeypatch.setattr(builtins, "input", lambda _: "N")
+    with patch.object(builtins, "print", return_value=True) as mock_print:
+        await _async_download_blob_folder(
+            container_client=mock_get_container_client,
+            local_folder=local_folder,
+            max_concurrent_downloads=10,
+            include_extensions=".parquet",
+        )
+        mock_print.assert_called_with("Download aborted.")
+
+
+@pytest.mark.asyncio
+async def test__async_upload_blob_folder_success(
+    mock_get_container_client, mock_logging
+):
+    local_folder = anyio.Path("testdata")
+    await _async_upload_blob_folder(
+        container_client=mock_get_container_client,
+        folder=local_folder,
+        max_concurrent_uploads=10,
+        include_extensions=".txt",
+    )
+    await _async_upload_blob_folder(
+        container_client=mock_get_container_client,
+        folder=local_folder,
+        max_concurrent_uploads=10,
+        exclude_extensions=".parquet",
+    )
+    assert mock_logging.messages == []
+
+
+@pytest.mark.asyncio
+async def test__async_upload_blob_folder_fail(mock_get_container_client):
+    with patch("anyio.Path", return_value=MagicMock()) as mock_path:
+        mock_path.exists = MagicMock(return_value=True)
+        mock_path.isdir = False
+        with pytest.raises(Exception) as excinfo:
+            await _async_upload_blob_folder(
+                container_client=mock_get_container_client,
+                folder=mock_path,
+                max_concurrent_uploads=10,
+                include_extensions=".txt",
+                exclude_extensions=".json",
+            )
+            assert str(excinfo.value) == (
+                "Use include_extensions or exclude_extensions, not both."
+            )
+
+
+def test_async_upload_blob_folder():
+    result = async_upload_folder(
+        folder="testdata",
+        container_name="my-container",
+        storage_account_url="my-storage-account-url",
+    )
+    assert result == "testdata"
+
+
+def test_async_download_blob_folder():
+    result = async_download_blob_folder(
+        container_name="my-container",
+        local_folder="testdata",
+        storage_account_url="my-storage-account-url",
+    )
+    assert result == "testdata"
+
+
+def test_upload_to_storage_container(mocker, mock_get_blob_service_client):
+    mocker.patch("builtins.open", mocker.mock_open(read_data="Some data"))
+    with patch.object(builtins, "print", return_value=True) as mock_print:
+        upload_to_storage_container(
+            file_paths="/testdata/myfile.txt",
+            blob_storage_container_name="my-blob-storage-container",
+            blob_service_client=mock_get_blob_service_client,
+        )
+        mock_print.assert_called_with("Uploaded 1 files to blob storage container")
+
+
+def test_download_from_storage_container(mocker, mock_get_blob_service_client):
+    mocker.patch("builtins.open", mocker.mock_open(read_data="Some data"))
+    with patch.object(builtins, "print", return_value=True) as mock_print:
+        download_from_storage_container(
+            file_paths="/testdata/myfile.txt",
+            blob_storage_container_name="my-blob-storage-container",
+            blob_service_client=mock_get_blob_service_client,
+        )
+        mock_print.assert_called_with("Downloaded 1 files from blob storage container")

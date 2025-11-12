@@ -13,48 +13,6 @@ from azure.batch.models import (
 from cfa.cloudops.job import create_job, create_job_schedule
 
 
-class MockLogger:
-    def __init__(self, name: str):
-        self.name = name
-        self.messages = []
-        self.handlers = []
-
-    def debug(self, message):
-        self.messages.append(("DEBUG", message))
-
-    def info(self, message):
-        self.messages.append(("INFO", message))
-
-    def warning(self, message):
-        self.messages.append(("WARNING", message))
-
-    def error(self, message):
-        self.messages.append(("ERROR", message))
-
-    def addHandler(self, handler):
-        if handler not in self.handlers:
-            self.handlers.append(handler)
-
-    def removeHandler(self, handler):
-        if handler in self.handlers:
-            self.handlers.remove(handler)
-
-    def assert_logged(self, level, message):
-        assert (level, message) in self.messages, (
-            f"Expected log ({level}, {message}) not found."
-        )
-
-
-@pytest.fixture(autouse=True)
-def mock_logging(monkeypatch):
-    """
-    Monkeypatch the logging library to use a mock logger.
-    """
-    mock_logger = MockLogger(name=__name__)
-    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
-    return mock_logger
-
-
 @pytest.fixture
 def mock_batch_client():
     mock_client = MagicMock(spec=BatchServiceClient)
