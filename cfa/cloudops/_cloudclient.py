@@ -217,7 +217,7 @@ class CloudClient:
                 client = CloudClient()
                 client.create_pool(
                     pool_name="my-compute-pool",
-                    container_image_nam="myapp:lates "output-data"rd_D2s_v3"
+                    container_image_name="myapp:latest"
                 )
 
             Create a pool with storage mounts and fixed scaling:
