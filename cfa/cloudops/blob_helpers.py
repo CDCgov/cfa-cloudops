@@ -123,120 +123,74 @@ def upload_files_in_folder(
         - Large uploads (>50 files) prompt for confirmation unless force_upload=True
         - Extensions are automatically formatted with leading periods
     """
-    # check that include and exclude extensions are not both used, format if exist
+    # Format extensions and patterns
     if include_extensions is not None:
         include_extensions = format_extensions(include_extensions)
-        logger.debug(f"Formatted include extensions: {include_extensions}")
     elif exclude_extensions is not None:
         exclude_extensions = format_extensions(exclude_extensions)
-        logger.debug(f"Formatted exclude extensions: {exclude_extensions}")
-
     if include_extensions is not None and exclude_extensions is not None:
         logger.error("Use included_extensions or exclude_extensions, not both.")
-        raise Exception(
-            "Use included_extensions or exclude_extensions, not both."
-        ) from None
+        raise Exception("Use included_extensions or exclude_extensions, not both.")
+    if exclude_patterns is not None and not isinstance(exclude_patterns, list):
+        exclude_patterns = [exclude_patterns]
 
-    if exclude_patterns is not None:
-        exclude_patterns = (
-            [exclude_patterns]
-            if not isinstance(exclude_patterns, list)
-            else exclude_patterns
+    # Validate folder and container
+    if not path.isdir(folder):
+        logger.warning(
+            f"{folder} is not a folder/directory. Make sure to specify a valid folder."
         )
-        logger.debug(f"Exclude patterns configured: {exclude_patterns}")
-    # check container exists
-    logger.debug(f"Checking Blob container {container_name} exists.")
-    # create container client
+        return None
     container_client = blob_service_client.get_container_client(
         container=container_name
     )
-    # check if container client exists
     if not container_client.exists():
         logger.error(
             f"Blob container {container_name} does not exist. Please try again with an existing Blob container."
         )
         raise Exception(
             f"Blob container {container_name} does not exist. Please try again with an existing Blob container."
-        ) from None
-    # check number of files if force_upload False
-    logger.debug(f"Blob container {container_name} found. Uploading files...")
-    # check if files should be force uploaded
+        )
+
+    # File count check for force_upload
     if not force_upload:
-        fnum = []
-        for _, _, file in os.walk(os.path.realpath(f"./{folder}")):
-            fnum.append(len(file))
-        fnum_sum = sum(fnum)
+        fnum_sum = sum(
+            len(files) for _, _, files in os.walk(os.path.realpath(f"./{folder}"))
+        )
         if fnum_sum > 50:
             print(f"You are about to upload {fnum_sum} files.")
             resp = input("Continue? [Y/n]: ")
-            if resp == "Y" or resp == "y":
-                pass
-            else:
+            if resp.lower() != "y":
                 print("Upload aborted.")
                 return None
-    # get all files in folder
-    file_list = []
-    # check if folder is valid
-    if not path.isdir(folder):
-        logger.warning(
-            f"{folder} is not a folder/directory. Make sure to specify a valid folder."
-        )
-        return None
+
+    # Gather and filter files in one pass
     file_list = walk_folder(folder)
     logger.debug(f"Initial file list contains {len(file_list)} files")
 
-    # create sublist matching include_extensions and exclude_extensions
-    flist = []
-    if include_extensions is None:
-        if exclude_extensions is not None:
-            logger.debug("Filtering files by exclude extensions")
-            # find files that don't contain the specified extensions
-            for _file in file_list:
-                file_ext = os.path.splitext(_file)[1]
-                if file_ext not in exclude_extensions:
-                    flist.append(_file)
-                else:
-                    logger.debug(f"Excluding file '{_file}' (extension: {file_ext})")
-        else:  # this is for no specified extensions to include of exclude
-            logger.debug("No extension filtering - including all files")
-            flist = file_list
-    else:
-        logger.debug("Filtering files by include extensions")
-        # include only specified extension files
-        for _file in file_list:
-            file_ext = os.path.splitext(_file)[1]
-            if file_ext in include_extensions:
-                flist.append(_file)
-            else:
-                logger.debug(
-                    f"Excluding file '{_file}' (extension: {file_ext} not in include list)"
-                )
+    def file_filter(f):
+        ext = os.path.splitext(f)[1]
+        if include_extensions is not None:
+            if ext not in include_extensions:
+                return False
+        elif exclude_extensions is not None:
+            if ext in exclude_extensions:
+                return False
+        if exclude_patterns is not None and any(pat in f for pat in exclude_patterns):
+            return False
+        return True
 
-    logger.debug(f"After extension filtering: {len(flist)} files remain")
-
-    # iteratively call the upload_blob_file function to upload individual files
-    final_list = []
-    excluded_by_pattern = 0
-
-    for file in flist:
-        # if a pattern from exclude_patterns is found, skip uploading this file
-        if exclude_patterns is not None and any(
-            pattern in file for pattern in exclude_patterns
-        ):
-            # dont upload this file if an excluded pattern is found within
-            excluded_by_pattern += 1
-            logger.debug(f"Excluding file '{file}' due to pattern match")
-            continue
-        else:
-            final_list.append(file)
-
-    if excluded_by_pattern > 0:
-        logger.debug(f"Excluded {excluded_by_pattern} files due to pattern matching")
-
+    final_list = [f for f in file_list if file_filter(f)]
     logger.debug(f"Final upload list contains {len(final_list)} files")
 
-    for file in final_list:
-        logger.debug(f"Calling upload_blob_file for {file}")
+    # Batch log summary if many files
+    if len(final_list) > 10:
+        logger.info(
+            f"Uploading {len(final_list)} files to container '{container_name}' at '{location_in_blob}'."
+        )
+    else:
+        for file in final_list:
+            logger.debug(f"Uploading file: {file}")
+
     upload_to_storage_container(
         file_paths=final_list,
         blob_storage_container_name=container_name,
@@ -777,40 +731,36 @@ def download_folder(
     if not check_virtual_directory_existence(c_client, src_path):
         raise ValueError(f"Source virtual directory: {src_path} does not exist.")
 
-    blob_list = []
     if not src_path.endswith("/"):
         src_path += "/"
-    for blob in list_blobs_in_container(
+    # Filter blobs in one pass
+    blobs = list_blobs_in_container(
         name_starts_with=src_path, container_client=c_client
-    ):
-        b = blob.name
-        if b.split(src_path)[0] == "" and "." in b:
-            blob_list.append(b)
+    )
 
-    flist = []
-    if include_extensions is None:
-        if exclude_extensions is not None:
-            # find files that don't contain the specified extensions
-            for _file in blob_list:
-                if os.path.splitext(_file)[1] not in exclude_extensions:
-                    flist.append(_file)
-        else:  # this is for no specified extensions to include or exclude
-            flist = blob_list
-    else:
-        # include only specified extension files
-        for _file in blob_list:
-            if os.path.splitext(_file)[1] in include_extensions:
-                flist.append(_file)
+    def blob_filter(b):
+        ext = os.path.splitext(b.name)[1]
+        if include_extensions is not None:
+            if ext not in include_extensions:
+                return False
+        elif exclude_extensions is not None:
+            if ext in exclude_extensions:
+                return False
+        if b.name.split(src_path)[0] != "" or "." not in b.name:
+            return False
+        return True
+
+    flist = [b.name for b in blobs if blob_filter(b)]
+
     # input check on file size here
     if check_size:
-        lblobs = c_client.list_blobs(name_starts_with=src_path)
-        t_size = 0
-        gb = 1e9
-        for blob in lblobs:
-            if blob.name in flist:
-                t_size += blob.size
+        t_size = sum(
+            blob.size
+            for blob in c_client.list_blobs(name_starts_with=src_path)
+            if blob.name in flist
+        )
         print("Total size of files to download: ", ns(t_size))
-        if t_size > 2 * gb:
+        if t_size > 2 * 1e9:
             print("Warning: Total size of files to download is greater than 2 GB.")
             cont = input("Continue? [Y/n]: ")
             if cont.lower() != "y":

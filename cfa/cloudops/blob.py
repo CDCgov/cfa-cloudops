@@ -48,20 +48,7 @@ def format_extensions(extension):
 
     if isinstance(extension, str):
         extension = [extension]
-        logger.debug("Converted single extension string to list")
-
-    ext = []
-    for _ext in extension:
-        if _ext.startswith("."):
-            ext.append(_ext)
-            logger.debug(f"Extension '{_ext}' already has leading period")
-        else:
-            formatted_ext = "." + _ext
-            ext.append(formatted_ext)
-            logger.debug(
-                f"Added leading period to extension: '{_ext}' -> '{formatted_ext}'"
-            )
-
+    ext = [e if e.startswith(".") else f".{e}" for e in extension]
     logger.debug(f"Final formatted extensions: {ext}")
     return ext
 
@@ -149,24 +136,18 @@ def upload_to_storage_container(
     logger.debug(f"Uploading {n_total_files} files to blob storage")
 
     for i_file, file_path in enumerate(file_paths):
-        if i_file % (1 + int(n_total_files / 10)) == 0:
-            print("Uploading file {} of {}".format(i_file, n_total_files))
-            logger.debug(f"Upload progress: {i_file}/{n_total_files} files completed")
-
+        if n_total_files > 50:
+            if i_file % 10 == 0:
+                print(f"Uploading file {i_file} of {n_total_files}")
+        else:
+            print(f"Uploading file {i_file} of {n_total_files}")
         local_file_path = os.path.join(local_root_dir, file_path)
         remote_file_path = os.path.join(remote_root_dir, file_path)
-
-        logger.debug(f"Uploading '{local_file_path}' -> '{remote_file_path}'")
-
         blob_client = blob_service_client.get_blob_client(
             container=blob_storage_container_name, blob=remote_file_path
         )
-
-        logger.debug(f"Created blob client for '{remote_file_path}'")
-
         with open(local_file_path, "rb") as upload_data:
             blob_client.upload_blob(upload_data, overwrite=True)
-            logger.debug(f"Successfully uploaded '{file_path}'")
 
     logger.info(
         f"Uploaded {n_total_files} file(s) to container '{blob_storage_container_name}'."
@@ -230,10 +211,11 @@ def download_from_storage_container(
         logger.debug("Blob service client created successfully")
 
     for i_file, file_path in enumerate(file_paths):
-        if i_file % (1 + int(n_total_files / 10)) == 0:
+        if n_total_files > 50:
+            if i_file % 10 == 0:
+                print(f"Downloading file {i_file} of {n_total_files}")
+        else:
             print(f"Downloading file {i_file} of {n_total_files}")
-            logger.debug(f"Download progress: {i_file}/{n_total_files} files completed")
-
         local_file_path = os.path.join(local_root_dir, file_path)
         remote_file_path = os.path.join(remote_root_dir, file_path)
 

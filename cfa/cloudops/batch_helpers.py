@@ -307,10 +307,7 @@ def download_job_stats(
         "pool",
         "node_id",
     ]
-    with open(rf"{file_name}.csv", "w") as f:
-        logger.debug(f"initializing {file_name}.csv.")
-        writer = csv.writer(f, delimiter="|")
-        writer.writerow(fields)
+    rows = []
     for item in r:
         st = item.execution_info.start_time
         et = item.execution_info.end_time
@@ -323,12 +320,14 @@ def download_job_stats(
         node_id = item.node_info.node_id
         cli = item.command_line.split(" -")[0]
         pool = item.node_info.pool_id
-        fields = [id, cli, creation, start, end, rt, exit_code, pool, node_id]
-        with open(rf"{file_name}.csv", "a") as f:
-            writer = csv.writer(f, delimiter="|")
-            writer.writerow(fields)
-            logger.debug(f"Wrote task {item.id} statistics to CSV")
-
+        row = [id, cli, creation, start, end, rt, exit_code, pool, node_id]
+        rows.append(row)
+        logger.debug(f"Prepared task {item.id} statistics for CSV")
+    with open(rf"{file_name}.csv", "w") as f:
+        logger.debug(f"Writing all statistics to {file_name}.csv.")
+        writer = csv.writer(f, delimiter="|")
+        writer.writerow(fields)
+        writer.writerows(rows)
     logger.debug(f"Job statistics download completed. File saved as: {file_name}.csv")
     print(f"Downloaded job statistics report to {file_name}.csv.")
 

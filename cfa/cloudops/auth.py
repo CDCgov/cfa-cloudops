@@ -84,16 +84,18 @@ class CredentialHandler:
             AttributeError: A non-None value for attribute azure_tenant_id is required...
         """
         attributes = ensure_listlike(attributes)
-        err_msgs = []
-        for attr in attributes:
-            attr_val = getattr(self, attr)
-            if attr_val is None:
-                err_msg = (f"A non-None value for attribute {attr} is required ") + (
+        err_msgs = [
+            (
+                f"A non-None value for attribute {attr} is required "
+                + (
                     f"to obtain a value for {goal}."
                     if goal is not None
                     else "for this operation."
                 )
-                err_msgs.append(err_msg)
+            )
+            for attr in attributes
+            if getattr(self, attr) is None
+        ]
         if err_msgs:
             raise AttributeError("\n".join(err_msgs))
 

@@ -100,13 +100,19 @@ class ContainerAppClient:
             if self.job_name is None:
                 logger.error("No job name provided.")
                 raise ValueError("Please specify a job name.")
-            else:
-                job_name = self.job_name
-                logger.debug(f"Job name {self.job_name} pulled from instance variable.")
+            job_name = self.job_name
+            logger.debug(f"Job name {self.job_name} pulled from instance variable.")
 
-        for i in self.client.jobs.list_by_resource_group(self.resource_group):
-            if i.name == job_name:
-                job_info = i
+        jobs = {
+            i.name: i
+            for i in self.client.jobs.list_by_resource_group(self.resource_group)
+        }
+        job_info = jobs.get(job_name)
+        if job_info is None:
+            logger.error(
+                f"Job '{job_name}' not found in resource group '{self.resource_group}'."
+            )
+            raise ValueError(f"Job '{job_name}' not found.")
         logger.info(f"Retrieved info for job '{job_name}'.")
         return job_info.as_dict()
 
@@ -125,28 +131,33 @@ class ContainerAppClient:
             if self.job_name is None:
                 logger.error("No job name provided.")
                 raise ValueError("Please specify a job name.")
-            else:
-                job_name = self.job_name
-                logger.debug(f"Job name {self.job_name} pulled from instance variable.")
+            job_name = self.job_name
+            logger.debug(f"Job name {self.job_name} pulled from instance variable.")
 
-        for i in self.client.jobs.list_by_resource_group(self.resource_group):
-            if i.name == job_name:
-                job_info = i
+        jobs = {
+            i.name: i
+            for i in self.client.jobs.list_by_resource_group(self.resource_group)
+        }
+        job_info = jobs.get(job_name)
+        if job_info is None:
+            logger.error(
+                f"Job '{job_name}' not found in resource group '{self.resource_group}'."
+            )
+            raise ValueError(f"Job '{job_name}' not found.")
         logger.info(f"Retrieved command info for job '{job_name}'.")
         logger.debug("Extracting container information.")
-        c_info = job_info.__dict__["template"].__dict__["containers"]
-        container_dicts = []
-        logger.debug("Building container info list.")
-        for c in c_info:
-            container_dict = {
+        c_info = job_info.template.containers
+        container_dicts = [
+            {
                 "job_name": c.name,
                 "image": c.image,
                 "command": c.command,
                 "args": c.args,
                 "env": c.env,
             }
-            logger.debug("Appending container info to list.")
-            container_dicts.append(container_dict)
+            for c in c_info
+        ]
+        logger.debug("Built container info list.")
         return container_dicts
 
     def list_jobs(self):
