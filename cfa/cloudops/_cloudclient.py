@@ -251,7 +251,7 @@ class CloudClient:
                 )
                 logger.debug("Generated mount configuration from string list.")
             elif isinstance(mounts[0], dict):
-                logger.debug
+                logger.debug("Mounts provided as list of dicts.")
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
