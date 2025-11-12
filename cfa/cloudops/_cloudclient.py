@@ -1775,7 +1775,7 @@ class CloudClient:
             task_order = [*ts.static_order()]
             logger.debug("Successfully determined task execution order.")
         except CycleError as ce:
-            logger.warning("Submitted tasks do not form a DAG: ce")
+            logger.warning(f"Submitted tasks do not form a DAG: {ce}")
             raise ce
         task_df = pd.DataFrame(columns=["id", "cmd", "deps"])
         # initialize df for task execution
