@@ -516,7 +516,7 @@ def delete_pool(
     account_name: str,
     pool_name: str,
     batch_mgmt_client: object,
-):
+) -> None:
     """Delete an Azure Batch pool and all its compute nodes.
 
     Initiates the deletion of a pool from the Azure Batch account. This operation

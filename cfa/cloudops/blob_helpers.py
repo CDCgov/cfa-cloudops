@@ -515,7 +515,7 @@ def check_virtual_directory_existence(
         bool: True if any blobs exist with names starting with vdir_path, False otherwise.
 
     Raises:
-        StopIteration: If no blobs are found in the virtual directory.
+        Exception: If an error occurs while listing blobs.
 
     Example:
         Check if a data directory exists:
@@ -542,7 +542,7 @@ def check_virtual_directory_existence(
         first_blob = next(blobs)
         logger.debug(f"{first_blob.name} found.")
         return True
-    except StopIteration as e:
+    except Exception as e:
         logger.error(repr(e))
         raise e
 

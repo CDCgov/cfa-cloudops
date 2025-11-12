@@ -40,6 +40,53 @@ logger = logging.getLogger(__name__)
 
 
 class CloudClient:
+    """High-level client for managing Azure Batch resources and operations.
+
+    CloudClient provides a simplified interface for creating and managing Azure Batch
+    pools, jobs, and tasks. It handles authentication, client initialization, and
+    provides convenient methods for common batch operations.
+
+    Args:
+        dotenv_path (str, optional): Path to .env file containing environment variables.
+            If None, uses default .env file discovery. Default is None.
+        use_sp (bool, optional): Whether to use Service Principal authentication.
+            Default is False.
+        use_federated (bool, optional): Whether to use federated/default credentials.
+            Default is False.
+        **kwargs: Additional keyword arguments passed to the credential handler.
+
+    Attributes:
+        cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
+        batch_mgmt_client: Azure Batch management client
+        compute_mgmt_client: Azure Compute management client
+        batch_service_client: Azure Batch service client
+        blob_service_client: Azure Blob storage client
+        pool_name (str): Name of the most recently created or used pool
+        save_logs_to_blob (str): Blob container name for saving task logs
+        logs_folder (str): Folder path within blob container for logs
+        task_id_ints (bool): Whether to use integer task IDs
+        task_id_max (int): Maximum task ID when using integer IDs
+
+    Example:
+        Create a client with environment-based authentication:
+
+            client = CloudClient()
+
+        Create a client with Service Principal authentication:
+
+            client = CloudClient(
+                use_sp=True,
+                dotenv_path="/path/to/.env"
+            )
+
+        Create a client with custom configuration:
+
+            client = CloudClient(
+                azure_tenant_id="custom-tenant-id",
+                azure_subscription_id="custom-sub-id"
+            )
+    """
+
     def __init__(
         self,
         dotenv_path: str = None,
@@ -47,52 +94,6 @@ class CloudClient:
         use_federated: bool = False,
         **kwargs,
     ):
-        """High-level client for managing Azure Batch resources and operations.
-
-        CloudClient provides a simplified interface for creating and managing Azure Batch
-        pools, jobs, and tasks. It handles authentication, client initialization, and
-        provides convenient methods for common batch operations.
-
-        Args:
-            dotenv_path (str, optional): Path to .env file containing environment variables.
-                If None, uses default .env file discovery. Default is None.
-            use_sp (bool, optional): Whether to use Service Principal authentication.
-                Default is False.
-            use_federated (bool, optional): Whether to use federated/default credentials.
-                Default is False.
-            **kwargs: Additional keyword arguments passed to the credential handler.
-
-        Attributes:
-            cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
-            batch_mgmt_client: Azure Batch management client
-            compute_mgmt_client: Azure Compute management client
-            batch_service_client: Azure Batch service client
-            blob_service_client: Azure Blob storage client
-            pool_name (str): Name of the most recently created or used pool
-            save_logs_to_blob (str): Blob container name for saving task logs
-            logs_folder (str): Folder path within blob container for logs
-            task_id_ints (bool): Whether to use integer task IDs
-            task_id_max (int): Maximum task ID when using integer IDs
-
-        Example:
-            Create a client with environment-based authentication:
-
-                client = CloudClient()
-
-            Create a client with Service Principal authentication:
-
-                client = CloudClient(
-                    use_sp=True,
-                    dotenv_path="/path/to/.env"
-                )
-
-            Create a client with custom configuration:
-
-                client = CloudClient(
-                    azure_tenant_id="custom-tenant-id",
-                    azure_subscription_id="custom-sub-id"
-                )
-        """
         logger.debug("Initializing CloudClient.")
         # authenticate to get credentials
         if not use_sp and not use_federated:
