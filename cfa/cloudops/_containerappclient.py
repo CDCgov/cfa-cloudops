@@ -100,8 +100,8 @@ class ContainerAppClient:
             if self.job_name is None:
                 logger.error("No job name provided.")
                 raise ValueError("Please specify a job name.")
-            job_name = self.job_name
-            logger.debug(f"Job name {self.job_name} pulled from instance variable.")
+        job_name = self.job_name
+        logger.debug(f"Job name {self.job_name} pulled from instance variable.")
 
         jobs = {
             i.name: i
