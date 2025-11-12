@@ -40,51 +40,6 @@ logger = logging.getLogger(__name__)
 
 
 class CloudClient:
-    """High-level client for managing Azure Batch resources and operations.
-
-    CloudClient provides a simplified interface for creating and managing Azure Batch
-    pools, jobs, and tasks. It handles authentication, client initialization, and
-    provides convenient methods for common batch operations.
-
-    Args:
-        dotenv_path (str, optional): Path to .env file containing environment variables.
-            If None, uses default .env file discovery. Default is None.
-        use_sp (bool, optional): Whether to use Service Principal authentication (True)
-            or environment-based authentication (False). Default is False.
-        **kwargs: Additional keyword arguments passed to the credential handler.
-
-    Attributes:
-        cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
-        batch_mgmt_client: Azure Batch management client
-        compute_mgmt_client: Azure Compute management client
-        batch_service_client: Azure Batch service client
-        blob_service_client: Azure Blob storage client
-        pool_name (str): Name of the most recently created or used pool
-        save_logs_to_blob (str): Blob container name for saving task logs
-        logs_folder (str): Folder path within blob container for logs
-        task_id_ints (bool): Whether to use integer task IDs
-        task_id_max (int): Maximum task ID when using integer IDs
-
-    Example:
-        Create a client with environment-based authentication:
-
-            client = CloudClient()
-
-        Create a client with Service Principal authentication:
-
-            client = CloudClient(
-                use_sp=True,
-                dotenv_path="/path/to/.env"
-            )
-
-        Create a client with custom configuration:
-
-            client = CloudClient(
-                azure_tenant_id="custom-tenant-id",
-                azure_subscription_id="custom-sub-id"
-            )
-    """
-
     def __init__(
         self,
         dotenv_path: str = None,
@@ -92,6 +47,52 @@ class CloudClient:
         use_federated: bool = False,
         **kwargs,
     ):
+        """High-level client for managing Azure Batch resources and operations.
+
+        CloudClient provides a simplified interface for creating and managing Azure Batch
+        pools, jobs, and tasks. It handles authentication, client initialization, and
+        provides convenient methods for common batch operations.
+
+        Args:
+            dotenv_path (str, optional): Path to .env file containing environment variables.
+                If None, uses default .env file discovery. Default is None.
+            use_sp (bool, optional): Whether to use Service Principal authentication.
+                Default is False.
+            use_federated (bool, optional): Whether to use federated/default credentials.
+                Default is False.
+            **kwargs: Additional keyword arguments passed to the credential handler.
+
+        Attributes:
+            cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
+            batch_mgmt_client: Azure Batch management client
+            compute_mgmt_client: Azure Compute management client
+            batch_service_client: Azure Batch service client
+            blob_service_client: Azure Blob storage client
+            pool_name (str): Name of the most recently created or used pool
+            save_logs_to_blob (str): Blob container name for saving task logs
+            logs_folder (str): Folder path within blob container for logs
+            task_id_ints (bool): Whether to use integer task IDs
+            task_id_max (int): Maximum task ID when using integer IDs
+
+        Example:
+            Create a client with environment-based authentication:
+
+                client = CloudClient()
+
+            Create a client with Service Principal authentication:
+
+                client = CloudClient(
+                    use_sp=True,
+                    dotenv_path="/path/to/.env"
+                )
+
+            Create a client with custom configuration:
+
+                client = CloudClient(
+                    azure_tenant_id="custom-tenant-id",
+                    azure_subscription_id="custom-sub-id"
+                )
+        """
         logger.debug("Initializing CloudClient.")
         # authenticate to get credentials
         if not use_sp and not use_federated:
@@ -165,9 +166,10 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of mount configurations as tuples of
-                (storage_container, mount_name). Each tuple specifies a blob storage
-                container to mount and the local mount point name.
+            mounts (list, optional): List of mount configurations as strings or dicts.
+                Each string is a storage container name to mount. Each dict should have
+                "source" and "target" keys for container name and mount path, respectively.
+                Default is None (no mounts).
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
@@ -213,7 +215,7 @@ class CloudClient:
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
                     vm_size="Standard_D4s_v3",
-                    mounts=[("input-data", "data"), ("output-results", "results")],
+                    mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
                     availability_zones="zonal"
@@ -408,6 +410,10 @@ class CloudClient:
                 Default is None (no timeout).
             exist_ok (bool, optional): Whether to allow the job creation if a job with the
                 same name already exists. Default is False.
+            verify_pool (bool, optional): Whether to verify that the specified pool exists
+                before creating the job. Default is True.
+            verbose (bool, optional): Whether to print verbose output during job creation.
+                Default is False.
 
         Raises:
             RuntimeError: If the job creation fails due to Azure Batch service errors,
@@ -574,6 +580,10 @@ class CloudClient:
             do_not_run_after (str): Disable the schedule after the specified time
             exist_ok (bool, optional): Whether to allow the job schedule creation if a job schedule with the
                 same name already exists. Default is False.
+            verify_pool (bool, optional): Whether to verify that the specified pool exists
+                before creating the job schedule. Default is True.
+            verbose (bool, optional): Whether to print verbose output during job schedule creation.
+                Default is False.
 
         Raises:
             RuntimeError: If the job schedule creation fails due to Azure Batch service errors,
@@ -670,12 +680,12 @@ class CloudClient:
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
-            name_suffix (str, optional): Suffix to append to the task ID.
-            depends_on (list[str], optional): List of task IDs this task depends on.
-            depends_on_range (tuple, optional): Range of task IDs this task depends on.
-            run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails.
-            container_image_name (str, optional): Container image to use for the task.
-            timeout (int, optional): Maximum time in minutes for the task to run.
+            name_suffix (str, optional): Suffix to append to the task ID. Default is "".
+            depends_on (str | list, optional): Task ID this task depends on. Default is None.
+            depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
+            run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
+            container_image_name (str, optional): Container image to use for the task. Default is None.
+            timeout (int, optional): Maximum time in minutes for the task to run. Default is None.
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
@@ -857,8 +867,9 @@ class CloudClient:
         Supports filtering by file extensions and patterns to control which files are uploaded.
 
         Args:
-            folder_names (list[str]): List of local folder paths to upload. Each folder
-                will be recursively uploaded with its directory structure preserved.
+            folder_names (str | list[str]): Local folder path(s) to upload. Can be a single
+                folder path as a string or a list of folder paths. Each folder will be
+                recursively uploaded with its directory structure preserved.
             container_name (str): Name of the blob storage container to upload to. The
                 container must already exist.
             include_extensions (str | list, optional): File extensions to include in the
@@ -1499,7 +1510,9 @@ class CloudClient:
         file extensions and patterns to control which files are uploaded.
 
         Args:
-            folders (str | list[str]): List of local folder paths to upload. Each folder
+            folders (str | list[str]): Local folder path(s) to upload. Can be a single
+                folder path as a string or a list of folder paths. Each folder will be
+                recursively uploaded with its directory structure preserved.
             container_name (str): Name of the blob storage container to upload to. The
                 container must already exist.
             include_extensions (str | list, optional): File extensions to include in the

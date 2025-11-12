@@ -501,15 +501,39 @@ def check_blob_existence(c_client: ContainerClient, blob_name: str) -> bool:
 def check_virtual_directory_existence(
     c_client: ContainerClient, vdir_path: str
 ) -> bool:
-    """Checks whether any blobs exist with the specified virtual directory path
+    """Check whether any blobs exist with the specified virtual directory path.
+
+    Verifies if a virtual directory exists by checking if any blobs have names that
+    start with the specified directory path. Virtual directories in blob storage
+    are created implicitly when blobs are stored with path separators in their names.
 
     Args:
-        c_client (ContainerClient): an Azure Container Client object
-        vdir_path (str): path of virtual directory
+        c_client (ContainerClient): Azure Container Client instance for the container.
+        vdir_path (str): Path of the virtual directory to check for existence.
 
     Returns:
-        bool: whether the virtual directory exists
+        bool: True if any blobs exist with names starting with vdir_path, False otherwise.
 
+    Raises:
+        StopIteration: If no blobs are found in the virtual directory.
+
+    Example:
+        Check if a data directory exists:
+
+            if check_virtual_directory_existence(container_client, "data/"):
+                print("Data directory exists")
+            else:
+                print("No data directory found")
+
+        Validate directory before operations:
+
+            dir_path = "logs/2023/"
+            if check_virtual_directory_existence(container_client, dir_path):
+                process_log_files(dir_path)
+
+    Note:
+        Virtual directories in Azure Blob Storage are not actual directories but
+        are implied by blob names containing path separators (e.g., "folder/file.txt").
     """
     blobs = list_blobs_in_container(
         name_starts_with=vdir_path, container_client=c_client
@@ -572,17 +596,37 @@ def list_blobs_in_container(
 
 
 def list_blobs_flat(
-    container_name: str, blob_service_client: BlobServiceClient, verbose=True
+    container_name: str, blob_service_client: BlobServiceClient, verbose: bool = True
 ) -> list[str]:
-    """List all blob names in a container with optional filtering.
+    """List all blob names in a container as a flat list of strings.
+
+    Retrieves all blobs from the specified container and returns their names
+    as a simple list of strings. Optionally provides verbose logging output
+    showing each blob name.
 
     Args:
-        container_name (str): name of Blob container
-        blob_service_client (BlobServiceClient): instance of BlobServiceClient
-        verbose (bool): whether to be verbose in printing files. Default True.
+        container_name (str): Name of the blob container to list blobs from.
+        blob_service_client (BlobServiceClient): Azure Blob service client instance
+            for API calls.
+        verbose (bool, optional): Whether to log each blob name individually.
+            Default is True.
 
     Returns:
-        list: list of blobs in Blob container
+        list[str]: List of blob names (strings) in the container.
+
+    Example:
+        Get all blob names:
+
+            blob_names = list_blobs_flat(
+                container_name="data",
+                blob_service_client=service_client,
+                verbose=False
+            )
+            print(f"Found {len(blob_names)} blobs")
+
+    Note:
+        This function is useful when you only need the blob names rather than
+        full blob objects with metadata.
     """
     blob_list = list_blobs_in_container(
         container_name=container_name, blob_service_client=blob_service_client
@@ -595,15 +639,38 @@ def list_blobs_flat(
     return blob_names
 
 
-def get_blob_service_client(config: dict, credential: object):
-    """establishes Blob Service Client using credentials
+def get_blob_service_client(config: dict, credential: object) -> BlobServiceClient:
+    """Establish a Blob Service Client using the provided configuration and credentials.
+
+    Creates an Azure Blob Service Client instance using the storage account URL from
+    the configuration dictionary and the provided authentication credential object.
 
     Args:
-        config (dict): contains configuration info
-        credential (object): credential object from azure.identity
+        config (dict): Configuration dictionary containing storage account information.
+            Must include a "Storage" section with "storage_account_url" key.
+        credential (object): Azure credential object from azure.identity (e.g.,
+            DefaultAzureCredential, ManagedIdentityCredential).
 
     Returns:
-        class: an instance of BlobServiceClient
+        BlobServiceClient: An instance of Azure BlobServiceClient for blob operations.
+
+    Raises:
+        KeyError: If the required configuration keys are missing from the config dict.
+
+    Example:
+        Create a service client:
+
+            config = {
+                "Storage": {
+                    "storage_account_url": "https://myaccount.blob.core.windows.net"
+                }
+            }
+            credential = DefaultAzureCredential()
+            service_client = get_blob_service_client(config, credential)
+
+    Note:
+        The configuration must include the complete storage account URL including
+        the https:// prefix and .blob.core.windows.net suffix.
     """
     logger.debug("Initializing Blob Service Client...")
     try:
@@ -939,6 +1006,41 @@ def walk_blobs_in_container(
     blob_service_client: BlobServiceClient = None,
     container_client: ContainerClient = None,
 ):
+    """Walk through blobs in a container with optional name prefix filtering.
+
+    Provides an iterator over blobs in the specified container, optionally filtering
+    by name prefix. Can work with various combinations of parameters to access
+    the container.
+
+    Args:
+        container_name (str, optional): Name of the blob container to walk.
+        account_name (str, optional): Azure storage account name.
+        name_starts_with (str, optional): Prefix filter for blob names.
+            Only blobs whose names start with this string will be returned.
+        blob_service_client (BlobServiceClient, optional): Azure Blob service client.
+        container_client (ContainerClient, optional): Azure Container client instance.
+
+    Returns:
+        ItemPaged: Iterator of blob objects matching the criteria.
+
+    Example:
+        Walk all blobs in a container:
+
+            blobs = walk_blobs_in_container(
+                container_name="data",
+                account_name="myaccount"
+            )
+            for blob in blobs:
+                print(blob.name)
+
+        Walk blobs with prefix:
+
+            log_blobs = walk_blobs_in_container(
+                container_name="logs",
+                name_starts_with="2023/",
+                container_client=container_client
+            )
+    """
     logger.debug(
         f"Walking blobs in container '{container_name}' with prefix '{name_starts_with}'"
     )
@@ -965,28 +1067,51 @@ def write_blob_stream(
     append_blob: bool = False,
     overwrite: bool = True,
 ) -> bool:
-    """
-    Write a stream into a file in Azure Blob storage
+    """Write data stream to a file in Azure Blob Storage.
+
+    Uploads string or byte data to a blob in Azure Storage, with support for
+    both block blobs and append blobs. Can create new blobs or append to existing ones.
 
     Args:
-        data (stream):
-            [Required] File contents as stream
-        blob_url (str):
-            [Required] Path within the container to the desired file (including filename)
-        account_name (str):
-            [Optional] Name of Azure storage account
-        container_name (str):
-            [Optional] Name of Blob container within storage account
-        container_client (ContainerClient):
-            [Optional] Instance of ContainerClient provided with the storage account
-        append_blob (bool):
-            [Optional] Append to an existing blob or create a new one. Default False
-        overwrite (bool):
-            [Optional] Delete existing blob if it exists and create a new one in its place. If append_blob is False and overwrite is False, an ResourceExistsError will be raised if the blob already exists. Default True
+        data (str | bytes): File contents as string or bytes to upload.
+        blob_url (str): Path within the container to the desired file (including filename).
+        account_name (str, optional): Name of Azure storage account. Required if
+            container_client is not provided.
+        container_name (str, optional): Name of blob container within storage account.
+            Required if container_client is not provided.
+        container_client (ContainerClient, optional): Instance of ContainerClient.
+            If provided, account_name and container_name are ignored.
+        append_blob (bool, optional): Whether to create an append blob or block blob.
+            Default is False (creates block blob).
+        overwrite (bool, optional): Whether to overwrite existing blob. If False and
+            blob exists, ResourceExistsError will be raised. Default is True.
+
+    Returns:
+        bool: True if upload was successful.
 
     Raises:
-        ValueError:
-            When no blobs exist with the specified name (src_path)
+        ValueError: If neither container_client nor both account_name and container_name
+            are provided.
+        ResourceExistsError: If overwrite=False and blob already exists.
+
+    Example:
+        Write text data to a blob:
+
+            success = write_blob_stream(
+                data="Hello, World!",
+                blob_url="greetings/hello.txt",
+                container_name="documents",
+                account_name="myaccount"
+            )
+
+        Append to an existing blob:
+
+            write_blob_stream(
+                data="New log entry\\n",
+                blob_url="logs/app.log",
+                container_client=container_client,
+                append_blob=True
+            )
     """
     data_type = type(data).__name__
     data_size = len(data) if hasattr(data, "__len__") else "unknown"
