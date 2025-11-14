@@ -445,6 +445,14 @@ class DefaultCredential(BasicTokenAuthentication):
         resource_id="https://batch.core.windows.net/.default",
         **kwargs,
     ):
+        """Initialize a DefaultCredential.
+
+        Args:
+            credential: Azure credential instance. If None, uses DefaultAzureCredential.
+            resource_id: Azure resource ID for authentication scope.
+                Default is "https://batch.core.windows.net/.default".
+            **kwargs: Additional keyword arguments passed to BearerTokenCredentialPolicy.
+        """
         logger.debug("Initializing DefaultCredential.")
         super(DefaultCredential, self).__init__(None)
         if credential is None:
@@ -473,11 +481,28 @@ class DefaultCredential(BasicTokenAuthentication):
         logger.debug("Set the token.")
 
     def get_token(self, *scopes, **kwargs):
+        """Get an access token for the specified scopes.
+
+        Args:
+            *scopes: Variable number of scope strings to request access for.
+            **kwargs: Additional keyword arguments passed to the underlying credential.
+
+        Returns:
+            AccessToken: Token object with access token and expiration information.
+        """
         # Pass get_token call to credential
         logger.debug("Getting token from underlying credential.")
         return self.credential.get_token(*scopes, **kwargs)
 
     def signed_session(self, session=None):
+        """Create a signed session with authentication token.
+
+        Args:
+            session: Optional existing session to modify. If None, creates a new session.
+
+        Returns:
+            Session: A signed session object with authentication headers.
+        """
         logger.debug("Creating signed session with updated token.")
         self.set_token()
         return super(DefaultCredential, self).signed_session(session)
@@ -586,6 +611,7 @@ class SPCredentialHandler(CredentialHandler):
                 attempt to load from AZURE_CLIENT_SECRET environment variable.
             dotenv_path: Path to .env file to load environment variables from.
                 If None, uses default .env file discovery.
+            **kwargs: Additional keyword arguments to override specific credential attributes.
 
         Raises:
             ValueError: If AZURE_TENANT_ID is not found in environment variables
@@ -675,6 +701,29 @@ class DefaultCredentialHandler(CredentialHandler):
         dotenv_path: str | None = None,
         **kwargs,
     ) -> None:
+        """Initialize a Default Credential Handler.
+
+        Creates a credential handler that uses DefaultAzureCredential for accessing
+        Azure resources. This handler automatically discovers and uses the most appropriate
+        credential type available in the environment (managed identity, service principal,
+        Azure CLI, etc.).
+
+        Args:
+            dotenv_path: Path to .env file to load environment variables from.
+                If None, uses default .env file discovery.
+            **kwargs: Additional keyword arguments to override specific credential attributes.
+
+        Raises:
+            ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables.
+            ValueError: If the subscription matching AZURE_SUBSCRIPTION_ID is not found.
+
+        Example:
+            >>> # Using default credential discovery
+            >>> handler = DefaultCredentialHandler()
+
+            >>> # Using custom .env file
+            >>> handler = DefaultCredentialHandler(dotenv_path="/path/to/.env")
+        """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
         load_dotenv(dotenv_path=dotenv_path)
