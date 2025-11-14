@@ -682,7 +682,7 @@ class CloudClient:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
-            depends_on (str | list, optional): Task ID this task depends on. Default is None.
+            depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
             container_image_name (str, optional): Container image to use for the task. Default is None.
