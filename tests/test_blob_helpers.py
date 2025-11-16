@@ -1,9 +1,38 @@
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-from azure.storage.blob import BlobProperties
+from shared_fixtures import FAKE_BLOBS, MockLogger
 
-from cfa.cloudops.blob_helpers import upload_files_in_folder
+from cfa.cloudops.blob_helpers import (
+    download_file,
+    download_folder,
+    read_blob_stream,
+    upload_files_in_folder,
+    write_blob_stream,
+)
+
+
+@pytest.fixture(autouse=True)
+def mock_logging(monkeypatch):
+    """
+    Monkeypatch the logging library to use a mock logger.
+    """
+    mock_logger = MockLogger(name=__name__)
+    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
+    return mock_logger
+
+
+@pytest.fixture
+def mock_get_blob_service_client():
+    with patch(
+        "cfa.cloudops._cloudclient.get_blob_service_client",
+        return_value=MagicMock(),
+    ) as mock_client:
+        mock_container_client = MagicMock()
+        mock_container_client.exists.return_value = True
+        mock_container_client.list_blobs.return_value = iter(FAKE_BLOBS)
+        mock_client.get_container_client.return_value = mock_container_client
+        yield mock_client
 
 
 @pytest.fixture
@@ -12,22 +41,7 @@ def mock_get_container_client():
         "azure.storage.blob.ContainerClient",
         return_value=MagicMock(),
     ) as mock_client:
-        fake_blob_properties = [
-            {"name": "my_test_1.txt", "size": 100},
-            {"name": "my_test_2.txt", "size": 200},
-            {"name": "not_my_test_1.csv", "size": 250},
-            {"name": "not_my_test_2.json", "size": 50},
-            {"name": "large_file_1.parquet", "size": 1e9},
-            {"name": "large_file_2.parquet", "size": 2e9},
-        ]
-        fake_blobs = []
-        for fake in fake_blob_properties:
-            fake_blob = BlobProperties()
-            fake_blob.name = fake["name"]
-            fake_blob.size = fake["size"]
-            fake_blobs.append(fake_blob)
-
-        mock_client.list_blobs = MagicMock(return_value=fake_blobs)
+        mock_client.list_blobs = MagicMock(return_value=FAKE_BLOBS)
         yield mock_client
 
 
@@ -95,11 +109,185 @@ def test_upload_files_in_folder_fail():
             )
 
 
-# def test_download_file(mock_get_container_client):
-#    with patch("builtins.open", return_value=MagicMock()) as mock_file:
-#        mock_file.write.return_value = None
-#        download_file(
-#            c_client=mock_get_container_client,
-#            src_path="my-src-path",
-#            dest_path ="my-dest-path"
-#        )
+def test_download_folder(mocker, mock_get_blob_service_client, mock_logging):
+    with patch(
+        "cfa.cloudops.blob_helpers.list_blobs_in_container", return_value=FAKE_BLOBS
+    ):
+        mocker.patch(
+            "cfa.cloudops.blob_helpers.check_virtual_directory_existence",
+            return_value=True,
+        )
+        mocker.patch("cfa.cloudops.blob_helpers.download_file", return_value=True)
+        download_folder(
+            container_name="my-container",
+            src_path="my-src-path",
+            dest_path="",
+            blob_service_client=mock_get_blob_service_client,
+            include_extensions=[".txt"],
+        )
+        assert mock_logging.messages == []
+        download_folder(
+            container_name="my-container",
+            src_path="my-src-path",
+            dest_path="",
+            blob_service_client=mock_get_blob_service_client,
+            exclude_extensions=[".csv"],
+            check_size=False,
+        )
+        assert mock_logging.messages == []
+
+
+def test_download_folder_large(mocker, mock_get_blob_service_client):
+    large_files = [large for large in FAKE_BLOBS if large.size >= 1]
+    mocker.patch(
+        "cfa.cloudops.blob_helpers.check_virtual_directory_existence", return_value=True
+    )
+    mocker.patch("cfa.cloudops.blob_helpers.download_file", return_value=True)
+    with patch(
+        "cfa.cloudops.blob_helpers.list_blobs_in_container", return_value=large_files
+    ):
+        mock_container_client = MagicMock()
+        mock_container_client.exists.return_value = True
+        mock_container_client.list_blobs.return_value = iter(large_files)
+        mock_get_blob_service_client.get_container_client.return_value = (
+            mock_container_client
+        )
+        mocker.patch("builtins.input", return_value="N")
+        result = download_folder(
+            container_name="my-container",
+            src_path="my-src-path",
+            dest_path="",
+            blob_service_client=mock_get_blob_service_client,
+            include_extensions=".parquet",
+            check_size=True,
+        )
+        assert result is None
+
+
+def test_download_folder_fail():
+    mock_blob_service_client = MagicMock()
+    src_path = "my-src-path"
+    with pytest.raises(Exception) as excinfo:
+        download_folder(
+            container_name="my-container",
+            src_path=src_path,
+            dest_path="my-dest-path",
+            blob_service_client=mock_blob_service_client,
+            include_extensions=[".txt"],
+            exclude_extensions=[".csv"],
+        )
+        assert str(excinfo.value) == (
+            "Use included_extensions or exclude_extensions, not both."
+        )
+
+    with patch(
+        "cfa.cloudops.blob_helpers.check_virtual_directory_existence",
+        return_value=False,
+    ):
+        with pytest.raises(ValueError) as excinfo:
+            download_folder(
+                container_name="my-container",
+                src_path=src_path,
+                dest_path="my-dest-path",
+                blob_service_client=mock_blob_service_client,
+            )
+            assert str(excinfo.value) == (
+                f"Source virtual directory: {src_path} does not exist."
+            )
+
+
+def test_download_file(mocker, mock_get_container_client):
+    mocker.patch("builtins.input", return_value="N")
+    mock_stream = MagicMock()
+    mock_stream.readall.return_value = b"Some data"
+    large_files = [large for large in FAKE_BLOBS if large.size >= 1]
+    mock_get_container_client.list_blobs.return_value = iter(large_files)
+    mocker.patch("cfa.cloudops.blob_helpers.read_blob_stream", return_value=mock_stream)
+    with patch("builtins.open", return_value=MagicMock()) as mock_file:
+        with patch("anyio.Path", return_value=MagicMock()) as mock_path:
+            mock_file.write.return_value = None
+            mock_path.open.return_value = mock_file
+            result = download_file(
+                c_client=mock_get_container_client,
+                src_path="my-src-path/large_file_1.parquet",
+                dest_path="my-dest-path",
+            )
+            assert result is None
+    with patch("builtins.open", return_value=MagicMock()) as mock_file:
+        with patch("anyio.Path", return_value=MagicMock()) as mock_path:
+            mock_file.write.return_value = None
+            mock_path.open.return_value = mock_file
+            result = download_file(
+                c_client=mock_get_container_client,
+                src_path="my-src-path/large_file_2.parquet",
+                dest_path="my-dest-path",
+            )
+            assert result is None
+
+
+def test_read_blob_stream(mocker, mock_get_container_client):
+    downloader = read_blob_stream(
+        blob_url="my-blob-url", container_client=mock_get_container_client
+    )
+    assert downloader is not None
+    mocker.patch(
+        "cfa.cloudops.blob_helpers.get_container_client",
+        return_value=mock_get_container_client,
+    )
+    downloader = read_blob_stream(
+        blob_url="my-blob-url",
+        account_name="my-account-name",
+        container_name="my-container-name",
+    )
+    assert downloader is not None
+
+
+def test_read_blob_stream_fail(mocker):
+    blob_url = "my-blob-url"
+    with pytest.raises(ValueError) as excinfo:
+        read_blob_stream(blob_url=blob_url)
+        assert str(excinfo.value) == (
+            "Either container name and account name or container client must be provided."
+        )
+    with pytest.raises(ValueError) as excinfo:
+        mocker.patch(
+            "cfa.cloudops.blob_helpers.check_blob_existence", return_value=False
+        )
+        read_blob_stream(blob_url=blob_url, do_check=True)
+        assert str(excinfo.value) == (f"Source blob: {blob_url} does not exist.")
+
+
+def test_write_blob_stream(
+    mocker, mock_get_container_client, mock_get_blob_service_client
+):
+    result = write_blob_stream(
+        data=b"some data",
+        blob_url="my-blob-url",
+        container_client=mock_get_container_client,
+    )
+    assert result is True
+    mocker.patch(
+        "cfa.cloudops.blob_helpers.get_blob_service_client",
+        return_value=mock_get_blob_service_client,
+    )
+    result = write_blob_stream(
+        data=b"some data",
+        blob_url="my-blob-url",
+        account_name="my-account-name",
+        container_name="my-container-name",
+        append_blob=True,
+    )
+    assert result is True
+
+
+def test_write_blob_stream_fail(
+    mocker, mock_get_container_client, mock_get_blob_service_client
+):
+    with pytest.raises(ValueError) as excinfo:
+        write_blob_stream(
+            data=b"some data",
+            blob_url="my-blob-url",
+        )
+        assert str(excinfo.value) == (
+            "Either container name and account name or container client must be provided."
+        )

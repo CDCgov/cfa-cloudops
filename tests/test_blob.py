@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import anyio
 import pytest
 from azure.batch import models
-from azure.storage.blob import BlobProperties
+from shared_fixtures import FAKE_BLOBS, MockLogger
 
 from cfa.cloudops.blob import (
     _async_download_blob_folder,
@@ -15,38 +15,6 @@ from cfa.cloudops.blob import (
     get_node_mount_config,
     upload_to_storage_container,
 )
-
-
-class MockLogger:
-    def __init__(self, name: str):
-        self.name = name
-        self.messages = []
-        self.handlers = []
-
-    def debug(self, message):
-        self.messages.append(("DEBUG", message))
-
-    def info(self, message):
-        self.messages.append(("INFO", message))
-
-    def warning(self, message):
-        self.messages.append(("WARNING", message))
-
-    def error(self, message):
-        self.messages.append(("ERROR", message))
-
-    def addHandler(self, handler):
-        if handler not in self.handlers:
-            self.handlers.append(handler)
-
-    def removeHandler(self, handler):
-        if handler in self.handlers:
-            self.handlers.remove(handler)
-
-    def assert_logged(self, level, message):
-        assert (level, message) in self.messages, (
-            f"Expected log ({level}, {message}) not found."
-        )
 
 
 @pytest.fixture(autouse=True)
@@ -65,22 +33,7 @@ def mock_get_container_client():
         "azure.storage.blob.ContainerClient",
         return_value=MagicMock(),
     ) as mock_client:
-        fake_blob_properties = [
-            {"name": "my_test_1.txt", "size": 100},
-            {"name": "my_test_2.txt", "size": 200},
-            {"name": "not_my_test_1.csv", "size": 250},
-            {"name": "not_my_test_2.json", "size": 50},
-            {"name": "large_file_1.parquet", "size": 1e9},
-            {"name": "large_file_2.parquet", "size": 2e9},
-        ]
-        fake_blobs = []
-        for fake in fake_blob_properties:
-            fake_blob = BlobProperties()
-            fake_blob.name = fake["name"]
-            fake_blob.size = fake["size"]
-            fake_blobs.append(fake_blob)
-
-        mock_client.list_blobs = MagicMock(return_value=fake_blobs)
+        mock_client.list_blobs = MagicMock(return_value=FAKE_BLOBS)
         yield mock_client
 
 
