@@ -12,6 +12,7 @@ t2 = Task("python3 /second_task.py")
 ```
 
 Once Task objects are created, dependencies can be added to the tasks via the following methods on a Task object:
+
 - before()
 - after()
 
@@ -87,6 +88,7 @@ client.run_dag(t1, t2, t3, t4, t5, job_id = "dag_job_example")
 
 ## Alternative Methods for Setting Dependencies
 Besides the two ways of setting dependencies mentioned above (`before()` and `after()`), there are two additional methods keeping in line with Airflow DAGs. These two methods are `set_upstream()` and `set_downstream()` and are identical to the behavior of `before()` and `after()` as described, but some users may be more familiar with these methods if they have experience with Airflow. The methods are related as follows:
+
 - before = set_downstream
 - after = set_upstream
 

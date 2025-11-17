@@ -1,6 +1,7 @@
 # `cfa-cloudops` Overview
 
 # Outline
+
 - [Description](#description)
 - [Getting Started](#getting-started)
 
@@ -28,6 +29,8 @@ There are several components of this repo that provide benefits to developers in
   - endpoints
   - job
   - task
+
 - CloudClient object for easy interaction with the cloud
   - more info found [here](./CloudClient/index.md)
+
 - automation component to run jobs/tasks from a configuration file

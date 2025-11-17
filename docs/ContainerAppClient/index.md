@@ -3,6 +3,7 @@
 The `ContainerAppClient` class provides a Python interface for managing Azure Container Apps jobs using the Azure SDK. It supports inspection, listing, existence checks, and starting jobs with custom commands and environment variables.
 
 ## Features
+
 - Authenticate using Azure Managed Identity and environment variables
 - List all jobs in a resource group
 - Retrieve detailed job information
@@ -74,20 +75,27 @@ client.stop_job(
 
 - `__init__(dotenv_path, resource_group, subscription_id, job_name)`
   - Initializes the client and loads environment variables.
+
 - `list_jobs()`
   - Returns a list of job names in the resource group.
+
 - `check_job_exists(job_name)`
   - Returns `True` if the job exists, `False` otherwise.
+
 - `get_job_info(job_name)`
   - Returns a dictionary of job details.
+
 - `get_command_info(job_name)`
   - Returns a list of container info dicts (name, image, command, args, env).
+
 - `start_job(job_name, command, args, env)`
   - Starts a job, optionally overriding command, args, and environment variables.
+
 - `stop_job(job_name, job_execution_name)`
   - Stops the specified job execution.
 
 ## Notes
+
 - The client uses Azure Managed Identity for authentication. Ensure your environment supports this (e.g., Azure VM, App Service, or configure credentials).
 - If you do not provide `resource_group`, `subscription_id`, or `job_name`, the client will attempt to use environment variables or values from the `.env` file.
 - All operations are logged using Python's `logging` module for easier debugging.
