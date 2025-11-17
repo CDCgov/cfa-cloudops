@@ -84,7 +84,6 @@ client.stop_job(
   - Returns a list of container info dicts (name, image, command, args, env).
 - `start_job(job_name, command, args, env)`
   - Starts a job, optionally overriding command, args, and environment variables.
-
 - `stop_job(job_name, job_execution_name)`
   - Stops the specified job execution.
 
