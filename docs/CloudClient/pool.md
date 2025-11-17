@@ -37,7 +37,6 @@ For this example, suppose we want to create an autoscale pool with the following
 - connect to two Blob Storage containers
     - the first container is called "input-test" but we reference it as "/input" in our code
     - the second container is called -output-test" but we reference it as "/results" in our code
-
 - use the default autoscale formula
 - use up to 10 nodes when scaling
 - don't cache the blobfuse
