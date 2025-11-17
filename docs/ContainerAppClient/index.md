@@ -76,7 +76,6 @@ client.stop_job(
   - Initializes the client and loads environment variables.
 - `list_jobs()`
   - Returns a list of job names in the resource group.
-
 - `check_job_exists(job_name)`
   - Returns `True` if the job exists, `False` otherwise.
 
