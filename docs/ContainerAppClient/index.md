@@ -80,7 +80,6 @@ client.stop_job(
   - Returns `True` if the job exists, `False` otherwise.
 - `get_job_info(job_name)`
   - Returns a dictionary of job details.
-
 - `get_command_info(job_name)`
   - Returns a list of container info dicts (name, image, command, args, env).
 
