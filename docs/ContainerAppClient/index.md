@@ -3,7 +3,6 @@
 The `ContainerAppClient` class provides a Python interface for managing Azure Container Apps jobs using the Azure SDK. It supports inspection, listing, existence checks, and starting jobs with custom commands and environment variables.
 
 ## Features
-
 - Authenticate using Azure Managed Identity and environment variables
 - List all jobs in a resource group
 - Retrieve detailed job information
