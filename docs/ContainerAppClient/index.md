@@ -88,7 +88,6 @@ client.stop_job(
   - Stops the specified job execution.
 
 ## Notes
-
 - The client uses Azure Managed Identity for authentication. Ensure your environment supports this (e.g., Azure VM, App Service, or configure credentials).
 - If you do not provide `resource_group`, `subscription_id`, or `job_name`, the client will attempt to use environment variables or values from the `.env` file.
 - All operations are logged using Python's `logging` module for easier debugging.
