@@ -74,7 +74,6 @@ client.stop_job(
 
 - `__init__(dotenv_path, resource_group, subscription_id, job_name)`
   - Initializes the client and loads environment variables.
-
 - `list_jobs()`
   - Returns a list of job names in the resource group.
 
