@@ -28,7 +28,6 @@ There are several components of this repo that provide benefits to developers in
   - endpoints
   - job
   - task
-
 - CloudClient object for easy interaction with the cloud
   - more info found [here](./CloudClient/index.md)
 
