@@ -78,7 +78,6 @@ client.stop_job(
   - Returns a list of job names in the resource group.
 - `check_job_exists(job_name)`
   - Returns `True` if the job exists, `False` otherwise.
-
 - `get_job_info(job_name)`
   - Returns a dictionary of job details.
 
