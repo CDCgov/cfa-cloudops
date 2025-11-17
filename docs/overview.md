@@ -1,7 +1,6 @@
 # `cfa-cloudops` Overview
 
 # Outline
-
 - [Description](#description)
 - [Getting Started](#getting-started)
 
