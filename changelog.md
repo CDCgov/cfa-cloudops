@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.1.3
+- added support for installation in Windows environments
+
 ## v0.1.2
 - added download_task_output parameter to `CloudClient.monitor_job()` to download stdout and stderr of each task when the task completes.
 
