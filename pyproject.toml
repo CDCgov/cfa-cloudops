@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.1.2"
+version = "0.1.3"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -43,6 +43,7 @@ packages = [{include = "cfa"}]
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.9.9"
 pytest = "^8.3.5"
+pytest-asyncio = "^1.3.0"
 pytest-mock = "^3.14.0"
 pytest-cov = "^6.1.1"
 coverage-badge = "^1.1.2"

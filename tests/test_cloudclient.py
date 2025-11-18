@@ -76,6 +76,87 @@ def cloud_client_with_service_principal(
         return CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
 
 
+def test_create_pool_success(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+    cloud_client,
+):
+    # Mock parameters for create_job
+    pool_name = "mock_pool_id"
+
+    with patch("cfa.cloudops.job.create_job", return_value=True):
+        result = cloud_client.create_pool(
+            pool_name=pool_name,
+            mounts=["mock_mount_1", "mock_mount_2"],
+            container_image_name="mock_container_image",
+        )
+        assert result is None
+        result = cloud_client.create_pool(
+            pool_name=pool_name,
+            mounts=["mock_mount_1", "mock_mount_2"],
+            container_image_name="mock_container_image",
+            autoscale_formula="my-autoscale-formula",
+        )
+        assert result is None
+        result = cloud_client.create_pool(
+            pool_name=pool_name,
+            mounts=[
+                {"source": "input", "target": "mock_mount_1"},
+                {"source": "output", "target": "mock_mount_2"},
+            ],
+            container_image_name="mock_container_image",
+            availability_zones="zonal",
+            autoscale=False,
+        )
+        assert result is None
+
+
+def test_create_job_success(
+    mock_env_vars,
+    mock_get_batch_service_client,
+    mock_get_batch_management_client,
+    mock_get_blob_service_client,
+    mock_get_compute_management_client,
+    cloud_client,
+):
+    # Mock parameters for create_job
+    job_name = "my-job-1"
+    pool_name = "mock_pool_id"
+
+    with patch("cfa.cloudops.job.create_job", return_value=True):
+        result = cloud_client.create_job(
+            job_name=job_name,
+            pool_name=pool_name,
+        )
+        assert result is None
+        result = cloud_client.create_job(
+            job_name=job_name,
+            pool_name=None,
+            save_logs_to_blob=True,
+            logs_folder="/logs",
+            timeout=300,
+        )
+        assert result is None
+        result = cloud_client.create_job(
+            job_name=job_name,
+            pool_name=None,
+            save_logs_to_blob=True,
+            logs_folder="logs/",
+            task_id_ints=True,
+        )
+        assert result is None
+        result = cloud_client.create_job(
+            job_name=job_name,
+            pool_name=None,
+            save_logs_to_blob=True,
+            task_retries=2,
+        )
+        assert result is None
+
+
 def test_create_job_schedule_success(
     mock_env_vars,
     mock_get_batch_service_client,
