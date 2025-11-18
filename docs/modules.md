@@ -1,6 +1,7 @@
 # `cfa-cloudops` Modules
 
 The various modules of `cfa-cloudops` are listed below. Apart from the CloudClient, they help with low-level functionality with the Cloud environment. While some of these functions and classes are used in the CloudClient class, there is much greater flexibility available when using these other modules. The CloudClient provides much more ease of use to the end-user while maintaining a good amount of customizability. These modules are imported in your python script via `from cfa.cloudops import <module_name>`. Each will be discussed in more detail below.
+
 - CloudClient
 - auth
 - automation

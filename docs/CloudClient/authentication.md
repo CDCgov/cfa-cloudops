@@ -3,6 +3,7 @@
 Authentication with the `CloudClient` class is meant to be user-friendly while maintaining flexibility. There are three different ways to authenticate to the Azure environment, all of which center around environment variables for Azure account information. These environment variables can be pulled from the local environment or instantiated from a .env file specified during the `CloudClient` instantiation.
 
 The three authentication methods available are:
+
 - Managed Identity credential (default)
 - Service Principal credential
 - Federated Token credential
