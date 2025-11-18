@@ -53,6 +53,7 @@ Once jobs are created, tasks can be added to that job to run. Per the Azure Batc
 Depending on the pool setup, tasks can run in parallel or sequentially. If there are more than one task slot per node established in the pool, multiple tasks could run on a single node at one time.
 
 The `CloudClient` class has a `add_task` method to simplify the programmatic submission of tasks to their respective job. Multiple `add_task` calls can be submitted one after the other. The following parameters can be passed to the `add_task` method:
+
 - job_name: name of an existing job
 - command_line: command for the desired task like you would run in a terminal
 - mount_pairs: an optional list of dictionaries to change the reference name of mounted containers. Each dictionary requires a 'source' and a 'target', where 'source is the name of the Blob container mounted to the pool, and 'target' is the name referenced in the task.
@@ -127,6 +128,7 @@ Once jobs are running (or not) we can monitor the job in the terminal. This will
 - job_name: name of the job to monitor
 - timeout: time in minutes to monitor the job
 - download_job_stats: whether to download stats from the job when it completes. Default is False.
+- download_task_output: whether to download the stdout and stderr locally when each task in the job completes. Default False.
 
 ### Example
 
@@ -138,9 +140,25 @@ client = CloudClient()
 client.monitor_job(
     job_name = "running-job-example",
     timeout = 60,
-    download_job_stats = False
     )
 ```
+
+To monitor the same job and locally save the task output, we can run the following. Let's say this job has three tasks included in the job.
+```
+client.monitor_job(
+    job_name = "running-job-example",
+    timeout = 60,
+    download_task_output = True
+    )
+```
+The outputs will be saved to a folder called 'running-job-example_output' and contain the following 6 files (2 per task):
+
+- running-job-example--1_stdout.txt
+- running-job-example--1_stderr.txt
+- running-job-example--2_stdout.txt
+- running-job-example--2_stderr.txt
+- running-job-example--3_stdout.txt
+- running-job-example--3_stderr.txt
 
 ## Checking Job Status
 

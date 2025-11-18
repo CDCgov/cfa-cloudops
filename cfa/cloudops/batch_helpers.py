@@ -1,6 +1,7 @@
 import csv
 import datetime
 import logging
+import os
 import time
 import uuid
 from zoneinfo import ZoneInfo as zi
@@ -20,7 +21,12 @@ from azure.batch.models import (
 logger = logging.getLogger(__name__)
 
 
-def monitor_tasks(job_name: str, timeout: int, batch_client: object):
+def monitor_tasks(
+    job_name: str,
+    timeout: int,
+    batch_client: object,
+    download_task_output: bool = False,
+) -> dict:
     """Monitor tasks running in an Azure Batch job until completion or timeout.
 
     Continuously monitors the progress of all tasks in a job, providing real-time
@@ -32,6 +38,9 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
         timeout (int): Maximum time in minutes to monitor before timing out. If None,
             defaults to 480 minutes (8 hours).
         batch_client (object): Azure Batch service client instance for API calls.
+        download_task_output (bool): Whether to download stdout and stderr from each
+            completed task. If True, saves output files to a directory named
+            "{job_name}_output". Defaults to False.
 
     Returns:
         dict: Dictionary containing monitoring results with the following keys:
@@ -93,6 +102,7 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
     # pool setup and status
     # initialize job complete status
     completed = False
+    previously_completed = []
     completions, incompletions, running, successes, failures = 0, 0, 0, 0, 0
 
     logger.debug(f"Getting initial job state for '{job_name}'")
@@ -133,6 +143,29 @@ def monitor_tasks(job_name: str, timeout: int, batch_client: object):
                     failures += 1
                 elif task.as_dict()["execution_info"]["result"] == "success":
                     successes += 1
+                if download_task_output:
+                    os.makedirs(f"{job_name}_output", exist_ok=True)
+                    if task.id not in previously_completed:
+                        stdout = batch_client.file.get_from_task(
+                            job_name, task.id, "stdout.txt"
+                        )
+                        stderr = batch_client.file.get_from_task(
+                            job_name, task.id, "stderr.txt"
+                        )
+                        with open(
+                            os.path.join(f"{job_name}_output", f"{task.id}_stdout.txt"),
+                            "w",
+                        ) as f:
+                            for data in stdout:
+                                f.write(data.decode("utf-8"))
+                        with open(
+                            os.path.join(f"{job_name}_output", f"{task.id}_stderr.txt"),
+                            "w",
+                        ) as f:
+                            for data in stderr:
+                                f.write(data.decode("utf-8"))
+                        print(f"\nOutput saved from task {task.id}")
+                        previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
             print(
                 "monitor runtime:",
@@ -918,16 +951,38 @@ def get_pool_full_info(
     pool_name: str,
     batch_mgmt_client: object,
 ) -> dict:
-    """Get the full information of a specified pool.
+    """Get the full information of a specified Azure Batch pool.
+
+    Retrieves comprehensive configuration and status information for the specified
+    pool from the Azure Batch service, including node configuration, scaling settings,
+    mount points, and other pool properties.
 
     Args:
-        resource_group_name (str): name of resource group
-        account_name (str): name of account
-        pool_name (str): name of pool
-        batch_mgmt_client (object): instance of BatchManagementClient
+        resource_group_name (str): Name of the Azure resource group containing the
+            Batch account.
+        account_name (str): Name of the Azure Batch account containing the pool.
+        pool_name (str): Name of the pool to retrieve information for. The pool must exist.
+        batch_mgmt_client (object): Instance of BatchManagementClient for API calls.
 
     Returns:
-        dict: dictionary with full pool information
+        dict: Dictionary containing complete pool configuration and status information
+            including node settings, scaling configuration, mount points, and other
+            pool properties.
+
+    Example:
+        Get pool information:
+
+            pool_info = get_pool_full_info(
+                "my-resource-group",
+                "my-batch-account",
+                "compute-pool",
+                batch_mgmt_client
+            )
+            print(f"Pool state: {pool_info['allocation_state']}")
+
+    Note:
+        This function provides detailed pool information that can be used for
+        monitoring, configuration validation, and debugging pool issues.
     """
     logger.debug("Pulling pool info.")
     result = batch_mgmt_client.pool.get(resource_group_name, account_name, pool_name)
@@ -1273,17 +1328,45 @@ def check_pool_exists(
     account_name: str,
     pool_name: str,
     batch_mgmt_client: object,
-):
-    """Check if a pool exists in Azure Batch
+) -> bool:
+    """Check if a specified Azure Batch pool exists in the account.
+
+    Verifies the existence of a pool by attempting to retrieve its information
+    from the Azure Batch service. Returns True if the pool exists and is accessible,
+    False if the pool does not exist or cannot be accessed.
 
     Args:
-        resource_group_name (str): Azure resource group name
-        account_name (str): Azure account name
-        pool_name (str): name of pool
-        batch_mgmt_client (object): instance of BatchManagementClient
+        resource_group_name (str): Name of the Azure resource group containing the
+            Batch account.
+        account_name (str): Name of the Azure Batch account to check for the pool.
+        pool_name (str): Name of the pool to check for existence.
+        batch_mgmt_client (object): Instance of BatchManagementClient for API calls.
 
     Returns:
-        bool: whether the pool exists
+        bool: True if the pool exists and is accessible, False otherwise.
+
+    Example:
+        Check pool before creating a job:
+
+            if check_pool_exists("my-rg", "my-batch", "compute-pool", mgmt_client):
+                print("Pool exists, proceeding with job creation")
+                create_job("my-job", "compute-pool", batch_client)
+            else:
+                print("Pool not found, please create the pool first")
+
+        Validate pool list:
+
+            pools_to_check = ["pool1", "pool2", "pool3"]
+            existing_pools = []
+            for pool in pools_to_check:
+                if check_pool_exists("my-rg", "my-batch", pool, mgmt_client):
+                    existing_pools.append(pool)
+            print(f"Available pools: {existing_pools}")
+
+    Note:
+        This function catches all exceptions during the pool lookup and treats
+        any exception as indicating the pool does not exist. This includes
+        permission errors, network issues, and actual non-existence.
     """
     logger.debug(f"Checking if pool {pool_name} exists.")
     try:

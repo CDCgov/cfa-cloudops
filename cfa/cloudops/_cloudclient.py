@@ -49,8 +49,10 @@ class CloudClient:
     Args:
         dotenv_path (str, optional): Path to .env file containing environment variables.
             If None, uses default .env file discovery. Default is None.
-        use_sp (bool, optional): Whether to use Service Principal authentication (True)
-            or environment-based authentication (False). Default is False.
+        use_sp (bool, optional): Whether to use Service Principal authentication.
+            Default is False.
+        use_federated (bool, optional): Whether to use federated/default credentials.
+            Default is False.
         **kwargs: Additional keyword arguments passed to the credential handler.
 
     Attributes:
@@ -165,9 +167,10 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of mount configurations as tuples of
-                (storage_container, mount_name). Each tuple specifies a blob storage
-                container to mount and the local mount point name.
+            mounts (list, optional): List of mount configurations as strings or dicts.
+                Each string is a storage container name to mount. Each dict should have
+                "source" and "target" keys for container name and mount path, respectively.
+                Default is None (no mounts).
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
@@ -213,7 +216,7 @@ class CloudClient:
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
                     vm_size="Standard_D4s_v3",
-                    mounts=[("input-data", "data"), ("output-results", "results")],
+                    mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
                     availability_zones="zonal"
@@ -408,6 +411,10 @@ class CloudClient:
                 Default is None (no timeout).
             exist_ok (bool, optional): Whether to allow the job creation if a job with the
                 same name already exists. Default is False.
+            verify_pool (bool, optional): Whether to verify that the specified pool exists
+                before creating the job. Default is True.
+            verbose (bool, optional): Whether to print verbose output during job creation.
+                Default is False.
 
         Raises:
             RuntimeError: If the job creation fails due to Azure Batch service errors,
@@ -574,6 +581,10 @@ class CloudClient:
             do_not_run_after (str): Disable the schedule after the specified time
             exist_ok (bool, optional): Whether to allow the job schedule creation if a job schedule with the
                 same name already exists. Default is False.
+            verify_pool (bool, optional): Whether to verify that the specified pool exists
+                before creating the job schedule. Default is True.
+            verbose (bool, optional): Whether to print verbose output during job schedule creation.
+                Default is False.
 
         Raises:
             RuntimeError: If the job schedule creation fails due to Azure Batch service errors,
@@ -670,12 +681,12 @@ class CloudClient:
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
-            name_suffix (str, optional): Suffix to append to the task ID.
-            depends_on (list[str], optional): List of task IDs this task depends on.
-            depends_on_range (tuple, optional): Range of task IDs this task depends on.
-            run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails.
-            container_image_name (str, optional): Container image to use for the task.
-            timeout (int, optional): Maximum time in minutes for the task to run.
+            name_suffix (str, optional): Suffix to append to the task ID. Default is "".
+            depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
+            depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
+            run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
+            container_image_name (str, optional): Container image to use for the task. Default is None.
+            timeout (int, optional): Maximum time in minutes for the task to run. Default is None.
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
@@ -857,8 +868,9 @@ class CloudClient:
         Supports filtering by file extensions and patterns to control which files are uploaded.
 
         Args:
-            folder_names (list[str]): List of local folder paths to upload. Each folder
-                will be recursively uploaded with its directory structure preserved.
+            folder_names (str | list[str]): Local folder path(s) to upload. Can be a single
+                folder path as a string or a list of folder paths. Each folder will be
+                recursively uploaded with its directory structure preserved.
             container_name (str): Name of the blob storage container to upload to. The
                 container must already exist.
             include_extensions (str | list, optional): File extensions to include in the
@@ -930,6 +942,7 @@ class CloudClient:
         job_name: str,
         timeout: int | None = None,
         download_job_stats: bool = False,
+        download_task_output: bool = False,
     ) -> None:
         """Monitor the execution of tasks in an Azure Batch job.
 
@@ -945,6 +958,8 @@ class CloudClient:
             download_job_stats (bool, optional): Whether to download comprehensive job
                 statistics when the job completes. Statistics include task execution
                 times, resource usage, and success/failure rates. Default is False.
+            download_task_output (bool, optional): Whether to download the stdout and stderr of
+                each task when the task completes. Default is False.
 
         Example:
             Monitor a job with default settings:
@@ -968,7 +983,10 @@ class CloudClient:
         # monitor the tasks
         logger.debug(f"starting to monitor job {job_name}.")
         monitor = batch_helpers.monitor_tasks(
-            job_name, timeout, self.batch_service_client
+            job_name,
+            timeout,
+            self.batch_service_client,
+            download_task_output=download_task_output,
         )
         print(monitor)
         if download_job_stats:
@@ -1493,7 +1511,9 @@ class CloudClient:
         file extensions and patterns to control which files are uploaded.
 
         Args:
-            folders (str | list[str]): List of local folder paths to upload. Each folder
+            folders (str | list[str]): Local folder path(s) to upload. Can be a single
+                folder path as a string or a list of folder paths. Each folder will be
+                recursively uploaded with its directory structure preserved.
             container_name (str): Name of the blob storage container to upload to. The
                 container must already exist.
             include_extensions (str | list, optional): File extensions to include in the
