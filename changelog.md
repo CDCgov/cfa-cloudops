@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.1.4
-- fix issue with mounts in add_task method
+- fix issue with mounts in add_task method.
 
 ## v0.1.3
 - added unit tests in `tests` folder.
