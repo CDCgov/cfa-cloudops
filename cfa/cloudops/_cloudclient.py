@@ -685,7 +685,13 @@ class CloudClient:
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
-            mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task. Each dict is in the form {"source": <container_name>, "target": <target_name>}.
+            mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task.
+                Each dict should be in the form {"source": <container_name>, "target": <target_path>}.
+                Example:
+                    [
+                        {"source": "mycontainer", "target": "/mnt/data"},
+                        {"source": "logscontainer", "target": "/mnt/logs"}
+                    ]
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
             depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
