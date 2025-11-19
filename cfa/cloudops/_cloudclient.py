@@ -167,10 +167,13 @@ class CloudClient:
 
         Args:
             pool_name (str): Name of the pool to create. Must be unique within the Batch account.
-            mounts (list, optional): List of mount configurations as strings or dicts.
-                Each string is a storage container name to mount. Each dict should have
-                "source" and "target" keys for container name and mount path, respectively.
-                Default is None (no mounts).
+            mounts (list, optional): List of Blob Storage containers to mount to the pool.
+                The format can be a list of strings or dictionaries. For example, if you want to connect
+                to two storage containers named "input-data" and "output-results", you can provide:
+                - As strings: ["input-data", "output-results"]
+                - As dictionaries: [{"source": "input-data", "target": "/mnt/input"}, {"source": "output-results", "target": "/mnt/output"}]
+                    If provided this way as dictionaries, the value of each target is
+                    how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
@@ -668,6 +671,7 @@ class CloudClient:
         self,
         job_name: str,
         command_line: str,
+        mount_pairs: list[dict] | None = None,
         name_suffix: str = "",
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
@@ -681,6 +685,13 @@ class CloudClient:
         Args:
             job_name (str): Name of the job to add the task to.
             command_line (str): Command line arguments for the task.
+            mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task.
+                Each dict should be in the form {"source": <container_name>, "target": <target_path>}.
+                Example:
+                    [
+                        {"source": "mycontainer", "target": "/mnt/data"},
+                        {"source": "logscontainer", "target": "/mnt/logs"}
+                    ]
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
             depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
@@ -736,12 +747,21 @@ class CloudClient:
             logger.debug("No log saving to blob storage configured.")
 
         # get all mounts from pool info
-        self.mounts = batch_helpers.get_pool_mounts(
-            pool_name,
-            self.cred.azure_resource_group_name,
-            self.cred.azure_batch_account,
-            self.batch_mgmt_client,
-        )
+        if mount_pairs is None:
+            self.mounts = batch_helpers.get_pool_mounts(
+                pool_name,
+                self.cred.azure_resource_group_name,
+                self.cred.azure_batch_account,
+                self.batch_mgmt_client,
+            )
+        else:
+            self.mounts = [
+                {
+                    "source": mount["source"],
+                    "target": helpers.format_rel_path(mount["target"]),
+                }
+                for mount in mount_pairs
+            ]
 
         logger.debug("Adding tasks to job.")
         tid = batch_helpers.add_task(
