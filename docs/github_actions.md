@@ -4,7 +4,7 @@ The `cfa-cloudops` package was designed to require minimal changes when switchin
 
 ## Initializing
 
-Existing code from a local workflow can easily transferred to run in GitHub Actions. The main difference between execution environments is the initialization of the `CloudClient`. We use the parameter `use_federated=True` when initializing the client to coordinate with GitHub to use federated credentials. When we login with federated credentials during the workflow (more on this later), the client will then pick these up to use for authentication.
+Existing code from a local workflow can easily be transferred to run in GitHub Actions. The main difference between execution environments is the initialization of the `CloudClient`. We use the parameter `use_federated=True` when initializing the client to coordinate with GitHub to use federated credentials. When we login with federated credentials during the workflow (more on this later), the client will then pick these up to use for authentication.
 
 ### Example
 
