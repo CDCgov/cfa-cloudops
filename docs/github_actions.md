@@ -18,7 +18,7 @@ Just like using a .env file for local `cloudops` execution, GitHub needs a way t
 
 ## Workflows
 
-To run a workflow in github actions that utilizes `cfa-cloudops` we first need a yaml file in the .github/workflows folder. Then we provide several key components to the workflow file as follows. For more information see [here](https://github.com/cdcent/cfa-cloudops-example/blob/main/.github/workflows/azure_workflow.yaml).
+To run a workflow in GitHub Actions that utilizes `cfa-cloudops` we first need a yaml file in the .github/workflows folder. Then we provide several key components to the workflow file as follows. For more information see [here](https://github.com/cdcent/cfa-cloudops-example/blob/main/.github/workflows/azure_workflow.yaml).
 
 - when to run the workflows
 - permissions and runner
