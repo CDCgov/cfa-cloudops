@@ -455,7 +455,6 @@ async def _async_download_blob_to_file(
     # The total number is limited by the number passed in when the semaphore is created.
     async with semaphore:
         logger.debug(f"Acquired semaphore for download: '{blob_name}'")
-        print(f"Acquired semaphore for download: '{blob_name}'")
         try:
             logger.debug(f"Creating blob client for: '{blob_name}'")
             async with container_client:
@@ -883,33 +882,36 @@ def async_upload_folder(
             logger.debug(f"Target container name: {container_name}")
 
             logger.debug("Creating blob service client")
-            blob_service_client = BlobServiceClient(
+            blob_service_client = aio.BlobServiceClient(
                 account_url=storage_account_url,
                 credential=credential,
             )
-            if blob_service_client is None:
-                logger.error(
-                    "Failed to create BlobServiceClient. Check your storage_account_url and credentials."
-                )
-                raise RuntimeError("Failed to create BlobServiceClient.")
+            async with blob_service_client:
+                if blob_service_client is None:
+                    logger.error(
+                        "Failed to create BlobServiceClient. Check your storage_account_url and credentials."
+                    )
+                    raise RuntimeError("Failed to create BlobServiceClient.")
 
-            logger.debug(f"Creating container client for '{container_name}'")
-            container_client = blob_service_client.get_container_client(container_name)
-            if container_client is None:
-                logger.error(
-                    f"Failed to get container client for container: {container_name}"
+                logger.debug(f"Creating container client for '{container_name}'")
+                container_client = blob_service_client.get_container_client(
+                    container_name
                 )
-                raise RuntimeError(
-                    f"Failed to get container client for container: {container_name}"
+                if container_client is None:
+                    logger.error(
+                        f"Failed to get container client for container: {container_name}"
+                    )
+                    raise RuntimeError(
+                        f"Failed to get container client for container: {container_name}"
+                    )
+                await _async_upload_blob_folder(
+                    container_client=container_client,
+                    folder=anyio.Path(folder),
+                    location_in_blob=location_in_blob,
+                    include_extensions=include_extensions,
+                    exclude_extensions=exclude_extensions,
+                    max_concurrent_uploads=max_concurrent_uploads,
                 )
-            await _async_upload_blob_folder(
-                container_client=container_client,
-                folder=anyio.Path(folder),
-                location_in_blob=location_in_blob,
-                include_extensions=include_extensions,
-                exclude_extensions=exclude_extensions,
-                max_concurrent_uploads=max_concurrent_uploads,
-            )
         except Exception as e:
             logger.error(f"Error during upload: {e}")
             raise
