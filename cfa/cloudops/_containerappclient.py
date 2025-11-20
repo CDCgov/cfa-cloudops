@@ -90,7 +90,8 @@ class ContainerAppClient:
         Retrieve detailed information about a specific Container App job.
 
         Args:
-            job_name (str): Name of the job to retrieve information for.
+            job_name (str, optional): Name of the job to retrieve information for.
+                If None, uses the instance's job_name. Default is None.
 
         Returns:
             dict: Dictionary containing job details.
@@ -115,7 +116,8 @@ class ContainerAppClient:
         Get command, image, and environment details for containers in a job.
 
         Args:
-            job_name (str): Name of the job to inspect.
+            job_name (str, optional): Name of the job to inspect.
+                If None, uses the instance's job_name. Default is None.
 
         Returns:
             list[dict]: List of container info dicts (name, image, command, args, env).

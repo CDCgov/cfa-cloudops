@@ -13,7 +13,10 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
     """Run jobs and tasks automatically based on the provided experiment config.
 
     Args:
-        exp_config (str): path to experiment config file (toml)
+        exp_config (str): Path to experiment config file (toml).
+        dotenv_path (str, optional): Path to .env file containing environment variables.
+            If None, uses default .env file discovery. Default is None.
+        **kwargs: Additional keyword arguments passed to CloudClient initialization.
     """
     logger.info(f"Starting experiment execution with config: {exp_config}")
     logger.debug(f"Using dotenv_path: {dotenv_path}")
@@ -187,8 +190,12 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
 
 def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs) -> None:
     """Run jobs and tasks automatically based on the provided task config.
+
     Args:
-        task_config (str): path to task config file (toml)
+        task_config (str): Path to task config file (toml).
+        dotenv_path (str, optional): Path to .env file containing environment variables.
+            If None, uses default .env file discovery. Default is None.
+        **kwargs: Additional keyword arguments passed to CloudClient initialization.
     """
     logger.debug(f"Starting task execution with config: {task_config}")
     logger.debug(f"Using dotenv_path: {dotenv_path}")
