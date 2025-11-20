@@ -1308,6 +1308,7 @@ def add_task(
         container_settings=batch_models.TaskContainerSettings(
             image_name=full_container_name,
             container_run_options=container_run_options,
+            working_directory="containerImageDefault",
         ),
         user_identity=user_identity,
         constraints=task_constraints,
