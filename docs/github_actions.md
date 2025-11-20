@@ -27,7 +27,7 @@ To run a workflow in github actions that utilizes `cfa-cloudops` we first need a
 - login with federated credentials and the secrets stored as AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
 - setup the environment, such as python or installing dependencies
 - run the script using `cfa-cloudops`
-    - environment variables need to passed in this step
+    - environment variables need to be passed in this step
 
 ### Example workflow file
 
