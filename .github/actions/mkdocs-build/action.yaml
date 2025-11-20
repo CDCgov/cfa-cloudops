@@ -8,7 +8,7 @@ runs:
     - uses: actions/setup-python@v5
       with:
         python-version: 3.10.12
-    - run: poetry install --only mkdocs
+    - run: poetry install --only mkdocs --no-root
       shell: bash
     - run: poetry run mkdocs build
       shell: bash
