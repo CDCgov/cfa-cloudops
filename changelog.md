@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.1.5
-- add install ability on Windows machines
+- switched to async BlobServiceClient for asynchrnonous folder downloads and uploads.
 
 ## v0.1.4
 - fix issue with mounts in add_task method.
