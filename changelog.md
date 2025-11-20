@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.1.6
+- changed task working directory to container image's working directory
+
 ## v0.1.5
 - switched to async BlobServiceClient for asynchrnonous folder downloads and uploads.
 
