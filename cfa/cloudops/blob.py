@@ -9,7 +9,7 @@ from pathlib import Path
 import anyio
 from azure.batch import models
 from azure.identity import ManagedIdentityCredential
-from azure.storage.blob import BlobServiceClient, ContainerClient
+from azure.storage.blob import BlobServiceClient, ContainerClient, aio
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -455,26 +455,27 @@ async def _async_download_blob_to_file(
     # The total number is limited by the number passed in when the semaphore is created.
     async with semaphore:
         logger.debug(f"Acquired semaphore for download: '{blob_name}'")
+        print(f"Acquired semaphore for download: '{blob_name}'")
         try:
             logger.debug(f"Creating blob client for: '{blob_name}'")
-            blob_client = container_client.get_blob_client(blob_name)
+            async with container_client:
+                blob_client = container_client.get_blob_client(blob_name)
 
-            logger.debug(
-                f"Creating directory structure for: '{local_file_path.parent}'"
-            )
-            await local_file_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.debug(
+                    f"Creating directory structure for: '{local_file_path.parent}'"
+                )
+                await local_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            logger.debug(f"Starting blob download stream for: '{blob_name}'")
-            download_stream = blob_client.download_blob()
-            content = download_stream.readall()
+                logger.debug(f"Starting blob download stream for: '{blob_name}'")
+                download_stream = await blob_client.download_blob()
+                content = await download_stream.readall()
+                logger.debug(f"Writing {len(content)} bytes to: '{local_file_path}'")
+                async with await local_file_path.open("wb") as f:
+                    await f.write(content)
 
-            logger.debug(f"Writing {len(content)} bytes to: '{local_file_path}'")
-            async with await local_file_path.open("wb") as f:
-                await f.write(content)
-
-            logger.debug(
-                f"Successfully downloaded: '{blob_name}' ({len(content)} bytes)"
-            )
+                logger.debug(
+                    f"Successfully downloaded: '{blob_name}' ({len(content)} bytes)"
+                )
         except Exception as e:
             # Clean up partial file on failure
             if await local_file_path.exists():
@@ -585,7 +586,9 @@ async def _async_download_blob_folder(
     total_size = 0
     gb = 1e9
 
-    for blob_obj in container_client.list_blobs(name_starts_with=name_starts_with):
+    async for blob_obj in container_client.list_blobs(
+        name_starts_with=name_starts_with
+    ):
         blob_name = blob_obj.name
         ext = Path(blob_name).suffix
 
@@ -622,19 +625,18 @@ async def _async_download_blob_folder(
             return
 
     # A TaskGroup ensures that all spawned tasks are awaited before the block is exited.
-    async with anyio.create_task_group() as tg:
-        logger.info(
-            f"Scheduling downloads for {len(matching_blobs)} blobs in container '{container_client.url}'..."
+    logger.info(
+        f"Scheduling downloads for {len(matching_blobs)} blobs in container '{container_client.url}'..."
+    )
+    for blob in matching_blobs:
+        local_file_path = local_folder / blob
+        await _async_download_blob_to_file(
+            container_client,
+            blob,
+            local_file_path,
+            semaphore,
         )
-        for blob in matching_blobs:
-            local_file_path = local_folder / blob
-            tg.start_soon(
-                _async_download_blob_to_file,
-                container_client,
-                blob,
-                local_file_path,
-                semaphore,
-            )
+
     logger.info("All download tasks have been scheduled.")
     return local_folder
 
@@ -788,15 +790,15 @@ def async_download_blob_folder(
 
         try:
             logger.debug("Creating blob service client")
-            with BlobServiceClient(
-                account_url=storage_account_url,
-                credential=credential,
-            ) as blob_service_client:
+
+            blob_service_client = aio.BlobServiceClient(
+                account_url=storage_account_url, credential=credential
+            )
+            async with blob_service_client:
                 logger.debug(f"Creating container client for '{container_name}'")
                 container_client = blob_service_client.get_container_client(
                     container_name
                 )
-
                 logger.debug("Starting async blob folder download operation")
                 await _async_download_blob_folder(
                     container_client=container_client,
@@ -807,6 +809,7 @@ def async_download_blob_folder(
                     max_concurrent_downloads=max_concurrent_downloads,
                     check_size=check_size,
                 )
+
         except Exception as e:
             logger.error(f"Error during download: {e}")
             raise
