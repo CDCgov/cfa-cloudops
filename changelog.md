@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.1.7
-- updated/added documentation
-
 ## v0.1.6
 - added ability to install on windows
 

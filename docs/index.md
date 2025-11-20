@@ -7,7 +7,6 @@
 - [Local Execution](./local.md)
 - [Modules](./modules.md)
 - [CLI](./cli.md)
-- [GitHub Actions](./github_actions.md)
 - [Sample Files](./files/index.md)
 - [Examples](./examples/index.md)
 - [Troubleshooting](./troubleshooting.md)
