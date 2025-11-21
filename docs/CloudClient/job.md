@@ -10,7 +10,6 @@ The `CloudClient` class has a method called `create_job` which should be used fo
 
 - job_name: name of the job to create. Spaces will be removed.
 - pool_name: name of existing pool to use for running the job.
-- uses_deps: whether the job will use task dependencies. Default is True.
 - save_logs_to_blob: the name of the blob container to use if you want to save logs to the blob container. Optional.
 - logs_folder: the folder to save logs to if save_logs_to_blob is used. Default is 'stdout_stderr'.
 - task_retries: number of retries for the tasks if they fail. Default is 0.
@@ -32,13 +31,12 @@ client.create_job(
 ```
 
 ### A Complex Example
-Suppose we want the same job name and pool name as above, but we know tasks will use dependencies, we want to save any logs to a 'logs' folder in our 'output-test' Blob Container, and tasks can be rerun once, marking the job complete after all tasks finish. In this case, the following should be run:
+Suppose we want the same job name and pool name as above, but we want to save any logs to a 'logs' folder in our 'output-test' Blob Container, and tasks can be rerun once, marking the job complete after all tasks finish. In this case, the following should be run:
 ```python
 client = CloudClient()
 client.create_job(
     job_name = "test-job-1",
     pool_name = "test-pool-exists",
-    uses_deps = True,
     save_logs_to_blob = "output-test",
     logs_folder = "logs",
     mark_complete_after_tasks_run = True,
