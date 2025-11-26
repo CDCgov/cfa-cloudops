@@ -1893,16 +1893,13 @@ class CloudClient:
         task_strs = batch_helpers.get_tasks_from_yaml(
             base_cmd=base_cmd, file_path=file_path
         )
+        tasks = [{"command_line": task_str} for task_str in task_strs]
         logger.debug(f"Retrieved {len(task_strs)} tasks from YAML file.")
         # submit tasks
-        task_list = []
         logger.debug("Submitting tasks to job.")
-        for task_str in task_strs:
-            tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
-            task_list.append(tid)
-            logger.debug(f"Submitted task {tid}.")
-        logger.info(f"Added {len(task_list)} tasks to job '{job_name}' from YAML file.")
-        return task_list
+        self.add_task_collection(job_name=job_name, tasks=tasks, **kwargs)
+        logger.info(f"Added {len(tasks)} tasks to job '{job_name}' from YAML file.")
+        return tasks
 
     def download_after_job(
         self,

@@ -15,7 +15,7 @@ def mock_env_vars(monkeypatch):
 
 
 @pytest.fixture
-def mock_get_batch_service_client():
+def mock_batch_service_client():
     with patch(
         "cfa.cloudops._cloudclient.get_batch_service_client",
         return_value=MagicMock(),
@@ -24,7 +24,7 @@ def mock_get_batch_service_client():
 
 
 @pytest.fixture
-def mock_get_batch_management_client():
+def mock_batch_management_client():
     with patch(
         "cfa.cloudops._cloudclient.get_batch_management_client",
         return_value=MagicMock(),
@@ -33,7 +33,7 @@ def mock_get_batch_management_client():
 
 
 @pytest.fixture
-def mock_get_blob_service_client():
+def mock_blob_service_client():
     with patch(
         "cfa.cloudops._cloudclient.get_blob_service_client",
         return_value=MagicMock(),
@@ -42,7 +42,7 @@ def mock_get_blob_service_client():
 
 
 @pytest.fixture
-def mock_get_compute_management_client():
+def mock_compute_management_client():
     with patch(
         "cfa.cloudops._cloudclient.get_compute_management_client",
         return_value=MagicMock(),
@@ -53,10 +53,10 @@ def mock_get_compute_management_client():
 @pytest.fixture
 def cloud_client(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
 ):
     with patch("cfa.cloudops._cloudclient.EnvCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
@@ -66,10 +66,10 @@ def cloud_client(
 @pytest.fixture
 def cloud_client_with_service_principal(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
 ):
     with patch("cfa.cloudops._cloudclient.SPCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
@@ -78,10 +78,10 @@ def cloud_client_with_service_principal(
 
 def test_create_pool_success(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client,
 ):
     # Mock parameters for create_job
@@ -116,10 +116,10 @@ def test_create_pool_success(
 
 def test_create_job_success(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client,
 ):
     # Mock parameters for create_job
@@ -159,10 +159,10 @@ def test_create_job_success(
 
 def test_create_job_schedule_success(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client,
 ):
     # Mock parameters for create_job_schedule
@@ -203,10 +203,10 @@ def test_create_job_schedule_success(
 
 def test_create_job_schedule_success_with_service_principal(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client_with_service_principal,
 ):
     # Mock parameters for create_job_schedule
@@ -252,10 +252,10 @@ def test_create_job_schedule_success_with_service_principal(
 
 def test_delete_job_schedule_success_with_service_principal(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client_with_service_principal,
 ):
     # Mock parameters for create_job_schedule
@@ -280,10 +280,10 @@ def test_delete_job_schedule_success_with_service_principal(
 
 def test_suspend_job_schedule_success_with_service_principal(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client_with_service_principal,
 ):
     # Mock parameters for create_job_schedule
@@ -308,10 +308,10 @@ def test_suspend_job_schedule_success_with_service_principal(
 
 def test_resume_job_schedule_success_with_service_principal(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
     cloud_client_with_service_principal,
 ):
     # Mock parameters for create_job_schedule
@@ -336,28 +336,28 @@ def test_resume_job_schedule_success_with_service_principal(
 
 def test_cloudclient_init_with_env_credentials(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
 ):
     with patch("cfa.cloudops._cloudclient.EnvCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         client = CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
         assert client.method == "env"
         mock_cred_handler.assert_called_once()
-        mock_get_batch_service_client.assert_called_once()
-        mock_get_batch_management_client.assert_called_once()
-        mock_get_blob_service_client.assert_called_once()
-        mock_get_compute_management_client.assert_called_once()
+        mock_batch_service_client.assert_called_once()
+        mock_batch_management_client.assert_called_once()
+        mock_blob_service_client.assert_called_once()
+        mock_compute_management_client.assert_called_once()
 
 
 def test_cloudclient_init_with_default_credentials(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
 ):
     with patch(
         "cfa.cloudops._cloudclient.DefaultCredentialHandler"
@@ -366,25 +366,120 @@ def test_cloudclient_init_with_default_credentials(
         client = CloudClient(dotenv_path=None, use_sp=False, use_federated=True)
         assert client.method == "default"
         mock_cred_handler.assert_called_once()
-        mock_get_batch_service_client.assert_called_once()
-        mock_get_batch_management_client.assert_called_once()
-        mock_get_blob_service_client.assert_called_once()
-        mock_get_compute_management_client.assert_called_once()
+        mock_batch_service_client.assert_called_once()
+        mock_batch_management_client.assert_called_once()
+        mock_blob_service_client.assert_called_once()
+        mock_compute_management_client.assert_called_once()
 
 
 def test_cloudclient_init_with_sp_credentials(
     mock_env_vars,
-    mock_get_batch_service_client,
-    mock_get_batch_management_client,
-    mock_get_blob_service_client,
-    mock_get_compute_management_client,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
 ):
     with patch("cfa.cloudops._cloudclient.SPCredentialHandler") as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         client = CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
         assert client.method == "sp"
         mock_cred_handler.assert_called_once()
-        mock_get_batch_service_client.assert_called_once()
-        mock_get_batch_management_client.assert_called_once()
-        mock_get_blob_service_client.assert_called_once()
-        mock_get_compute_management_client.assert_called_once()
+        mock_batch_service_client.assert_called_once()
+        mock_batch_management_client.assert_called_once()
+        mock_blob_service_client.assert_called_once()
+        mock_compute_management_client.assert_called_once()
+
+
+def test_add_task(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    job_name = "my-job-1"
+    mount_pairs = [{"source": "source", "target": "/mnt/output"}]
+    with patch("cfa.cloudops.batch_helpers.add_task", return_value=True):
+        with patch(
+            "cfa.cloudops.batch_helpers.get_rel_mnt_path", return_value="/mnt/logs/"
+        ):
+            result = cloud_client_with_service_principal.add_task(
+                job_name=job_name,
+                command_line="echo Hello World",
+                container_image_name="my-image:latest",
+            )
+            assert result is True
+            result = cloud_client_with_service_principal.add_task(
+                job_name=job_name,
+                command_line="echo Hello World",
+            )
+            assert result is True
+            cloud_client_with_service_principal.save_logs_to_blob = True
+            result = cloud_client_with_service_principal.add_task(
+                job_name=job_name,
+                command_line="echo Hello World",
+                mount_pairs=mount_pairs,
+            )
+            assert result is True
+            cloud_client_with_service_principal.full_container_name = "my-container"
+            result = cloud_client_with_service_principal.add_task(
+                job_name=job_name,
+                command_line="echo Hello World",
+                mount_pairs=mount_pairs,
+            )
+            assert result is True
+
+
+def test_add_task_collection(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    job_name = "my-job-1"
+    tasks = [
+        {
+            "mounts": [{"source": "source"}],
+            "command_line": "echo Hello World",
+            "name_suffix": "-01",
+        },
+        {
+            "logs_folder": "/logs",
+            "command_line": "echo Hello Again",
+            "name_suffix": "-02",
+        },
+    ]
+    with patch("cfa.cloudops.batch_helpers.add_task_collection", return_value=True):
+        result = cloud_client_with_service_principal.add_task_collection(
+            job_name=job_name, tasks=tasks
+        )
+        assert result is True
+
+
+def test_add_tasks_from_yaml(cloud_client_with_service_principal):
+    fake_task_strings = [
+        "python step1.py --id 1",
+        "python step2.py --id 2",
+    ]
+    expected_tasks = [
+        {
+            "command_line": "python step1.py --id 1",
+            "mounts": [],
+            "logs_folder": "stdout_stderr",
+        },
+        {
+            "command_line": "python step2.py --id 2",
+            "mounts": [],
+            "logs_folder": "stdout_stderr",
+        },
+    ]
+    with patch(
+        "cfa.cloudops.batch_helpers.get_tasks_from_yaml", return_value=fake_task_strings
+    ):
+        result = cloud_client_with_service_principal.add_tasks_from_yaml(
+            job_name="myjob", base_cmd="python main.py", file_path="fake.yaml"
+        )
+        assert result == expected_tasks
