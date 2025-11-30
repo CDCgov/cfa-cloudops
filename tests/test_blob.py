@@ -182,6 +182,7 @@ async def test__async_upload_blob_folder_success(
         folder=local_folder,
         max_concurrent_uploads=10,
         exclude_extensions=".parquet",
+        tags={"env": "test__async_upload_blob_folder_success", "owner": "xop5"},
     )
     assert mock_logging.messages == []
 
@@ -198,6 +199,7 @@ async def test__async_upload_blob_folder_fail(mock_get_container_client):
                 max_concurrent_uploads=10,
                 include_extensions=".txt",
                 exclude_extensions=".json",
+                tags={"env": "test__async_upload_blob_folder_fail", "owner": "xop5"},
             )
             assert str(excinfo.value) == (
                 "Use include_extensions or exclude_extensions, not both."
@@ -209,6 +211,7 @@ def test_async_upload_blob_folder():
         folder="testdata",
         container_name="my-container",
         storage_account_url="my-storage-account-url",
+        tags={"env": "test_async_upload_blob_folder", "owner": "xop5"},
     )
     assert result == "testdata"
 
@@ -229,6 +232,7 @@ def test_upload_to_storage_container(mocker, mock_get_blob_service_client):
             file_paths="/testdata/myfile.txt",
             blob_storage_container_name="my-blob-storage-container",
             blob_service_client=mock_get_blob_service_client,
+            tags={"env": "test_upload_to_storage_container", "owner": "xop5"},
         )
         mock_print.assert_called_with("Uploaded 1 files to blob storage container")
 
