@@ -64,6 +64,7 @@ def upload_files_in_folder(
     location_in_blob: str = ".",
     blob_service_client=None,
     force_upload: bool = True,
+    tags: dict = None,
 ) -> list[str]:
     """Upload all files from a local folder to Azure Blob Storage with filtering options.
 
@@ -88,6 +89,7 @@ def upload_files_in_folder(
         blob_service_client: Azure Blob service client instance for API calls.
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
+        tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
 
     Returns:
         list[str]: List of local file paths that were processed for upload.
@@ -243,6 +245,7 @@ def upload_files_in_folder(
         blob_service_client=blob_service_client,
         local_root_dir=".",
         remote_root_dir=path.join(location_in_blob),
+        tags=tags,
     )
     if final_list:
         logger.info(
@@ -553,6 +556,7 @@ def list_blobs_in_container(
     name_starts_with: str = None,
     blob_service_client: BlobServiceClient = None,
     container_client: ContainerClient = None,
+    tag_filter: str = None,
 ):
     """List blobs in a container with optional name filtering.
 
@@ -567,6 +571,7 @@ def list_blobs_in_container(
             Only blobs whose names start with this string will be returned.
         blob_service_client (BlobServiceClient, optional): Azure Blob service client.
         container_client (ContainerClient, optional): Azure Container client instance.
+        tag_filter (str, optional): A string representing the tag query to filter blobs.
 
     Returns:
         ItemPaged: Iterator of blob objects matching the criteria.
@@ -587,16 +592,23 @@ def list_blobs_in_container(
                 blob_service_client=client
             )
     """
-    return instantiate_container_client(
+    container_client = instantiate_container_client(
         container_name=container_name,
         account_name=account_name,
         blob_service_client=blob_service_client,
         container_client=container_client,
-    ).list_blobs(name_starts_with)
+    )
+    if tag_filter:
+        container_client.find_blobs_by_tags(tag_filter)
+    else:
+        return container_client.list_blobs(name_starts_with)
 
 
 def list_blobs_flat(
-    container_name: str, blob_service_client: BlobServiceClient, verbose: bool = True
+    container_name: str,
+    blob_service_client: BlobServiceClient,
+    verbose: bool = True,
+    tag_filter: str = None,
 ) -> list[str]:
     """List all blob names in a container as a flat list of strings.
 
@@ -610,6 +622,7 @@ def list_blobs_flat(
             for API calls.
         verbose (bool, optional): Whether to log each blob name individually.
             Default is True.
+        tags: dict (optional): A dictionary of tags to filter the blobs.
 
     Returns:
         list[str]: List of blob names (strings) in the container.
@@ -629,7 +642,9 @@ def list_blobs_flat(
         full blob objects with metadata.
     """
     blob_list = list_blobs_in_container(
-        container_name=container_name, blob_service_client=blob_service_client
+        container_name=container_name,
+        blob_service_client=blob_service_client,
+        tag_filter=tag_filter,
     )
     blob_names = [blob.name for blob in blob_list]
     logger.debug("Blob names gathered.")
@@ -1066,6 +1081,7 @@ def write_blob_stream(
     container_client: ContainerClient = None,
     append_blob: bool = False,
     overwrite: bool = True,
+    tags: dict = None,
 ) -> bool:
     """Write data stream to a file in Azure Blob Storage.
 
@@ -1085,6 +1101,7 @@ def write_blob_stream(
             Default is False (creates block blob).
         overwrite (bool, optional): Whether to overwrite existing blob. If False and
             blob exists, ResourceExistsError will be raised. Default is True.
+        tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
 
     Returns:
         bool: True if upload was successful.
@@ -1152,7 +1169,7 @@ def write_blob_stream(
 
     logger.debug(f"Uploading blob data to '{blob_url}'")
     container_client.upload_blob(
-        name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite
+        name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite, tags=tags
     )
     logger.debug("Blob upload completed successfully")
     logger.info(
