@@ -18,6 +18,8 @@ from azure.batch.models import (
     TaskConstraints,
 )
 
+from cfa.cloudops.task import get_std_output_task_files
+
 logger = logging.getLogger(__name__)
 
 AZ_MOUNT_DIR = "$AZ_BATCH_NODE_MOUNTS_DIR"
@@ -1168,8 +1170,7 @@ def add_task(
     job_name: str,
     task_id_base: str,
     command_line: str,
-    save_logs_rel_path: str | None = None,
-    logs_folder: str = "stdout_stderr",
+    save_logs: str | None = None,
     name_suffix: str = "",
     mounts: list[dict] | None = None,
     depends_on: str | list[str] | None = None,
@@ -1180,6 +1181,7 @@ def add_task(
     task_id_max: int = 0,
     task_id_ints: bool = False,
     timeout: int | None = None,
+    blob_account: str | None = None,
 ) -> str:
     """Add a task to an Azure Batch job with comprehensive configuration options.
 
@@ -1193,10 +1195,8 @@ def add_task(
             and task_id_max unless task_id_ints is True).
         command_line (str | list[str]): Command to execute in the task. Can be a string
             or list of strings that will be joined.
-        save_logs_rel_path (str, optional): Relative path where stdout/stderr logs should
+        save_logs (str, optional): Blob container name where stdout/stderr logs should
             be saved. If None, logs are not saved to blob storage.
-        logs_folder (str): Name of the folder to create for saving logs. Defaults to
-            "stdout_stderr".
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
         mounts (list[dict], optional): List of mount configurations as dicts
             of {"source": <container_name>, "target": <relative_mount_path>).
@@ -1214,6 +1214,7 @@ def add_task(
             Defaults to False.
         timeout (int, optional): Maximum wall clock time for the task in minutes. If None,
             no timeout is set.
+        blob_account (str, optional): Name of the blob storage account for log saving.
 
     Returns:
         str: The generated task ID for the newly created task.
@@ -1236,7 +1237,7 @@ def add_task(
                 task_id_base="analyze",
                 command_line=["python", "analyze.py", "--input", "/data/input.csv"],
                 depends_on=["preprocess-task-1", "preprocess-task-2"],
-                save_logs_rel_path="/logs",
+                save_logs="/logs",
                 timeout=120,
                 batch_client=batch_client,
                 full_container_name="myregistry.azurecr.io/analyzer:v1.0"
@@ -1287,28 +1288,15 @@ def add_task(
         task_id = f"{task_id_base}-{name_suffix}-{str(task_id_max + 1)}"
         logger.debug(f"Generated string-based task ID: '{task_id}'")
 
-    if save_logs_rel_path is not None:
-        if save_logs_rel_path == "ERROR!":
-            logger.warning("could not find rel path")
-            print(
-                "could not find rel path. Stdout and stderr will not be saved to blob storage."
-            )
-            full_cmd = cmd_str
-        else:
-            logger.debug(
-                f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
-            )
-            full_cmd = _generate_command_for_saving_logs(
-                command_line=cmd_str,
-                job_name=job_name,
-                task_id=task_id,
-                save_logs_rel_path=save_logs_rel_path,
-                logs_folder=logs_folder,
-            )
-            logger.debug(f"Modified command for log capture: '{full_cmd}'")
+    if save_logs is not None:
+        output_files = get_std_output_task_files(
+            log_path=os.path.join(job_name, task_id),
+            blob_container=save_logs,
+            blob_account=blob_account,
+        )
     else:
-        logger.debug("No log saving configured - using command as-is")
-        full_cmd = cmd_str
+        logger.debug("No log saving configured.")
+        output_files = []
 
     # add constraints
     if timeout is None:
@@ -1319,7 +1307,7 @@ def add_task(
         logger.debug(f"Task timeout constraint set to {timeout} minutes")
 
     task_constraints = TaskConstraints(max_wall_clock_time=_to)
-    command_line = full_cmd
+    command_line = cmd_str
     logger.debug(f"Final command line for task {task_id}: '{command_line}'")
 
     # if full container name is none, pull info from job
@@ -1344,6 +1332,7 @@ def add_task(
         depends_on=task_deps,
         run_dependent_tasks_on_failure=run_dependent_tasks_on_fail,
         exit_conditions=exit_conditions,
+        output_files=output_files,
     )
 
     # Add the task to the job
@@ -1375,10 +1364,8 @@ def add_task_collection(
         tasks (list[dict]): List of task configuration dicts. Each dict can contain:
             - command_line (str | list[str]): Command to execute in the task. Can be a string
             or list of strings that will be joined.
-            - save_logs_rel_path (str, optional): Relative path where stdout/stderr logs should
+            - save_logs (str, optional): Blob container name where stdout/stderr logs should
                 be saved. If None, logs are not saved to blob storage.
-            - logs_folder (str): Name of the folder to create for saving logs. Defaults to
-                "stdout_stderr".
             - mounts (list[dict], optional): List of mount configurations as dicts
                 of {"source": <container_name>, "target": <relative_mount_path>).
             - depends_on (str | list[str], optional): Task ID(s) that this task depends on.
@@ -1420,7 +1407,7 @@ def add_task_collection(
                     {
                         "command_line": ["python", "analyze.py", "--input", "/data/input.csv"],
                         "depends_on": ["preprocess-task-1", "preprocess-task-2"],
-                        "save_logs_rel_path": "/logs",
+                        "save_logs": "logs",
                         "timeout": 120,
                         "run_dependent_tasks_on_fail": False,
                         "full_container_name": "myregistry.azurecr.io/analyzer:v1.0"
@@ -1428,7 +1415,7 @@ def add_task_collection(
                     {
                         "command_line": "python foo.py",
                         "depends_on": ["preprocess-task-2"],
-                        "save_logs_rel_path": "/logs",
+                        "save_logs": "logs",
                         "mounts": [
                             {"source": "data-container", "target": "/data"},
                             {"source": "config-container", "target": "/config"},
@@ -1472,17 +1459,14 @@ def add_task_collection(
         command_line = task["command_line"]
 
         logs_folder = task.get("logs_folder", "stdout_stderr")
-        save_logs_rel_path = task.get("save_logs_rel_path")
-        if save_logs_rel_path is not None:
-            full_command = _generate_command_for_saving_logs(
-                command_line=command_line,
-                job_name=job_name,
-                task_id=task_id,
-                save_logs_rel_path=save_logs_rel_path,
-                logs_folder=logs_folder,
+        save_logs = task.get("save_logs")
+
+        if save_logs is not None:
+            output_files = get_std_output_task_files(
+                log_path=os.path.join(job_name, task_id, logs_folder),
+                blob_container=save_logs,
+                blob_account=task.get("blob_account"),
             )
-        else:
-            full_command = command_line
 
         run_dependent_tasks_on_fail = task.get("run_dependent_tasks_on_fail", False)
         exit_conditions = _generate_exit_conditions(run_dependent_tasks_on_fail)
@@ -1504,7 +1488,7 @@ def add_task_collection(
 
         new_task = batch_models.TaskAddParameter(
             id=task_id,
-            command_line=full_command,
+            command_line=command_line,
             container_settings=batch_models.TaskContainerSettings(
                 image_name=task["full_container_name"],
                 container_run_options=container_run_options,
@@ -1514,6 +1498,7 @@ def add_task_collection(
             constraints=task_constraints,
             depends_on=task_deps,
             run_dependent_tasks_on_failure=run_dependent_tasks_on_fail,
+            output_files=output_files,
             exit_conditions=exit_conditions,
         )
         tasks_to_add.append(new_task)

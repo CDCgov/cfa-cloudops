@@ -479,19 +479,6 @@ class CloudClient:
 
         self.save_logs_to_blob = save_logs_to_blob
 
-        if save_logs_to_blob:
-            logger.debug(
-                f"Configuring log saving to blob container: {save_logs_to_blob}"
-            )
-            if logs_folder is None:
-                self.logs_folder = "stdout_stderr"
-            else:
-                if logs_folder.startswith("/"):
-                    logs_folder = logs_folder[1:]
-                if logs_folder.endswith("/"):
-                    logs_folder = logs_folder[:-1]
-                self.logs_folder = logs_folder
-            logger.debug(f"Logs folder for job set to: {self.logs_folder}")
         if timeout is None:
             _to = None
             logger.debug("No timeout set for job.")
@@ -730,22 +717,6 @@ class CloudClient:
             container_name = container_image_name
             logger.debug(f"Using provided container name: {container_name}.")
 
-        if self.save_logs_to_blob:
-            logger.debug("Configuring log saving to blob storage.")
-            rel_mnt_path = batch_helpers.get_rel_mnt_path(
-                blob_name=self.save_logs_to_blob,
-                pool_name=pool_name,
-                resource_group_name=self.cred.azure_resource_group_name,
-                account_name=self.cred.azure_batch_account,
-                batch_mgmt_client=self.batch_mgmt_client,
-            )
-            if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
-            logger.debug(f"Relative mount path for logs set to: {rel_mnt_path}")
-        else:
-            rel_mnt_path = None
-            logger.debug("No log saving to blob storage configured.")
-
         # get all mounts from pool info
         if mount_pairs is None:
             self.mounts = batch_helpers.get_pool_mounts(
@@ -768,8 +739,7 @@ class CloudClient:
             job_name=job_name,
             task_id_base=job_name,
             command_line=command_line,
-            save_logs_rel_path=rel_mnt_path,
-            logs_folder=self.logs_folder,
+            save_logs=self.save_logs_to_blob,
             name_suffix=name_suffix,
             mounts=self.mounts,
             depends_on=depends_on,
@@ -780,6 +750,7 @@ class CloudClient:
             task_id_max=self.task_id_max,
             task_id_ints=self.task_id_ints,
             timeout=timeout,
+            blob_account=self.cred.azure_blob_storage_account,
         )
         self.task_id_max += 1
         print(f"Added task {tid} to job {job_name}.")
