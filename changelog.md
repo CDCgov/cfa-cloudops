@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.1
+- added tags to uploaded blobs and filtering feature for blobs by tag expression
+
 ## v0.2.0
 - switched to async ContainerClient for asynchrnonous folder downloads and uploads
 
