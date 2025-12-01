@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.0
+- switched to async ContainerClient for asynchrnonous folder downloads and uploads
+
 ## v0.1.9
 - added `add_task_collection` method to CloudClient for creating multiple tasks as a batch
 
@@ -20,7 +23,7 @@ The versioning pattern is `major.minor.patch`.
 - added ability to install on windows
 
 ## v0.1.5
-- switched to async BlobServiceClient for asynchrnonous folder downloads and uploads.
+- switched to async BlobServiceClient for asynchrnonous folder downloads and uploads
 
 ## v0.1.4
 - fix issue with mounts in add_task method.
@@ -29,7 +32,7 @@ The versioning pattern is `major.minor.patch`.
 - added unit tests in `tests` folder.
 
 ## v0.1.2
-- added download_task_output parameter to `CloudClient.monitor_job()` to download stdout and stderr of each task when the task completes.
+- added download_task_output parameter to `CloudClient.monitor_job()` to download stdout and stderr of each task when the task completes
 
 ## v0.1.1
 - increase logging throughout the library
