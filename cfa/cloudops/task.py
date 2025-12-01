@@ -461,13 +461,15 @@ def get_task_config(
 def get_std_output_task_files(
     log_path: str, blob_container: str, blob_account: str, **kwargs
 ) -> OutputFile:
-    return output_task_files_to_blob(
-        file_pattern="../std*.txt",
-        blob_container=blob_container,
-        blob_account=blob_account,
-        path=log_path,
-        upload_condition="taskCompletion",
-        blob_endpoint_subdomain=default_azure_blob_storage_endpoint_subdomain,
-        compute_node_identity_reference=None,
-        **kwargs,
+    return ensure_listlike(
+        output_task_files_to_blob(
+            file_pattern="../std*.txt",
+            blob_container=blob_container,
+            blob_account=blob_account,
+            path=log_path,
+            upload_condition="taskCompletion",
+            blob_endpoint_subdomain=default_azure_blob_storage_endpoint_subdomain,
+            compute_node_identity_reference=None,
+            **kwargs,
+        )
     )
