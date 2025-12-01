@@ -20,6 +20,100 @@ from azure.batch.models import (
 
 logger = logging.getLogger(__name__)
 
+AZ_MOUNT_DIR = "$AZ_BATCH_NODE_MOUNTS_DIR"
+NO_EXIT_OPTIONS = ExitOptions(
+    dependency_action=DependencyAction.satisfy, job_action=JobAction.none
+)
+NO_EXIT_CONDITIONS = ExitConditions(
+    exit_codes=[
+        ExitCodeMapping(code=0, exit_options=NO_EXIT_OPTIONS),
+        ExitCodeMapping(code=1, exit_options=NO_EXIT_OPTIONS),
+    ],
+    pre_processing_error=NO_EXIT_OPTIONS,
+    file_upload_error=NO_EXIT_OPTIONS,
+    default=NO_EXIT_OPTIONS,
+)
+TERMMINATE_EXIT_OPTIONS = ExitOptions(
+    dependency_action=DependencyAction.block, job_action=JobAction.none
+)
+TERMMINATE_EXIT_CONDITIONS = ExitConditions(
+    exit_codes=[
+        ExitCodeMapping(code=0, exit_options=NO_EXIT_OPTIONS),
+        ExitCodeMapping(code=1, exit_options=TERMMINATE_EXIT_OPTIONS),
+    ],
+    pre_processing_error=TERMMINATE_EXIT_OPTIONS,
+    file_upload_error=TERMMINATE_EXIT_OPTIONS,
+    default=TERMMINATE_EXIT_OPTIONS,
+)
+
+
+def _generate_exit_conditions(run_dependent_tasks_on_fail: bool) -> ExitConditions:
+    if run_dependent_tasks_on_fail:
+        logger.debug("Configured to run dependent tasks on failure")
+        exit_conditions = NO_EXIT_CONDITIONS
+    else:
+        logger.debug("Configured to block dependent tasks on failure")
+        exit_conditions = TERMMINATE_EXIT_CONDITIONS
+    return exit_conditions
+
+
+def _generate_command_for_saving_logs(
+    command_line: str,
+    job_name: str,
+    task_id: str,
+    save_logs_rel_path: str,
+    logs_folder: str = "logs",
+) -> str:
+    """Generate a command line that saves stdout and stderr to log files.
+
+    Args:
+        command_line (str): Original command line to execute.
+        job_name (str): Name/ID of the job.
+        task_id (str): ID of the task.
+        save_logs_rel_path (str): Relative path where logs should be saved.
+        logs_folder (str): Subfolder name within the save_logs_rel_path to store logs. Defaults to "logs".
+    """
+    t = datetime.datetime.now(zi("America/New_York"))
+    s_time = t.strftime("%Y%m%d_%H%M%S")
+    if not save_logs_rel_path.startswith("/"):
+        save_logs_rel_path = "/" + save_logs_rel_path
+    _folder = f"{save_logs_rel_path}/{logs_folder}/"
+    sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
+    logger.debug(f"Logs will be saved to: '{sout}'")
+    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} 2>&1 | tee {sout}" """
+
+
+def _generate_mount_string(mounts):
+    mount_str = ""
+    if mounts is not None:
+        for mount in mounts:
+            logger.debug("Adding mount to mount string.")
+            mount_str = (
+                mount_str
+                + "--mount type=bind,source="
+                + AZ_MOUNT_DIR
+                + f"/{mount['source']},target=/{mount['target']} "
+            )
+    return mount_str
+
+
+def _generate_task_dependencies(depends_on, depends_on_range):
+    task_deps = None
+    if depends_on is not None:
+        depends_on = [depends_on] if isinstance(depends_on, str) else depends_on
+        task_deps = batch_models.TaskDependencies(task_ids=depends_on)
+
+    if depends_on_range is not None:
+        task_deps = batch_models.TaskDependencies(
+            task_id_ranges=[
+                batch_models.TaskIdRange(
+                    start=int(depends_on_range[0]),
+                    end=int(depends_on_range[1]),
+                )
+            ]
+        )
+    return task_deps
+
 
 def monitor_tasks(
     job_name: str,
@@ -1170,7 +1264,6 @@ def add_task(
         logger.debug(f"Using command string directly: '{cmd_str}'")
 
     # Add a task to the job
-    az_mount_dir = "$AZ_BATCH_NODE_MOUNTS_DIR"
     logger.debug("Creating user identity with admin privileges")
     user_identity = batch_models.UserIdentity(
         auto_user=batch_models.AutoUserSpecification(
@@ -1179,74 +1272,13 @@ def add_task(
         )
     )
 
-    task_deps = None
-    if depends_on is not None:
-        # Create a TaskDependencies object to pass in
-        if isinstance(depends_on, str):
-            depends_on = [depends_on]
-            logger.debug(f"Adding task dependency on single task: {depends_on}")
-        else:
-            logger.debug(f"Adding task dependencies on multiple tasks: {depends_on}")
-        task_deps = batch_models.TaskDependencies(task_ids=depends_on)
-    if depends_on_range is not None:
-        logger.debug(
-            f"Adding task dependency on range: {depends_on_range[0]} to {depends_on_range[1]}"
-        )
-        task_deps = batch_models.TaskDependencies(
-            task_id_ranges=[
-                batch_models.TaskIdRange(
-                    start=int(depends_on_range[0]),
-                    end=int(depends_on_range[1]),
-                )
-            ]
-        )
+    task_deps = _generate_task_dependencies(depends_on, depends_on_range)
 
     logger.debug("Configuring exit conditions and dependency behavior")
-    no_exit_options = ExitOptions(
-        dependency_action=DependencyAction.satisfy, job_action=JobAction.none
-    )
-
-    if run_dependent_tasks_on_fail:
-        logger.debug("Configured to run dependent tasks on failure")
-        exit_conditions = ExitConditions(
-            exit_codes=[
-                ExitCodeMapping(code=0, exit_options=no_exit_options),
-                ExitCodeMapping(code=1, exit_options=no_exit_options),
-            ],
-            pre_processing_error=no_exit_options,
-            file_upload_error=no_exit_options,
-            default=no_exit_options,
-        )
-    else:
-        logger.debug("Configured to block dependent tasks on failure")
-        terminate_exit_options = ExitOptions(
-            dependency_action=DependencyAction.block,
-            job_action=JobAction.none,
-        )
-        exit_conditions = ExitConditions(
-            exit_codes=[
-                ExitCodeMapping(code=0, exit_options=no_exit_options),
-                ExitCodeMapping(code=1, exit_options=terminate_exit_options),
-            ],
-            pre_processing_error=terminate_exit_options,
-            file_upload_error=terminate_exit_options,
-            default=terminate_exit_options,
-        )
+    exit_conditions = _generate_exit_conditions(run_dependent_tasks_on_fail)
 
     logger.debug("Creating mount configuration string.")
-    mount_str = ""
-    # src = env variable to fsmounts/rel_path
-    # target = the directory(path) you reference in your code
-    if mounts is not None:
-        mount_str = ""
-        for mount in mounts:
-            logger.debug("Adding mount to mount string.")
-            mount_str = (
-                mount_str
-                + "--mount type=bind,source="
-                + az_mount_dir
-                + f"/{mount['source']},target=/{mount['target']} "
-            )
+    mount_str = _generate_mount_string(mounts)
 
     if task_id_ints:
         task_id = str(task_id_max + 1)
@@ -1266,15 +1298,12 @@ def add_task(
             logger.debug(
                 f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
             )
-            t = datetime.datetime.now(zi("America/New_York"))
-            s_time = t.strftime("%Y%m%d_%H%M%S")
-            if not save_logs_rel_path.startswith("/"):
-                save_logs_rel_path = "/" + save_logs_rel_path
-            _folder = f"{save_logs_rel_path}/{logs_folder}/"
-            sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
-            logger.debug(f"Logs will be saved to: '{sout}'")
-            full_cmd = (
-                f"""/bin/bash -c "mkdir -p {_folder}; {cmd_str} 2>&1 | tee {sout}" """
+            full_cmd = _generate_command_for_saving_logs(
+                command_line=cmd_str,
+                job_name=job_name,
+                task_id=task_id,
+                save_logs_rel_path=save_logs_rel_path,
+                logs_folder=logs_folder,
             )
             logger.debug(f"Modified command for log capture: '{full_cmd}'")
     else:
@@ -1322,6 +1351,180 @@ def add_task(
     batch_client.task.add(job_id=job_name, task=task_param)
     logger.debug(f"Task '{task_id}' successfully added to job '{job_name}'")
     return task_id
+
+
+def add_task_collection(
+    job_name: str,
+    task_id_base: str,
+    tasks: list[dict],
+    name_suffix: str = "",
+    batch_client: object | None = None,
+    task_id_max: int = 0,
+    task_id_ints: bool = False,
+) -> batch_models.TaskAddCollectionResult:
+    """Add a list of tasks to an Azure Batch job with comprehensive configuration options.
+
+    Creates and adds a list of tasks to the specified job with support for dependencies,
+    container execution, mount configurations, log saving, and timeout constraints.
+    The tasks runs in a container environment with configurable execution settings.
+
+    Args:
+        job_name (str): Name/ID of the job to add the task to. The job must exist.
+        task_id_base (str): Base string for generating the task ID (used with name_suffix
+            and task_id_max unless task_id_ints is True).
+        tasks (list[dict]): List of task configuration dicts. Each dict can contain:
+            - command_line (str | list[str]): Command to execute in the task. Can be a string
+            or list of strings that will be joined.
+            - save_logs_rel_path (str, optional): Relative path where stdout/stderr logs should
+                be saved. If None, logs are not saved to blob storage.
+            - logs_folder (str): Name of the folder to create for saving logs. Defaults to
+                "stdout_stderr".
+            - mounts (list[dict], optional): List of mount configurations as dicts
+                of {"source": <container_name>, "target": <relative_mount_path>).
+            - depends_on (str | list[str], optional): Task ID(s) that this task depends on.
+                Task will not start until dependencies complete successfully.
+            - depends_on_range (tuple[int, int], optional): Range of task IDs (start, end) that
+                this task depends on. Alternative to depends_on.
+            - run_dependent_tasks_on_fail (bool): If True, dependent tasks will run even if
+                this task fails. If False, failure blocks dependents. Defaults to False.
+            - timeout (int, optional): Maximum wall clock time for the task in minutes. If None,
+                no timeout is set.
+            - full_container_name (str, optional): Full container image name to use for the task.
+        name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
+        batch_client (object): Azure Batch service client instance for API calls.
+        task_id_max (int): Current maximum task ID number for generating unique task IDs.
+            Defaults to 0.
+        task_id_ints (bool): If True, use integer task IDs instead of string-based IDs.
+            Defaults to False.
+
+    Returns:
+        TaskAddCollectionResult: The result of task collection operation
+
+    Example:
+        Add 2 simple tasks:
+
+            task_id = add_task(
+                job_name="data-processing",
+                task_id_base="process",
+                command_line="python process_data.py",
+                batch_client=batch_client,
+                full_container_name="myregistry.azurecr.io/data-processor:latest"
+            )
+
+        Add a task with dependencies and log saving:
+
+            task_id = add_task_collection(
+                job_name="analysis-job",
+                task_id_base="analyze",
+                tasks=[
+                    {
+                        "command_line": ["python", "analyze.py", "--input", "/data/input.csv"],
+                        "depends_on": ["preprocess-task-1", "preprocess-task-2"],
+                        "save_logs_rel_path": "/logs",
+                        "timeout": 120,
+                        "run_dependent_tasks_on_fail": False,
+                        "full_container_name": "myregistry.azurecr.io/analyzer:v1.0"
+                    },
+                    {
+                        "command_line": "python foo.py",
+                        "depends_on": ["preprocess-task-2"],
+                        "save_logs_rel_path": "/logs",
+                        "mounts": [
+                            {"source": "data-container", "target": "/data"},
+                            {"source": "config-container", "target": "/config"},
+                        ],
+                        "timeout": 30,
+                    },
+                ],
+                batch_client=batch_client,
+
+            )
+
+    Note:
+        The task runs with admin privileges in the pool and is configured with
+        appropriate exit conditions based on the run_dependent_tasks_on_fail setting.
+        Mount configurations allow access to blob storage from within the container.
+        Log saving creates timestamped files in the specified blob storage location.
+    """
+    logger.debug(
+        f"Adding task to job '{job_name}' with base ID '{task_id_base}', suffix '{name_suffix}'"
+    )
+
+    # Add a task to the job
+    logger.debug("Creating user identity with admin privileges")
+    user_identity = batch_models.UserIdentity(
+        auto_user=batch_models.AutoUserSpecification(
+            scope=batch_models.AutoUserScope.pool,
+            elevation_level=batch_models.ElevationLevel.admin,
+        )
+    )
+
+    logger.debug("Creating task collection")
+    tasks_to_add = []
+    for n, task in enumerate(tasks):
+        if task_id_ints:
+            task_id = str(task_id_max + n + 1)
+            logger.debug(f"Generated integer-based task ID: '{task_id}'")
+        else:
+            task_id = f"{task_id_base}-{name_suffix}-{str(task_id_max + n + 1)}"
+            logger.debug(f"Generated string-based task ID: '{task_id}'")
+
+        command_line = task["command_line"]
+
+        logs_folder = task.get("logs_folder", "stdout_stderr")
+        save_logs_rel_path = task.get("save_logs_rel_path")
+        if save_logs_rel_path is not None:
+            full_command = _generate_command_for_saving_logs(
+                command_line=command_line,
+                job_name=job_name,
+                task_id=task_id,
+                save_logs_rel_path=save_logs_rel_path,
+                logs_folder=logs_folder,
+            )
+        else:
+            full_command = command_line
+
+        run_dependent_tasks_on_fail = task.get("run_dependent_tasks_on_fail", False)
+        exit_conditions = _generate_exit_conditions(run_dependent_tasks_on_fail)
+
+        depends_on = task.get("depends_on")
+        depends_on_range = task.get("depends_on_range")
+        task_deps = _generate_task_dependencies(depends_on, depends_on_range)
+
+        timeout = task.get("timeout")
+        _to = datetime.timedelta(minutes=timeout) if timeout else None
+        task_constraints = TaskConstraints(max_wall_clock_time=_to)
+
+        mounts = task.get("mounts", [])
+        mount_str = _generate_mount_string(mounts)
+
+        # if full container name is none, pull info from job
+        container_name = f"{job_name}_{str(task_id_max + 1)}"
+        container_run_options = f"--name={container_name} --rm " + mount_str
+
+        new_task = batch_models.TaskAddParameter(
+            id=task_id,
+            command_line=full_command,
+            container_settings=batch_models.TaskContainerSettings(
+                image_name=task["full_container_name"],
+                container_run_options=container_run_options,
+                working_directory="containerImageDefault",
+            ),
+            user_identity=user_identity,
+            constraints=task_constraints,
+            depends_on=task_deps,
+            run_dependent_tasks_on_failure=run_dependent_tasks_on_fail,
+            exit_conditions=exit_conditions,
+        )
+        tasks_to_add.append(new_task)
+
+    # Add the task list to job
+    logger.debug(
+        f"Adding '{len(tasks_to_add)}' to job '{job_name}' i Azure Batch service"
+    )
+    result = batch_client.task.add_collection(job_id=job_name, value=tasks_to_add)
+    logger.debug(f"Successfully added {len(tasks_to_add)}' tasks job '{job_name}'")
+    return result
 
 
 def check_pool_exists(

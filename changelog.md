@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.1.9
+- added `add_task_collection` method to CloudClient for creating multiple tasks as a batch
+
 ## v0.1.8
 - changed task working directory to container image's working directory
 

@@ -786,6 +786,67 @@ class CloudClient:
         logger.info(f"Task '{tid}' added to job '{job_name}'.")
         return tid
 
+    def add_task_collection(
+        self, job_name: str, tasks: list[dict], name_suffix: str = ""
+    ):
+        """
+        Add a list of tasks to an Azure Batch job.
+
+        Args:
+            job_name (str): Name of the job to add the task to.
+            tasks (list[dict]): List of task configurations to add to the job. Each dict should contain:
+                - command_line (str): Command line arguments for the task.
+                - mount_pairs (list[dict], optional): List of mount configurations (dicts) for the task.
+                    Each dict should be in the form {"source": <container_name>, "target": <target_path>}.
+                    Example:
+                        [
+                            {"source": "mycontainer", "target": "/mnt/data"},
+                            {"source": "logscontainer", "target": "/mnt/logs"}
+                        ]
+                - depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
+                - depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
+                - run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
+                - full_container_name (str, optional): Container image to use for the task. Default is None.
+                - timeout (int, optional): Maximum time in minutes for the task to run. Default is None.
+            name_suffix (str, optional): Suffix to append to the task ID. Default is "".
+        """
+        logger.debug(f"Adding task to job: {job_name}")
+        # get pool info for related job
+        job_info = self.batch_service_client.job.get(job_name)
+        pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+        logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
+
+        for task in tasks:
+            if task.get("mounts") is None:
+                self.mounts = batch_helpers.get_pool_mounts(
+                    pool_name,
+                    self.cred.azure_resource_group_name,
+                    self.cred.azure_batch_account,
+                    self.batch_mgmt_client,
+                )
+                task["mounts"] = self.mounts
+            if task.get("logs_folder") is None:
+                task["logs_folder"] = self.logs_folder
+
+        logger.debug("Adding tasks to job.")
+        try:
+            result = batch_helpers.add_task_collection(
+                job_name=job_name,
+                task_id_base=job_name,
+                tasks=tasks,
+                name_suffix=name_suffix,
+                batch_client=self.batch_service_client,
+                task_id_max=self.task_id_max,
+                task_id_ints=self.task_id_ints,
+            )
+            self.task_id_max += len(tasks)
+            print(f"Added {len(tasks)} tasks to job {job_name}.")
+            logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
+            return result
+        except Exception as ce:
+            logger.error(f"Failed to add task collection to job: {str(ce)}")
+            return False
+
     def create_blob_container(self, name: str) -> None:
         """Create a blob storage container if it doesn't already exist.
 
@@ -1832,16 +1893,13 @@ class CloudClient:
         task_strs = batch_helpers.get_tasks_from_yaml(
             base_cmd=base_cmd, file_path=file_path
         )
+        tasks = [{"command_line": task_str} for task_str in task_strs]
         logger.debug(f"Retrieved {len(task_strs)} tasks from YAML file.")
         # submit tasks
-        task_list = []
         logger.debug("Submitting tasks to job.")
-        for task_str in task_strs:
-            tid = self.add_task(job_name=job_name, command_line=task_str, **kwargs)
-            task_list.append(tid)
-            logger.debug(f"Submitted task {tid}.")
-        logger.info(f"Added {len(task_list)} tasks to job '{job_name}' from YAML file.")
-        return task_list
+        self.add_task_collection(job_name=job_name, tasks=tasks, **kwargs)
+        logger.info(f"Added {len(tasks)} tasks to job '{job_name}' from YAML file.")
+        return tasks
 
     def download_after_job(
         self,
