@@ -9,7 +9,7 @@ from pathlib import Path
 import anyio
 from azure.batch import models
 from azure.identity import ManagedIdentityCredential
-from azure.storage.blob import BlobServiceClient, ContainerClient, aio
+from azure.storage.blob import BlobServiceClient, aio
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -427,7 +427,7 @@ def get_node_mount_config(
 
 
 async def _async_download_blob_to_file(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     blob_name: str,
     local_file_path: anyio.Path,
     semaphore: anyio.Semaphore,
@@ -487,7 +487,7 @@ async def _async_download_blob_to_file(
 
 
 async def _async_upload_file_to_blob(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     local_file_path: anyio.Path,
     blob_name: str,
     semaphore: anyio.Semaphore,
@@ -529,7 +529,7 @@ async def _async_upload_file_to_blob(
 
 
 async def _async_download_blob_folder(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     local_folder: anyio.Path,
     max_concurrent_downloads: int,
     name_starts_with: str | None = None,
@@ -641,7 +641,7 @@ async def _async_download_blob_folder(
 
 
 async def _async_upload_blob_folder(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     folder: anyio.Path,
     max_concurrent_uploads: int,
     location_in_blob: str = ".",
