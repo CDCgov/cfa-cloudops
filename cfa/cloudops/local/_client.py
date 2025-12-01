@@ -213,7 +213,6 @@ class CloudClient:
         self,
         job_name: str,
         pool_name: str,
-        uses_deps: bool = True,
         save_logs_to_blob: str | None = None,
         logs_folder: str | None = None,
         task_retries: int = 0,
@@ -236,9 +235,6 @@ class CloudClient:
                 exceed 64 characters. Spaces will be automatically removed.
             pool_name (str): Name of the pool where the job's tasks will run. The pool
                 must already exist and be in an active state.
-            uses_deps (bool, optional): Whether to enable task dependencies for this job.
-                When True, tasks can specify dependencies on other tasks within the same job.
-                Default is True.
             save_logs_to_blob (str, optional): Azure Blob Storage container name where task
                 logs should be saved. If provided, stdout and stderr from tasks will be
                 automatically uploaded to this container. Default is None (logs not saved to blob).
@@ -280,7 +276,6 @@ class CloudClient:
                 client.create_job(
                     job_name="pipeline-job",
                     pool_name="compute-pool",
-                    uses_deps=True,
                     task_retries=3,
                     save_logs_to_blob="job-logs",
                     logs_folder="pipeline-logs/run-001",
@@ -300,7 +295,6 @@ class CloudClient:
 
         Note:
             - The job must be created before adding tasks to it
-            - Task dependencies only work when uses_deps=True
             - If save_logs_to_blob is specified, ensure the blob container exists
             - Job names are automatically cleaned of spaces
         """
