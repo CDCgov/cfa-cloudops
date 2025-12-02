@@ -1237,7 +1237,7 @@ def add_task(
                 task_id_base="analyze",
                 command_line=["python", "analyze.py", "--input", "/data/input.csv"],
                 depends_on=["preprocess-task-1", "preprocess-task-2"],
-                save_logs="/logs",
+                save_logs="logs",
                 timeout=120,
                 batch_client=batch_client,
                 full_container_name="myregistry.azurecr.io/analyzer:v1.0"
