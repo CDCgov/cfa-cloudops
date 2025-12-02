@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.2
+- removed the option to turn on or off dependencies at the job level. The option for dependencies is always on going forward.
+
 ## v0.2.1
 - added tags to uploaded blobs and filtering feature for blobs by tag expression
 
