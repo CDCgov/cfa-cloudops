@@ -463,7 +463,7 @@ def get_std_output_task_files(
 ) -> OutputFile:
     return ensure_listlike(
         output_task_files_to_blob(
-            file_pattern="*/std*.txt",
+            file_pattern="/*/std*.txt",
             blob_container=blob_container,
             blob_account=blob_account,
             path=log_path,
