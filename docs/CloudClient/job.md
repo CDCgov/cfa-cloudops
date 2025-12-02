@@ -50,7 +50,8 @@ Once jobs are created, tasks can be added to that job to run. Per the Azure Batc
 
 Depending on the pool setup, tasks can run in parallel or sequentially. If there are more than one task slot per node established in the pool, multiple tasks could run on a single node at one time.
 
-The `CloudClient` class has a `add_task` method to simplify the programmatic submission of tasks to their respective job. Multiple `add_task` calls can be submitted one after the other. The following parameters can be passed to the `add_task` method:
+The `CloudClient` class has a `add_task` method to simplify the programmatic submission of tasks to their respective job. Multiple `add_task` calls can be submitted one after the other. Alternatively the `add_task_collection` method can be invoked to add multiple tasks in one operation to a job.
+The following parameters can be passed to the `add_task` method:
 
 - job_name: name of an existing job
 - command_line: command for the desired task like you would run in a terminal
@@ -116,6 +117,27 @@ client.add_task(
             "target": "/data/output"
         }
     ]
+)
+```
+
+### Added Multiple Tasks to a Job
+
+Invoke the `add_task_collection` method to add multiple tasks to a job. The job must already exist. If it already contains tasks, the new tasks shall be insert after existing tasks.
+
+```
+tasks = [
+    {
+        "command_line": f"cmd /c echo This is task 1",
+        "full_container_name": "python:3.9"
+    },
+    {
+        "command_line": f"cmd /c echo This is task 2",
+        "full_container_name": "python:3.9"
+    }
+]
+client.add_task_collection(
+    tasks=tasks,
+    job_name="mounted-job"
 )
 ```
 

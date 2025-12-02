@@ -9,7 +9,7 @@ from pathlib import Path
 import anyio
 from azure.batch import models
 from azure.identity import ManagedIdentityCredential
-from azure.storage.blob import BlobServiceClient, ContainerClient, aio
+from azure.storage.blob import BlobServiceClient, aio
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -107,6 +107,7 @@ def upload_to_storage_container(
     blob_service_client: BlobServiceClient,
     local_root_dir: str = ".",
     remote_root_dir: str = ".",
+    tags: dict = None,
 ) -> None:
     """Upload a file or list of files to an Azure blob storage container.
 
@@ -123,6 +124,7 @@ def upload_to_storage_container(
             Defaults to "." (use the local working directory).
         remote_root_dir: Root directory for the relative file paths within the blob
             storage container. Defaults to "." (start at the blob storage container root).
+        tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
 
     Raises:
         Exception: If the blob storage container does not exist.
@@ -165,7 +167,7 @@ def upload_to_storage_container(
         logger.debug(f"Created blob client for '{remote_file_path}'")
 
         with open(local_file_path, "rb") as upload_data:
-            blob_client.upload_blob(upload_data, overwrite=True)
+            blob_client.upload_blob(upload_data, overwrite=True, tags=tags)
             logger.debug(f"Successfully uploaded '{file_path}'")
 
     logger.info(
@@ -427,7 +429,7 @@ def get_node_mount_config(
 
 
 async def _async_download_blob_to_file(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     blob_name: str,
     local_file_path: anyio.Path,
     semaphore: anyio.Semaphore,
@@ -487,10 +489,11 @@ async def _async_download_blob_to_file(
 
 
 async def _async_upload_file_to_blob(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     local_file_path: anyio.Path,
     blob_name: str,
     semaphore: anyio.Semaphore,
+    tags: dict = None,
 ):
     """
     Uploads a single file to a blob asynchronously, respecting a concurrency limit.
@@ -500,6 +503,7 @@ async def _async_upload_file_to_blob(
         local_file_path (anyio.Path): Local file path to upload.
         blob_name (str): Name of the blob in the container.
         semaphore (anyio.Semaphore): Semaphore to limit concurrent uploads.
+        tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
 
     Raises:
         Exception: Logs errors if upload fails.
@@ -518,7 +522,7 @@ async def _async_upload_file_to_blob(
             logger.debug(f"Opening file for upload: '{local_file_path}'")
             async with await local_file_path.open("rb") as f:
                 logger.debug(f"Uploading blob data to: '{blob_name}'")
-                await blob_client.upload_blob(f, overwrite=True)
+                await blob_client.upload_blob(f, overwrite=True, tags=tags)
 
             logger.debug(f"Successfully uploaded: '{local_file_path}' -> '{blob_name}'")
         except Exception as e:
@@ -529,7 +533,7 @@ async def _async_upload_file_to_blob(
 
 
 async def _async_download_blob_folder(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     local_folder: anyio.Path,
     max_concurrent_downloads: int,
     name_starts_with: str | None = None,
@@ -641,12 +645,13 @@ async def _async_download_blob_folder(
 
 
 async def _async_upload_blob_folder(
-    container_client: ContainerClient,
+    container_client: aio.ContainerClient,
     folder: anyio.Path,
     max_concurrent_uploads: int,
     location_in_blob: str = ".",
     include_extensions: str | list | None = None,
     exclude_extensions: str | list | None = None,
+    tags: dict = None,
 ):
     """
     Uploads all matching files from a local folder to a blob container asynchronously.
@@ -658,6 +663,7 @@ async def _async_upload_blob_folder(
         location_in_blob (str, optional): Path within the blob container where files will be uploaded. Defaults to "." (container root).
         include_extensions (str | list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
         exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
+        tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
 
     Raises:
         Exception: If both include_extensions and exclude_extensions are provided.
@@ -725,6 +731,7 @@ async def _async_upload_blob_folder(
                     abs_path,
                     os.path.join(location_in_blob, str(rel_path)),
                     semaphore,
+                    tags,
                 )
         except Exception as e:
             logger.error(f"Error walking files in folder {folder}: {e}")
@@ -835,6 +842,7 @@ def async_upload_folder(
     location_in_blob: str = ".",
     max_concurrent_uploads: int = 20,
     credential: any = None,
+    tags: dict = None,
 ) -> None:
     """
     Upload all files from a local folder to an Azure blob container asynchronously.
@@ -851,6 +859,7 @@ def async_upload_folder(
         location_in_blob (str, optional): Path within the blob container where files will be uploaded. Defaults to "." (root of the container).
         max_concurrent_uploads (int, optional): Maximum number of simultaneous uploads allowed. Defaults to 20.
         credential (any, optional): Azure credential object. If None, ManagedIdentityCredential is used.
+        tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
 
     Raises:
         KeyboardInterrupt: If the user cancels the upload operation.
@@ -911,6 +920,7 @@ def async_upload_folder(
                     include_extensions=include_extensions,
                     exclude_extensions=exclude_extensions,
                     max_concurrent_uploads=max_concurrent_uploads,
+                    tags=tags,
                 )
         except Exception as e:
             logger.error(f"Error during upload: {e}")
