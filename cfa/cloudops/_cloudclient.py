@@ -89,19 +89,29 @@ class CloudClient:
 
     def __init__(
         self,
+        keyvault: str = None,
         dotenv_path: str = None,
         use_sp: bool = False,
         use_federated: bool = False,
         **kwargs,
     ):
         logger.debug("Initializing CloudClient.")
+        if keyvault is None and not os.path.exists(".env") and dotenv_path is None:
+            try:
+                keyvault = os.environ["AZURE_KEYVAULT_NAME"]
+            except KeyError:
+                logger.error("Keyvault information not found.")
         # authenticate to get credentials
         if not use_sp and not use_federated:
-            self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.cred = EnvCredentialHandler(
+                dotenv_path=dotenv_path, keyvault=keyvault, **kwargs
+            )
             self.method = "env"
-            logger.info("Using environment-based credentials.")
+            logger.info("Using managed identity credentials.")
         elif use_federated:
-            self.cred = DefaultCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.cred = DefaultCredentialHandler(
+                dotenv_path=dotenv_path, keyvault=keyvault, **kwargs
+            )
             self.method = "default"
             logger.info("Using default credentials.")
         else:
