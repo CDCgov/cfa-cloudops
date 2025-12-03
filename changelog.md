@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.2.3
-- add `` method to CloudClient for listing all verified Docker images supported by Azure Batch
+- add `list_available_images` method to CloudClient for listing all verified Docker images supported by Azure Batch
 
 ## v0.2.2
 - removed the option to turn on or off dependencies at the job level. The option for dependencies is always on going forward
