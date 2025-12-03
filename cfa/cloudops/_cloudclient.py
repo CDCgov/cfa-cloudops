@@ -1232,6 +1232,39 @@ class CloudClient:
         self.batch_service_client.job_schedule.disable(job_schedule_id)
         logger.info(f"Job schedule {job_schedule_id} suspended.")
 
+    def list_available_images(self, operating_system: str = None) -> list[dict]:
+        """Lists all Virtual Machine Images supported by the Azure Batch service.
+
+        Args:
+            operating_system (str, optional): Name of operating system (e.g. linux, windows) for filtering list of available verified images.
+
+        Returns:
+            list[dict]: A list of dictionaries representing the available container images.
+                Each dictionary contains details about an image, such as its name and tags.
+
+        Example:
+            List available images in the registry:
+
+                client = CloudClient()
+                images = client.list_available_images()
+                for image in images:
+                    print(image)
+        """
+        logger.debug("Starting list_available_images() function.")
+        images = self.batch_service_client.account.list_supported_images(
+            account_list_supported_images_options=batch_models.AccountListSupportedImagesOptions(
+                filter="verificationType eq 'verified'"
+            )
+        )
+        if operating_system:
+            os_type = (
+                batch_models.OSType.linux
+                if operating_system.lower() == "linux"
+                else batch_models.OSType.windows
+            )
+            images = [img for img in images if img.os_type == os_type]
+        return images
+
     def package_and_upload_dockerfile(
         self,
         registry_name: str,

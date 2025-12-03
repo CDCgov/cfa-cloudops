@@ -120,3 +120,20 @@ When pools are no longer needed or major changes need to be made to a pool, it i
 ```python
 client.delete_pool("my-pool")
 ```
+
+## Get list of available Docker images
+
+The `CloudClient` class has a method called `list_available_images` which should be used for retrieving a list of availabe Docker images supported by Azure Batch service. It accepts an optional `operating_system` parameter for filtering the images by operating system (e.g. windows, linux).
+The following parameters can be passed to the method for customization of the job:
+
+### The Simplest Example
+For users just looking to get started with this job creation, the following can be run to create a job called 'test-job-1' on the existing pool 'test-pool-exists'.
+```python
+client = CloudClient()
+images = client.list_available_images()
+for image in images:
+    print(image)
+linux_images = client.list_available_images(operating_system='linux')
+for image in linux_images:
+    print(image)
+```
