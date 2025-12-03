@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from shared_fixtures import FAKE_IMAGES
 
 from cfa.cloudops._cloudclient import CloudClient
 
@@ -483,3 +484,16 @@ def test_add_tasks_from_yaml(cloud_client_with_service_principal):
             job_name="myjob", base_cmd="python main.py", file_path="fake.yaml"
         )
         assert result == expected_tasks
+
+
+def test_list_available_images(
+    mock_env_vars,
+    mock_batch_service_client,
+    cloud_client_with_service_principal,
+):
+    mock_batch_service_client.account.list_supported_images.return_value = FAKE_IMAGES
+    result = cloud_client_with_service_principal.list_available_images(
+        operating_system="linux"
+    )
+    result = cloud_client_with_service_principal.list_available_images()
+    assert result

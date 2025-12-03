@@ -15,6 +15,20 @@ for fake in FAKE_BLOB_PROPERTIES:
     fake_blob.size = fake["size"]
     FAKE_BLOBS.append(fake_blob)
 
+FAKE_COMMANDLINE = [
+    "script_name.py",
+    "--dotenv_path",
+    ".env.test",
+    "--use_sp",
+    "--use_federated",
+]
+
+FAKE_IMAGES = [
+    "mcr.microsoft.com/azure-batch/batch-ubuntu:20.04",
+    "mcr.microsoft.com/azure-batch/batch-ubuntu:18.04",
+    "mcr.microsoft.com/azure-batch/batch-windows:2019",
+]
+
 
 class MockLogger:
     def __init__(self, name: str):

@@ -271,7 +271,7 @@ def test_download_from_storage_container(mocker, mock_blob_service_client):
         mock_print.assert_called_with("Downloaded 1 files from blob storage container")
 
 
-def test_create_storage_container_if_not_exists(mocker, mock_blob_service_client):
+def test_create_storage_container_if_not_exists(mock_blob_service_client):
     mock_container_client = MagicMock()
     mock_container_client.exists.return_value = False
     mock_container_client.create_container = MagicMock()
