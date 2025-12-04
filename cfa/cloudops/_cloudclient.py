@@ -2164,10 +2164,16 @@ class CloudClient:
         Returns:
             Optional[str]: The value of the secret, or None if not found.
         """
+        if self.method == "env":
+            cred = self.cred.user_credential
+        elif self.method == "default":
+            cred = self.cred.client_secret_sp_credential
+        else:
+            cred = self.cred.client_secret_credential
         try:
             secret_client = SecretClient(
                 vault_url=f"https://{keyvault}.vault.azure.net/",
-                credential=self.cred,
+                credential=cred,
             )
             secret = secret_client.get_secret(secret_name)
             return secret.value
