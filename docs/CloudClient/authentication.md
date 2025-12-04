@@ -1,6 +1,6 @@
 # Authentication with `cfa.cloudops.CloudClient`
 
-Authentication with the `CloudClient` class is meant to be user-friendly while maintaining flexibility. There are three different ways to authenticate to the Azure environment, all of which center around environment variables for Azure account information. These environment variables can be pulled from the local environment or instantiated from a .env file specified during the `CloudClient` instantiation.
+Authentication with the `CloudClient` class is meant to be user-friendly while maintaining flexibility. There are three different ways to authenticate to the Azure environment, all of which center around either a Key Vault or environment variables for Azure account information. A key vault name can be provided to pull necessary values for instantiating the CloudClient. Or these environment variables can be pulled from the local environment or instantiated from a .env file specified during the `CloudClient` instantiation.
 
 The three authentication methods available are:
 
@@ -8,9 +8,38 @@ The three authentication methods available are:
 - Service Principal credential
 - Federated Token credential
 
+## Using Key Vault Setup
+
+when the `CloudClient` class gets instantiated, one way it attempts to get one of the three credentials listed above is by pulling values from the specified `keyvault`. The Key Vault to be used by CFA individuals can be found in the documentation [here](https://github.com/cdcent/cfa-cloudops-example). This will then pull the following values from the Key Vault:
+
+- azure_batch_account
+- azure_batch_location
+- azure_user_assigned_identity
+- azure_subnet_id
+- azure_client_id
+- azure_keyvault_sp_secret_id
+- azure_blob_storage_account
+- azure_container_registry_account
+
+If the Key Vault is setup with these keys/values (the correct CFA key vault is), then no .env file is necessary. If a .env is still provided, then values from the .env will be used over what is stored in the key vault. If you desire to use values in the keyvault over the .env, provide the flag `force_keyvault=True` when instantiating the `CloudClient`. Note that if you are using a service principal then "AZURE_TENANT_ID","AZURE_SUBSCRIPTION_ID", "AZURE_CLIENT_ID", and "AZURE_CLIENT_SECRET" need to be in the .env file, saved as local environment variables, or passed to the `CloudClient`.
+
+For ease of use, you can also set AZURE_KEYVAULT_NAME as a global environment variable in your development workspace so that it will be passed to the `CloudClient` and eliminate the need for any parameters when instantiating the CloudClient.
+
+For example, the following way pulls values from our Key Vault called 'my-key-vault'.
+
+```python3
+client = CloudClient(keyvault = "my-key-vault")
+```
+
+If we want to force the use of Key Vault values, the following should be run:
+
+```python3
+client = CloudClient(keyvault = "my-key-vault", force_keyvault = True)
+```
+
 ## Environment Variable Setup
 
-When the `CloudClient` class gets instantiated, it attempts to get one of the three credentials listed above based on environment variables. These environment variables can be stored locally on your system before calling out to the `CloudClient` class. A potentially easier way is to store the required variables is in a .env file. This allows for easier changing of variables or sharing between individuals.
+When the `CloudClient` class gets instantiated, the other way it attempts to get one of the three credentials listed above is based on environment variables. These environment variables can be stored locally on your system before calling out to the `CloudClient` class. A potentially easier way is to store the required variables is in a .env file. This allows for easier changing of variables or sharing between individuals.
 
 The path to the .env file can be provided via the `dotenv_path` parameter when calling `CloudClient()`. By default, it looks for a file called `.env`. If the name of the file is anything else, it should be passed to `dotenv_path`. For example, instantiating the client in the following ways would be identical:
 ```python

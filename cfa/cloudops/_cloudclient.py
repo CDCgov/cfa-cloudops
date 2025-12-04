@@ -3,6 +3,7 @@ import inspect
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
+from typing import Optional
 
 import networkx as nx
 import pandas as pd
@@ -13,6 +14,7 @@ from azure.batch.models import (
     OnAllTasksComplete,
     OnTaskFailure,
 )
+from azure.keyvault.secrets import SecretClient
 
 # from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
@@ -1674,6 +1676,7 @@ class CloudClient:
                     location_in_blob="project")
 
         Note:
+
             The blob container must exist before uploading. Directory structure is
             preserved in the container. Use filtering options to avoid uploading
             unnecessary files like temporary files or build artifacts.
@@ -2150,3 +2153,27 @@ class CloudClient:
                         dlist.append(str(dp))
                 task_df.at[i, "deps"] = dlist
         logger.info(f"Completed DAG run for job '{job_name}'.")
+
+    def get_kv_secret(self, secret_name: str, keyvault: str) -> Optional[str]:
+        """Retrieve a secret from Azure Key Vault.
+
+        Args:
+            secret_name (str): The name of the secret to retrieve.
+            keyvault (str): The name of the Key Vault.
+
+        Returns:
+            Optional[str]: The value of the secret, or None if not found.
+        """
+        try:
+            secret_client = SecretClient(
+                vault_url=f"https://{keyvault}.vault.azure.net/",
+                credential=self.cred,
+            )
+            secret = secret_client.get_secret(secret_name)
+            return secret.value
+        except Exception as e:
+            logger.error(
+                f"Failed to retrieve secret '{secret_name}' from Key Vault '{keyvault}': {e}"
+            )
+            print(f"Error retrieving secret '{secret_name}': {e}")
+            return None
