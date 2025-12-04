@@ -548,6 +548,7 @@ class EnvCredentialHandler(CredentialHandler):
             dotenv_path (str, optional): Path to .env file to load environment variables from.
                 If None, uses default .env file discovery.
             keyvault (str, optional): Name of the Azure Key Vault to use for secrets.
+            force_keyvault (bool, optional): If True, forces loading of Key Vault secrets even if they are already set in the environment.
             **kwargs: Additional keyword arguments to override specific credential attributes.
         """
         logger.debug("Initializing EnvCredentialHandler.")
@@ -640,6 +641,7 @@ class SPCredentialHandler(CredentialHandler):
             dotenv_path: Path to .env file to load environment variables from.
                 If None, uses default .env file discovery.
             keyvault: Name of the Azure Key Vault to use for secrets.
+            force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
             **kwargs: Additional keyword arguments to override specific credential attributes.
 
         Raises:
@@ -754,6 +756,7 @@ class DefaultCredentialHandler(CredentialHandler):
             dotenv_path: Path to .env file to load environment variables from.
                 If None, uses default .env file discovery.
             keyvault: Name of the Azure Key Vault to use for secrets.
+            force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
             **kwargs: Additional keyword arguments to override specific credential attributes.
 
         Raises:
@@ -1011,6 +1014,7 @@ def load_keyvault_vars(
 
     Args:
         secret_client: SecretClient for accessing the Azure Key Vault.
+        force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
     """
     kv_keys = [
         "azure_batch_account",
@@ -1062,7 +1066,11 @@ def get_keyvault_vars(
     Args:
         keyvault_name: Name of the Azure Key Vault to connect to.
         credential: Credential handler for connecting and authenticating to Azure resources.
+        force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
     """
+    if keyvault_name is None:
+        logger.debug("No Key Vault name provided; skipping Key Vault variable loading.")
+        return None
     logger.debug("Getting SecretClient for Azure Key Vault.")
     secret_client = get_secret_client(
         keyvault=keyvault_name,
