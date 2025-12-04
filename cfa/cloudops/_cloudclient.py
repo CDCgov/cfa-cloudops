@@ -2167,7 +2167,7 @@ class CloudClient:
         if self.method == "env":
             cred = self.cred.user_credential
         elif self.method == "default":
-            cred = self.cred.client_secret_sp_credential
+            cred = self.cred.user_credential
         else:
             cred = self.cred.client_secret_credential
         try:
