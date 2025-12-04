@@ -10,7 +10,7 @@ The three authentication methods available are:
 
 ## Using Key Vault Setup
 
-when the `CloudClient` class gets instantiated, one way it attempts to get one of the three credentials listed above is by pulling values from the specified `keyvault`. The Key Vault to be used by CFA individuals can be found in the documentation [here](https://github.com/cdcent/cfa-cloudops-example). This will then pull the following values from the Key Vault:
+When the `CloudClient` class gets instantiated, one way it attempts to get one of the three credentials listed above is by pulling values from the specified `keyvault`. The Key Vault to be used by CFA individuals can be found in the documentation [here](https://github.com/cdcent/cfa-cloudops-example). This will then pull the following values from the Key Vault:
 
 - azure_batch_account
 - azure_batch_location
