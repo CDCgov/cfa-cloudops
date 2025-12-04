@@ -93,6 +93,7 @@ class CloudClient:
         dotenv_path: str = None,
         use_sp: bool = False,
         use_federated: bool = False,
+        force_keyvault: bool = False,
         **kwargs,
     ):
         logger.debug("Initializing CloudClient.")
@@ -101,21 +102,37 @@ class CloudClient:
                 keyvault = os.environ["AZURE_KEYVAULT_NAME"]
             except KeyError:
                 logger.error("Keyvault information not found.")
+        if keyvault is None and force_keyvault:
+            logger.error(
+                "Keyvault information not found but force_keyvault set to True."
+            )
+            raise ValueError("Keyvault information is required but not found.")
         # authenticate to get credentials
         if not use_sp and not use_federated:
             self.cred = EnvCredentialHandler(
-                dotenv_path=dotenv_path, keyvault=keyvault, **kwargs
+                dotenv_path=dotenv_path,
+                keyvault=keyvault,
+                force_keyvault=force_keyvault,
+                **kwargs,
             )
             self.method = "env"
             logger.info("Using managed identity credentials.")
         elif use_federated:
             self.cred = DefaultCredentialHandler(
-                dotenv_path=dotenv_path, keyvault=keyvault, **kwargs
+                dotenv_path=dotenv_path,
+                keyvault=keyvault,
+                force_keyvault=force_keyvault,
+                **kwargs,
             )
             self.method = "default"
             logger.info("Using default credentials.")
         else:
-            self.cred = SPCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.cred = SPCredentialHandler(
+                dotenv_path=dotenv_path,
+                keyvault=keyvault,
+                force_keyvault=force_keyvault,
+                **kwargs,
+            )
             self.method = "sp"
             logger.info("Using service principal credentials.")
         # get clients
