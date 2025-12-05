@@ -6,9 +6,10 @@ import sys
 from ._cloudclient import CloudClient
 from ._containerappclient import ContainerAppClient
 from .automation import run_experiment, run_tasks
+from .batch_helpers import Task
 from .helpers import get_log_level
 
-__all__ = [CloudClient, ContainerAppClient, run_experiment, run_tasks]
+__all__ = [CloudClient, ContainerAppClient, run_experiment, run_tasks, Task]
 
 logger = logging.getLogger(__name__)
 run_time = datetime.datetime.now()

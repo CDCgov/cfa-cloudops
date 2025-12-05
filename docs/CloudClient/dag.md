@@ -6,7 +6,7 @@ To create a DAG using `cfa-cloudops`, the building blocks are Task objects from 
 
 **Example to create Task objects**
 ```python
-from cfa.cloudops.batch_helpers import Task
+from cfa.cloudops import Task
 t1 = Task("python3 /main.py")
 t2 = Task("python3 /second_task.py")
 ```
