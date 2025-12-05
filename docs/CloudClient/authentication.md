@@ -52,8 +52,7 @@ If the .env file is called "my_azure.env" then the following should be run:
 client = CloudClient(dotenv_path = "my_azure.env")
 ```
 
-During instantiation of the `CloudClient`, the variables from the .env file get added to the local environment variables, overriding any variables with the same name. Then all the environment variables from the local environment are used to create a cre
-dential.
+During instantiation of the `CloudClient`, the variables from the .env file get added to the local environment variables, overriding any variables with the same name. Then all the environment variables from the local environment are used to create a credential.
 
 An example .env file can be found [here](../files/sample.env).
 
@@ -64,7 +63,7 @@ An example .env file can be found [here](../files/sample.env).
 The default method for authenticating to the Azure environment via the `CloudClient` is a Managed Identity. Data Scientists at CFA should already have identities associated with Azure in their development environment (VAP). Because of this, we can reduce the number of inputs to authenticate with Azure because your machine is already approved. This is the encouraged method when possible. When this method is used, we are able to pull in AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, and AZURE_RESOURCE_GROUP_NAME from the linked subscription. Therefore, these values do not need to exist in the local environment or .env file.
 
 To instantiate a `CloudClient` object using a Managed Identity credential, no additional arguments need to be passed in, except from `dotenv_path` if needed. For example:
-```python3
+```python
 client = CloudClient()
 ```
 
