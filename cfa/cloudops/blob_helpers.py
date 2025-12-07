@@ -91,7 +91,7 @@ def upload_files_in_folder(
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs.
+        legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs which prevents deletion or modification of the blobs.
 
     Returns:
         list[str]: List of local file paths that were processed for upload.
@@ -1106,7 +1106,7 @@ def write_blob_stream(
         overwrite (bool, optional): Whether to overwrite existing blob. If False and
             blob exists, ResourceExistsError will be raised. Default is True.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold (bool, optional): Whether to set a legal hold on the blob after upload.
+        legal_hold (bool, optional): Whether to set a legal hold on the blob after upload which prevents deletion or modification of the blob.
 
     Returns:
         bool: True if upload was successful.

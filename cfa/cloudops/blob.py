@@ -126,7 +126,7 @@ def upload_to_storage_container(
         remote_root_dir: Root directory for the relative file paths within the blob
             storage container. Defaults to "." (start at the blob storage container root).
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs. Defaults to False.
+        legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
 
     Raises:
         Exception: If the blob storage container does not exist.
@@ -509,7 +509,7 @@ async def _async_upload_file_to_blob(
         blob_name (str): Name of the blob in the container.
         semaphore (anyio.Semaphore): Semaphore to limit concurrent uploads.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blob. Defaults to False.
+        legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blob which prevents deletion or modification of the blob. Defaults to False.
 
     Raises:
         Exception: Logs errors if upload fails.
@@ -673,7 +673,7 @@ async def _async_upload_blob_folder(
         include_extensions (str | list, optional): File extensions to include (e.g., ".txt", [".json", ".csv"]).
         exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs. Defaults to False.
+        legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
 
     Raises:
         Exception: If both include_extensions and exclude_extensions are provided.
@@ -872,7 +872,7 @@ def async_upload_folder(
         max_concurrent_uploads (int, optional): Maximum number of simultaneous uploads allowed. Defaults to 20.
         credential (any, optional): Azure credential object. If None, ManagedIdentityCredential is used.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blobs. Defaults to False.
+        legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
 
     Raises:
         KeyboardInterrupt: If the user cancels the upload operation.
@@ -950,3 +950,41 @@ def async_upload_folder(
         f"Completed async upload of folder '{folder}' to container '{container_name}'."
     )
     return folder
+
+
+def toggle_legal_hold_on_files(
+    files: str | list[str],
+    container_name: str,
+    blob_service_client: BlobServiceClient,
+    legal_hold: bool = False,
+) -> None:
+    """Toggle legal hold on files in an Azure Blob Storage container.
+
+    Args:
+        files (str | list[str]): Path(s) to file(s) to upload. Can be a single file
+            path as a string or a list of file paths. Paths can be relative or absolute.
+        container_name (str): Name of the blob storage container to upload to. The
+            container must already exist.
+        legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+    """
+    logger.debug(
+        f"Toggling legal hold to {legal_hold} on files in container '{container_name}'"
+    )
+
+    files = ensure_listlike(files)
+    n_total_files = len(files)
+
+    logger.debug(f"Processing {n_total_files} files for legal hold toggle")
+
+    for i_file, file_path in enumerate(files):
+        if i_file % (1 + int(n_total_files / 10)) == 0:
+            logger.debug(f"Progress: {i_file}/{n_total_files} files processed")
+
+        blob_client = blob_service_client.get_blob_client(
+            container=container_name, blob=file_path
+        )
+        blob_client.set_legal_hold(legal_hold=legal_hold)
+        logger.debug(f"Set legal hold to {legal_hold} for blob '{file_path}'")
+    logger.info(
+        f"Toggled legal hold to {legal_hold} on {n_total_files} file(s) in container '{container_name}'."
+    )

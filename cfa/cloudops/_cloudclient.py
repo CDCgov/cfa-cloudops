@@ -872,6 +872,34 @@ class CloudClient:
         create_storage_container_if_not_exists(name, self.blob_service_client)
         logger.info(f"Blob container '{name}' created or already exists.")
 
+    def toggle_legal_hold_on_files(
+        self,
+        files: str | list[str],
+        container_name: str,
+        legal_hold: bool = False,
+    ) -> None:
+        """Update legal hold status on files in an Azure Blob Storage container.
+
+        Args:
+            files (str | list[str]): Path(s) to file(s) to upload. Can be a single file
+                path as a string or a list of file paths. Paths can be relative or absolute.
+            container_name (str): Name of the blob storage container to upload to. The
+                container must already exist.
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+        """
+        logger.debug(
+            f"Toggling legal hold {legal_hold} on files {files} to container {container_name}."
+        )
+        blob.toggle_legal_hold_on_files(
+            file_paths=files,
+            blob_storage_container_name=container_name,
+            blob_service_client=self.blob_service_client,
+            legal_hold=legal_hold,
+        )
+        logger.info(
+            f"Toggled legal hold {legal_hold} on files {files} to container '{container_name}'."
+        )
+
     def upload_files(
         self,
         files: str | list[str],
@@ -895,7 +923,7 @@ class CloudClient:
                 Default is "." (current directory).
             location_in_blob (str, optional): Remote directory path within the blob container
                 where files should be uploaded. Default is "." (container root).
-            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs.
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
 
         Example:
             Upload a single file:
@@ -966,7 +994,7 @@ class CloudClient:
             force_upload (bool, optional): Whether to force upload files even if they
                 already exist in the container with the same size. Default is False
                 (skip existing files with same size).
-            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs.
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1640,7 +1668,7 @@ class CloudClient:
                 where folders should be uploaded. Default is "." (container root).
             max_concurrent_uploads (int, optional): Maximum number of concurrent
                 uploads to perform. Higher values may increase speed but use more RAM.
-            legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs. Default is False.
+            legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Default is False.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
