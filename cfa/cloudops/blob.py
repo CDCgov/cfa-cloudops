@@ -194,6 +194,12 @@ def upload_to_storage_container(
             )
             logger.debug(f"Successfully uploaded '{file_path}'")
 
+    if immutability_policy:
+        blob_client.lock_blob_immutability_policy()
+        logger.info(
+            f"Blob immutability policy is now LOCKED with retention policy if {immutability_lock_days} days."
+        )
+
     logger.info(
         f"Uploaded {n_total_files} file(s) to container '{blob_storage_container_name}'."
     )
@@ -564,6 +570,11 @@ async def _async_upload_file_to_blob(
                     legal_hold=legal_hold,
                     immutability_policy=immutability_policy,
                 )
+                if immutability_policy:
+                    await blob_client.lock_blob_immutability_policy()
+                    logger.info(
+                        f"Blob immutability policy is now LOCKED with retention policy if {immutability_lock_days} days."
+                    )
 
             logger.debug(f"Successfully uploaded: '{local_file_path}' -> '{blob_name}'")
         except Exception as e:
