@@ -65,6 +65,7 @@ def upload_files_in_folder(
     blob_service_client=None,
     force_upload: bool = True,
     tags: dict = None,
+    legal_hold: bool = False,
 ) -> list[str]:
     """Upload all files from a local folder to Azure Blob Storage with filtering options.
 
@@ -90,6 +91,7 @@ def upload_files_in_folder(
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
+        legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs.
 
     Returns:
         list[str]: List of local file paths that were processed for upload.
@@ -246,6 +248,7 @@ def upload_files_in_folder(
         local_root_dir=".",
         remote_root_dir=path.join(location_in_blob),
         tags=tags,
+        legal_hold=legal_hold,
     )
     if final_list:
         logger.info(
@@ -1082,6 +1085,7 @@ def write_blob_stream(
     append_blob: bool = False,
     overwrite: bool = True,
     tags: dict = None,
+    legal_hold: bool = False,
 ) -> bool:
     """Write data stream to a file in Azure Blob Storage.
 
@@ -1102,6 +1106,7 @@ def write_blob_stream(
         overwrite (bool, optional): Whether to overwrite existing blob. If False and
             blob exists, ResourceExistsError will be raised. Default is True.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
+        legal_hold (bool, optional): Whether to set a legal hold on the blob after upload.
 
     Returns:
         bool: True if upload was successful.
@@ -1169,7 +1174,12 @@ def write_blob_stream(
 
     logger.debug(f"Uploading blob data to '{blob_url}'")
     container_client.upload_blob(
-        name=blob_url, data=data, blob_type=blob_type, overwrite=overwrite, tags=tags
+        name=blob_url,
+        data=data,
+        blob_type=blob_type,
+        overwrite=overwrite,
+        tags=tags,
+        legal_hold=legal_hold,
     )
     logger.debug("Blob upload completed successfully")
     logger.info(
