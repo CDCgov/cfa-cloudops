@@ -13,8 +13,6 @@ from azure.batch.models import (
     OnAllTasksComplete,
     OnTaskFailure,
 )
-
-# from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
 from azure.mgmt.resource import SubscriptionClient
 
@@ -907,6 +905,7 @@ class CloudClient:
         local_root_dir: str = ".",
         location_in_blob: str = ".",
         legal_hold: bool = False,
+        immutability_lock_days: int = 0,
     ) -> None:
         """Upload files to an Azure Blob Storage container.
 
@@ -924,6 +923,7 @@ class CloudClient:
             location_in_blob (str, optional): Remote directory path within the blob container
                 where files should be uploaded. Default is "." (container root).
             legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+            immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
 
         Example:
             Upload a single file:
@@ -955,6 +955,7 @@ class CloudClient:
             local_root_dir=local_root_dir,
             remote_root_dir=location_in_blob,
             legal_hold=legal_hold,
+            immutability_lock_days=immutability_lock_days,
         )
         logger.info(f"Uploaded files to container '{container_name}'.")
 
@@ -968,6 +969,7 @@ class CloudClient:
         location_in_blob: str = ".",
         force_upload: bool = False,
         legal_hold: bool = False,
+        immutability_lock_days: int = 0,
     ) -> list[str]:
         """Upload entire folders to an Azure Blob Storage container with filtering options.
 
@@ -994,7 +996,9 @@ class CloudClient:
             force_upload (bool, optional): Whether to force upload files even if they
                 already exist in the container with the same size. Default is False
                 (skip existing files with same size).
-            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs
+                which prevents deletion or modification of the blobs.
+            immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1040,6 +1044,7 @@ class CloudClient:
                 blob_service_client=self.blob_service_client,
                 force_upload=force_upload,
                 legal_hold=legal_hold,
+                immutability_lock_days=immutability_lock_days,
             )
             _files += _uploaded_files
         logger.debug(f"uploaded {_files}")
@@ -1646,6 +1651,7 @@ class CloudClient:
         location_in_blob: str = ".",
         max_concurrent_uploads: int = 20,
         legal_hold: bool = False,
+        immutability_lock_days: int = 0,
     ):
         """Upload entire folders to an Azure Blob Storage container asynchronously.
 
@@ -1668,7 +1674,9 @@ class CloudClient:
                 where folders should be uploaded. Default is "." (container root).
             max_concurrent_uploads (int, optional): Maximum number of concurrent
                 uploads to perform. Higher values may increase speed but use more RAM.
-            legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Default is False.
+            legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
+                which prevents deletion or modification of the blobs. Default is False.
+            immutability_lock_days (int, optional): Number of days to set an immutability policy.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1708,6 +1716,7 @@ class CloudClient:
                 max_concurrent_uploads=max_concurrent_uploads,
                 credential=cred,
                 legal_hold=legal_hold,
+                immutability_lock_days=immutability_lock_days,
             )
             logger.info(
                 f"Asynchronously uploaded folder '{folder}' to container '{container_name}'."

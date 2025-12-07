@@ -4,12 +4,18 @@ Functions for interacting with Azure Blob Storage.
 
 import logging
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import anyio
 from azure.batch import models
 from azure.identity import ManagedIdentityCredential
-from azure.storage.blob import BlobServiceClient, aio
+from azure.storage.blob import (
+    BlobImmutabilityPolicyMode,
+    BlobServiceClient,
+    ImmutabilityPolicy,
+    aio,
+)
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -109,6 +115,7 @@ def upload_to_storage_container(
     remote_root_dir: str = ".",
     tags: dict = None,
     legal_hold: bool = False,
+    immutability_lock_days: int = 0,
 ) -> None:
     """Upload a file or list of files to an Azure blob storage container.
 
@@ -126,7 +133,9 @@ def upload_to_storage_container(
         remote_root_dir: Root directory for the relative file paths within the blob
             storage container. Defaults to "." (start at the blob storage container root).
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
-        legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
+        legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs
+            which prevents deletion or modification of the blobs. Defaults to False.
+        immutability_lock_days: int, optional): Number of days to set immutability lock
 
     Raises:
         Exception: If the blob storage container does not exist.
@@ -152,6 +161,13 @@ def upload_to_storage_container(
 
     logger.debug(f"Uploading {n_total_files} files to blob storage")
 
+    immutability_policy = None
+    if immutability_lock_days > 0:
+        immutability_policy = ImmutabilityPolicy(
+            expiry_time=datetime.time() + timedelta(days=immutability_lock_days),
+            policy_mode=BlobImmutabilityPolicyMode.UNLOCKED,
+        )
+
     for i_file, file_path in enumerate(file_paths):
         if i_file % (1 + int(n_total_files / 10)) == 0:
             print("Uploading file {} of {}".format(i_file, n_total_files))
@@ -170,7 +186,11 @@ def upload_to_storage_container(
 
         with open(local_file_path, "rb") as upload_data:
             blob_client.upload_blob(
-                upload_data, overwrite=True, tags=tags, legal_hold=legal_hold
+                upload_data,
+                overwrite=True,
+                tags=tags,
+                legal_hold=legal_hold,
+                immutability_policy=immutability_policy,
             )
             logger.debug(f"Successfully uploaded '{file_path}'")
 
@@ -499,6 +519,7 @@ async def _async_upload_file_to_blob(
     semaphore: anyio.Semaphore,
     tags: dict = None,
     legal_hold: bool = False,
+    immutability_lock_days: int = 0,
 ):
     """
     Uploads a single file to a blob asynchronously, respecting a concurrency limit.
@@ -510,6 +531,7 @@ async def _async_upload_file_to_blob(
         semaphore (anyio.Semaphore): Semaphore to limit concurrent uploads.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blob which prevents deletion or modification of the blob. Defaults to False.
+        immutability_lock_days (int, optional): Number of days to set immutability lock on the uploaded blob. Defaults to 0 (no immutability).
 
     Raises:
         Exception: Logs errors if upload fails.
@@ -528,8 +550,19 @@ async def _async_upload_file_to_blob(
             logger.debug(f"Opening file for upload: '{local_file_path}'")
             async with await local_file_path.open("rb") as f:
                 logger.debug(f"Uploading blob data to: '{blob_name}'")
+                immutability_policy = None
+                if immutability_lock_days > 0:
+                    immutability_policy = ImmutabilityPolicy(
+                        expiry_time=datetime.time()
+                        + timedelta(days=immutability_lock_days),
+                        policy_mode=BlobImmutabilityPolicyMode.UNLOCKED,
+                    )
                 await blob_client.upload_blob(
-                    f, overwrite=True, tags=tags, legal_hold=legal_hold
+                    f,
+                    overwrite=True,
+                    tags=tags,
+                    legal_hold=legal_hold,
+                    immutability_policy=immutability_policy,
                 )
 
             logger.debug(f"Successfully uploaded: '{local_file_path}' -> '{blob_name}'")
@@ -661,6 +694,7 @@ async def _async_upload_blob_folder(
     exclude_extensions: str | list | None = None,
     tags: dict = None,
     legal_hold: bool = False,
+    immutability_lock_days: int = 0,
 ):
     """
     Uploads all matching files from a local folder to a blob container asynchronously.
@@ -674,6 +708,7 @@ async def _async_upload_blob_folder(
         exclude_extensions (str | list, optional): File extensions to exclude (e.g., ".log", [".tmp", ".bak"]).
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
+        immutability_lock_days: int, optional): Number of days to set immutability lock on the uploaded blobs. Defaults to 0 (no immutability).
 
     Raises:
         Exception: If both include_extensions and exclude_extensions are provided.
@@ -743,6 +778,7 @@ async def _async_upload_blob_folder(
                     semaphore,
                     tags,
                     legal_hold,
+                    immutability_lock_days,
                 )
         except Exception as e:
             logger.error(f"Error walking files in folder {folder}: {e}")
@@ -855,6 +891,7 @@ def async_upload_folder(
     credential: any = None,
     tags: dict = None,
     legal_hold: bool = False,
+    immutability_lock_days: int = 0,
 ) -> None:
     """
     Upload all files from a local folder to an Azure blob container asynchronously.
@@ -873,6 +910,7 @@ def async_upload_folder(
         credential (any, optional): Azure credential object. If None, ManagedIdentityCredential is used.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
+        immutability_lock_days (int, optional): Number of days to set immutability lock on the uploaded blobs. Defaults to 0 (no immutability).
 
     Raises:
         KeyboardInterrupt: If the user cancels the upload operation.
@@ -935,6 +973,7 @@ def async_upload_folder(
                     max_concurrent_uploads=max_concurrent_uploads,
                     tags=tags,
                     legal_hold=legal_hold,
+                    immutability_lock_days=immutability_lock_days,
                 )
         except Exception as e:
             logger.error(f"Error during upload: {e}")
