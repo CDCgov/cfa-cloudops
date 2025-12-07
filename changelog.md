@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.4
+- add `legal_hold`, `immutability_lock_days` and `read_only` options to `blob.py` for Blob protection
+
 ## v0.2.3
 - add `list_available_images` method to CloudClient for listing all verified Docker images supported by Azure Batch
 

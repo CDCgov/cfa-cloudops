@@ -69,6 +69,7 @@ def test_upload_files_in_folder(mocker):
                 folder="/folder",
                 include_extensions=[".txt"],
                 force_upload=False,
+                legal_hold=True,
             )
             assert type(files) is list
 
@@ -77,6 +78,7 @@ def test_upload_files_in_folder(mocker):
                 container_name="my-container",
                 folder="/folder",
                 exclude_extensions=[".txt"],
+                immutability_lock_days=7,
             )
             assert type(files) is list
 
