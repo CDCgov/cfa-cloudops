@@ -906,6 +906,7 @@ class CloudClient:
         location_in_blob: str = ".",
         legal_hold: bool = False,
         immutability_lock_days: int = 0,
+        read_only: bool = False,
     ) -> None:
         """Upload files to an Azure Blob Storage container.
 
@@ -924,6 +925,7 @@ class CloudClient:
                 where files should be uploaded. Default is "." (container root).
             legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
             immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
+            read_only (bool, optional): Whether to set the uploaded blobs to read-only.
 
         Example:
             Upload a single file:
@@ -956,6 +958,7 @@ class CloudClient:
             remote_root_dir=location_in_blob,
             legal_hold=legal_hold,
             immutability_lock_days=immutability_lock_days,
+            read_only=read_only,
         )
         logger.info(f"Uploaded files to container '{container_name}'.")
 

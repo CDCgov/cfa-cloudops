@@ -713,6 +713,7 @@ async def _async_upload_blob_folder(
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
+    read_only: bool = False,
 ):
     """
     Uploads all matching files from a local folder to a blob container asynchronously.
@@ -727,6 +728,7 @@ async def _async_upload_blob_folder(
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
         immutability_lock_days: int, optional): Number of days to set immutability lock on the uploaded blobs. Defaults to 0 (no immutability).
+        read_only: bool, optional): Whether to set the blobs to read-only. Defaults to False.
 
     Raises:
         Exception: If both include_extensions and exclude_extensions are provided.
@@ -797,6 +799,7 @@ async def _async_upload_blob_folder(
                     tags,
                     legal_hold,
                     immutability_lock_days,
+                    read_only,
                 )
         except Exception as e:
             logger.error(f"Error walking files in folder {folder}: {e}")
@@ -910,6 +913,7 @@ def async_upload_folder(
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
+    read_only: bool = False,
 ) -> None:
     """
     Upload all files from a local folder to an Azure blob container asynchronously.
@@ -929,6 +933,7 @@ def async_upload_folder(
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold (bool, optional): Whether to apply a legal hold on the uploaded blobs which prevents deletion or modification of the blobs. Defaults to False.
         immutability_lock_days (int, optional): Number of days to set immutability lock on the uploaded blobs. Defaults to 0 (no immutability).
+        read_only (bool, optional): Whether to set the blobs to read-only. Defaults to False.
 
     Raises:
         KeyboardInterrupt: If the user cancels the upload operation.
@@ -992,6 +997,7 @@ def async_upload_folder(
                     tags=tags,
                     legal_hold=legal_hold,
                     immutability_lock_days=immutability_lock_days,
+                    read_only=read_only,
                 )
         except Exception as e:
             logger.error(f"Error during upload: {e}")

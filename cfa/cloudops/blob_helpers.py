@@ -67,6 +67,7 @@ def upload_files_in_folder(
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
+    read_only: bool = False,
 ) -> list[str]:
     """Upload all files from a local folder to Azure Blob Storage with filtering options.
 
@@ -95,6 +96,7 @@ def upload_files_in_folder(
         legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
             which prevents deletion or modification of the blobs.
         immutability_lock_days (int, optional): Number of days to set for immutability
+        read_only (bool, optional): Whether to set the uploaded blobs to read-only.
 
     Returns:
         list[str]: List of local file paths that were processed for upload.
@@ -253,6 +255,7 @@ def upload_files_in_folder(
         tags=tags,
         legal_hold=legal_hold,
         immutability_lock_days=immutability_lock_days,
+        read_only=read_only,
     )
     if final_list:
         logger.info(
