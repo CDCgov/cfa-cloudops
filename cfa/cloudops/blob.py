@@ -953,25 +953,26 @@ def async_upload_folder(
 
 
 def toggle_legal_hold_on_files(
-    files: str | list[str],
-    container_name: str,
+    file_paths: str | list[str],
+    blob_storage_container_name: str,
     blob_service_client: BlobServiceClient,
     legal_hold: bool = False,
 ) -> None:
     """Toggle legal hold on files in an Azure Blob Storage container.
 
     Args:
-        files (str | list[str]): Path(s) to file(s) to upload. Can be a single file
+        file_paths (str | list[str]): Path(s) to file(s) to upload. Can be a single file
             path as a string or a list of file paths. Paths can be relative or absolute.
-        container_name (str): Name of the blob storage container to upload to. The
+        blob_storage_container_name (str): Name of the blob storage container to upload to. The
             container must already exist.
+        blob_service_client: The blob service client to use when looking for and potentially creating the storage container.
         legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
     """
     logger.debug(
-        f"Toggling legal hold to {legal_hold} on files in container '{container_name}'"
+        f"Toggling legal hold to {legal_hold} on files in container '{blob_storage_container_name}'"
     )
 
-    files = ensure_listlike(files)
+    files = ensure_listlike(file_paths)
     n_total_files = len(files)
 
     logger.debug(f"Processing {n_total_files} files for legal hold toggle")
@@ -981,10 +982,10 @@ def toggle_legal_hold_on_files(
             logger.debug(f"Progress: {i_file}/{n_total_files} files processed")
 
         blob_client = blob_service_client.get_blob_client(
-            container=container_name, blob=file_path
+            container=blob_storage_container_name, blob=file_path
         )
         blob_client.set_legal_hold(legal_hold=legal_hold)
         logger.debug(f"Set legal hold to {legal_hold} for blob '{file_path}'")
     logger.info(
-        f"Toggled legal hold to {legal_hold} on {n_total_files} file(s) in container '{container_name}'."
+        f"Toggled legal hold to {legal_hold} on {n_total_files} file(s) in container '{blob_storage_container_name}'."
     )
