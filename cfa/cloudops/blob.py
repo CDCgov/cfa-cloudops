@@ -116,7 +116,6 @@ def upload_to_storage_container(
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
-    read_only: bool = False,
 ) -> None:
     """Upload a file or list of files to an Azure blob storage container.
 
@@ -137,7 +136,6 @@ def upload_to_storage_container(
         legal_hold: bool, optional): Whether to apply a legal hold on the uploaded blobs
             which prevents deletion or modification of the blobs. Defaults to False.
         immutability_lock_days: int, optional): Number of days to set immutability lock
-        read_only: bool, optional): Whether to set the blob to read-only. Defaults to False.
 
     Raises:
         Exception: If the blob storage container does not exist.
@@ -194,7 +192,6 @@ def upload_to_storage_container(
                 tags=tags,
                 legal_hold=legal_hold,
                 immutability_policy=immutability_policy,
-                seal_append_blob=read_only,
             )
             logger.debug(f"Successfully uploaded '{file_path}'")
 
@@ -575,7 +572,6 @@ async def _async_upload_file_to_blob(
                     tags=tags,
                     legal_hold=legal_hold,
                     immutability_policy=immutability_policy,
-                    seal_append_blob=read_only,
                 )
                 if immutability_policy:
                     await blob_client.lock_blob_immutability_policy()
@@ -588,6 +584,7 @@ async def _async_upload_file_to_blob(
             logger.error(
                 f"Failed to upload file {local_file_path} to blob {blob_name}: {e}"
             )
+
     return local_file_path
 
 
@@ -1015,13 +1012,14 @@ def async_upload_folder(
     return folder
 
 
-def toggle_legal_hold_on_files(
+def update_blob_protection(
     file_paths: str | list[str],
     blob_storage_container_name: str,
     blob_service_client: BlobServiceClient,
     legal_hold: bool = False,
+    read_only: bool = False,
 ) -> None:
-    """Toggle legal hold on files in an Azure Blob Storage container.
+    """Toggle legal hold or seal on blobs in an Azure Blob Storage container.
 
     Args:
         file_paths (str | list[str]): Path(s) to file(s) to upload. Can be a single file
@@ -1030,6 +1028,7 @@ def toggle_legal_hold_on_files(
             container must already exist.
         blob_service_client: The blob service client to use when looking for and potentially creating the storage container.
         legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+        read_only (bool, optional): Whether to set the blobs to read-only.
     """
     logger.debug(
         f"Toggling legal hold to {legal_hold} on files in container '{blob_storage_container_name}'"
@@ -1040,15 +1039,23 @@ def toggle_legal_hold_on_files(
 
     logger.debug(f"Processing {n_total_files} files for legal hold toggle")
 
-    for i_file, file_path in enumerate(files):
-        if i_file % (1 + int(n_total_files / 10)) == 0:
-            logger.debug(f"Progress: {i_file}/{n_total_files} files processed")
+    try:
+        for i_file, file_path in enumerate(files):
+            if i_file % (1 + int(n_total_files / 10)) == 0:
+                logger.debug(f"Progress: {i_file}/{n_total_files} files processed")
 
-        blob_client = blob_service_client.get_blob_client(
-            container=blob_storage_container_name, blob=file_path
+            blob_client = blob_service_client.get_blob_client(
+                container=blob_storage_container_name, blob=file_path
+            )
+            blob_client.set_legal_hold(legal_hold=legal_hold)
+            logger.debug(f"Set legal hold to {legal_hold} for blob '{file_path}'")
+
+            if read_only:
+                blob_client.seal_append_blob()
+        logger.info(
+            f"Toggled legal hold to {legal_hold} on {n_total_files} file(s) in container '{blob_storage_container_name}'."
         )
-        blob_client.set_legal_hold(legal_hold=legal_hold)
-        logger.debug(f"Set legal hold to {legal_hold} for blob '{file_path}'")
-    logger.info(
-        f"Toggled legal hold to {legal_hold} on {n_total_files} file(s) in container '{blob_storage_container_name}'."
-    )
+        return True
+    except Exception as e:
+        logger.error(f"Error toggling legal hold and/or sealing append blob: {e}")
+        return False

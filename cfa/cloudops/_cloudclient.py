@@ -870,13 +870,14 @@ class CloudClient:
         create_storage_container_if_not_exists(name, self.blob_service_client)
         logger.info(f"Blob container '{name}' created or already exists.")
 
-    def toggle_legal_hold_on_files(
+    def update_blob_protection(
         self,
         files: str | list[str],
         container_name: str,
         legal_hold: bool = False,
+        read_only: bool = False,
     ) -> None:
-        """Update legal hold status on files in an Azure Blob Storage container.
+        """Update legal hold or read-only status on files in an Azure Blob Storage container.
 
         Args:
             files (str | list[str]): Path(s) to file(s) to upload. Can be a single file
@@ -884,19 +885,26 @@ class CloudClient:
             container_name (str): Name of the blob storage container to upload to. The
                 container must already exist.
             legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+            read_only (bool, optional): Whether to set the uploaded blobs to read-only. This is applicable to Append-Only blobs.
         """
         logger.debug(
-            f"Toggling legal hold {legal_hold} on files {files} to container {container_name}."
+            f"Toggling legal hold {legal_hold} and read only {read_only} on files {files} to container {container_name}."
         )
-        blob.toggle_legal_hold_on_files(
+        status = blob.update_blob_protection(
             file_paths=files,
             blob_storage_container_name=container_name,
             blob_service_client=self.blob_service_client,
             legal_hold=legal_hold,
+            read_only=read_only,
         )
-        logger.info(
-            f"Toggled legal hold {legal_hold} on files {files} to container '{container_name}'."
-        )
+        if status:
+            logger.info(
+                f"Updated legal hold {legal_hold} and read only {read_only} on files {files} to container '{container_name}'."
+            )
+        else:
+            logger.error(
+                f"Failed to update legal hold {legal_hold} and read only {read_only} on files {files} to container '{container_name}'."
+            )
 
     def upload_files(
         self,
@@ -1655,6 +1663,7 @@ class CloudClient:
         max_concurrent_uploads: int = 20,
         legal_hold: bool = False,
         immutability_lock_days: int = 0,
+        read_only: bool = False,
     ):
         """Upload entire folders to an Azure Blob Storage container asynchronously.
 
@@ -1680,6 +1689,7 @@ class CloudClient:
             legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
                 which prevents deletion or modification of the blobs. Default is False.
             immutability_lock_days (int, optional): Number of days to set an immutability policy.
+            read_only (bool, optional): Whether to set the uploaded blobs to read-only.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1720,6 +1730,7 @@ class CloudClient:
                 credential=cred,
                 legal_hold=legal_hold,
                 immutability_lock_days=immutability_lock_days,
+                read_only=read_only,
             )
             logger.info(
                 f"Asynchronously uploaded folder '{folder}' to container '{container_name}'."
