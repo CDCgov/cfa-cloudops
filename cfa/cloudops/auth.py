@@ -1017,14 +1017,14 @@ def load_keyvault_vars(
         force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
     """
     kv_keys = [
-        "azure_batch_account",
-        "azure_batch_location",
-        "azure_user_assigned_identity",
-        "azure_subnet_id",
-        "azure_client_id",
-        "azure_keyvault_sp_secret_id",
-        "azure_blob_storage_account",
-        "azure_container_registry_account",
+        "AZURE_BATCH_ACCOUNT",
+        "AZURE_KEYVAULT_LOCATION",
+        "AZURE_USER_ASSIGNED_IDENTITY",
+        "AZURE_SUBNET_ID",
+        "AZURE_CLIENT_ID",
+        "AZURE_KEYVAULT_SP_SECRET_ID",
+        "AZURE_BLOB_STORAGE_ACCOUNT",
+        "AZURE_CONTAINER_REGISTRY_ACCOUNT",
     ]
     for key in kv_keys:
         if force_keyvault:
@@ -1032,23 +1032,23 @@ def load_keyvault_vars(
                 "Force Key Vault load enabled; loading secret regardless of existing environment variable."
             )
             try:
-                secret = secret_client.get_secret(key).value
-                os.environ[key.upper()] = secret
+                secret = secret_client.get_secret(key.replace("_", "-")).value
+                os.environ[key] = secret
                 logger.debug(
                     f"Loaded secret '{key}' from Key Vault into environment variable."
                 )
             except Exception as e:
                 logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
         else:
-            if key.upper() in os.environ:
+            if key in os.environ:
                 logger.debug(
-                    f"Environment variable '{key.upper()}' already set; skipping Key Vault load."
+                    f"Environment variable '{key}' already set; skipping Key Vault load."
                 )
                 continue
             else:
                 try:
                     secret = secret_client.get_secret(key).value
-                    os.environ[key.upper()] = secret
+                    os.environ[key] = secret
                     logger.debug(
                         f"Loaded secret '{key}' from Key Vault into environment variable."
                     )
