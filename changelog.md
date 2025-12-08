@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.6
+- add tagging automation on merges to main
+
 ## v0.2.5
 - change location of Task in imports. It is now located in cfa.cloudops.
 
