@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+
+## v0.2.4
+
+- fixing ns packaging and added pre-commit hook to keep the `__init__.py` file out of ./cfa/
+
 ## v0.2.3
 - add `list_available_images` method to CloudClient for listing all verified Docker images supported by Azure Batch
 
