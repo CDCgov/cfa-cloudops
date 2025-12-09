@@ -26,6 +26,7 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
+from .batch_helpers import check_mount_format
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -236,6 +237,7 @@ class CloudClient:
             logger.debug("Configuring storage mounts for pool.")
             if isinstance(mounts[0], str):
                 logger.debug("Mounts provided as list of strings.")
+                mounts = [check_mount_format(mount) for mount in mounts]
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
                     account_names=self.cred.azure_blob_storage_account,
@@ -245,6 +247,13 @@ class CloudClient:
                 logger.debug("Generated mount configuration from string list.")
             elif isinstance(mounts[0], dict):
                 logger.debug("Mounts provided as list of dicts.")
+                mounts = [
+                    {
+                        "source": check_mount_format(mount["source"]),
+                        "target": mount["target"],
+                    }
+                    for mount in mounts
+                ]
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
