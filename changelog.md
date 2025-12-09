@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.2.4
-- add `legal_hold`, `immutability_lock_days` and `read_only` options to `blob.py` for Blob protection
+- add `legal_hold` and `immutability_lock_days` options to `blob.py` for Blob protection. Also added `update_blob_protection` operation to CloudClient.
 
 ## v0.2.3
 - add `list_available_images` method to CloudClient for listing all verified Docker images supported by Azure Batch
