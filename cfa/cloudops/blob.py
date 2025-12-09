@@ -190,10 +190,12 @@ def upload_to_storage_container(
                 upload_data,
                 overwrite=True,
                 tags=tags,
-                legal_hold=legal_hold,
                 immutability_policy=immutability_policy,
             )
             logger.debug(f"Successfully uploaded '{file_path}'")
+            if legal_hold:
+                blob_client.set_legal_hold(legal_hold=legal_hold)
+                logger.info("Blob legal hold has been set.")
 
     if immutability_policy:
         blob_client.lock_blob_immutability_policy()
@@ -570,9 +572,11 @@ async def _async_upload_file_to_blob(
                     f,
                     overwrite=True,
                     tags=tags,
-                    legal_hold=legal_hold,
                     immutability_policy=immutability_policy,
                 )
+                if legal_hold:
+                    await blob_client.set_legal_hold(legal_hold=legal_hold)
+                    logger.info("Blob legal hold has been set.")
                 if immutability_policy:
                     await blob_client.lock_blob_immutability_policy()
                     logger.info(
