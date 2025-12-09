@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.2.4
+## v0.2.7
 - add `legal_hold` and `immutability_lock_days` options to `blob.py` for Blob protection. Also added `update_blob_protection` operation to CloudClient.
+
+## v0.2.6
+- add tagging automation on merges to main
+
+## v0.2.5
+- change location of Task in imports. It is now located in cfa.cloudops.
+
+## v0.2.4
+- fixing ns packaging and added pre-commit hook to keep the `__init__.py` file out of ./cfa/
 
 ## v0.2.3
 - add `list_available_images` method to CloudClient for listing all verified Docker images supported by Azure Batch
