@@ -600,11 +600,12 @@ def load_env_vars(
     os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
 
     # get Key Vault secrets
-    get_keyvault_vars(
-        keyvault_name=keyvault_name,
-        credential=mid_cred,
-        force_keyvault=force_keyvault,
-    )
+    if keyvault_name is not None:
+        get_keyvault_vars(
+            keyvault_name=keyvault_name,
+            credential=mid_cred,
+            force_keyvault=force_keyvault,
+        )
 
     # save default values
     d.set_env_vars()
@@ -718,11 +719,12 @@ class SPCredentialHandler(CredentialHandler):
             client_secret=self.azure_client_secret,
         )
         # load keyvault secrets
-        get_keyvault_vars(
-            keyvault_name=keyvault,
-            credential=sp_cred,
-            force_keyvault=force_keyvault,
-        )
+        if keyvault is not None:
+            get_keyvault_vars(
+                keyvault_name=keyvault,
+                credential=sp_cred,
+                force_keyvault=force_keyvault,
+            )
 
         d.set_env_vars()
 
@@ -780,11 +782,12 @@ class DefaultCredentialHandler(CredentialHandler):
         sub_c = SubscriptionClient(d_cred)
 
         # load keyvault secrets
-        get_keyvault_vars(
-            keyvault_name=keyvault,
-            credential=d_cred,
-            force_keyvault=force_keyvault,
-        )
+        if keyvault is not None:
+            get_keyvault_vars(
+                keyvault_name=keyvault,
+                credential=d_cred,
+                force_keyvault=force_keyvault,
+            )
         # pull subscription id from env vars
         sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
         if sub_id is None:
