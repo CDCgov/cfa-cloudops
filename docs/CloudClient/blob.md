@@ -11,3 +11,4 @@ Another benefit to the `CloudClient` class is its Blob Storage interaction. Ther
 - delete_blob_file
 - delete_blob_folder
 - download_after_job
+- update_blob_protection

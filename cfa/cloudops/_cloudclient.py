@@ -13,8 +13,6 @@ from azure.batch.models import (
     OnAllTasksComplete,
     OnTaskFailure,
 )
-
-# from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
 from azure.mgmt.resource import SubscriptionClient
 
@@ -872,12 +870,51 @@ class CloudClient:
         create_storage_container_if_not_exists(name, self.blob_service_client)
         logger.info(f"Blob container '{name}' created or already exists.")
 
+    def update_blob_protection(
+        self,
+        files: str | list[str],
+        container_name: str,
+        legal_hold: bool = False,
+        read_only: bool = False,
+    ) -> None:
+        """Update legal hold or read-only status on files in an Azure Blob Storage container.
+
+        Args:
+            files (str | list[str]): Path(s) to file(s) to upload. Can be a single file
+                path as a string or a list of file paths. Paths can be relative or absolute.
+            container_name (str): Name of the blob storage container to upload to. The
+                container must already exist.
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+            read_only (bool, optional): Whether to set the uploaded blobs to read-only. This is applicable to Append-Only blobs.
+        """
+        logger.debug(
+            f"Toggling legal hold {legal_hold} and read only {read_only} on files {files} to container {container_name}."
+        )
+        status = blob.update_blob_protection(
+            file_paths=files,
+            blob_storage_container_name=container_name,
+            blob_service_client=self.blob_service_client,
+            legal_hold=legal_hold,
+            read_only=read_only,
+        )
+        if status:
+            logger.info(
+                f"Updated legal hold {legal_hold} and read only {read_only} on files {files} to container '{container_name}'."
+            )
+        else:
+            logger.error(
+                f"Failed to update legal hold {legal_hold} and read only {read_only} on files {files} to container '{container_name}'."
+            )
+
     def upload_files(
         self,
         files: str | list[str],
         container_name: str,
         local_root_dir: str = ".",
         location_in_blob: str = ".",
+        legal_hold: bool = False,
+        immutability_lock_days: int = 0,
+        read_only: bool = False,
     ) -> None:
         """Upload files to an Azure Blob Storage container.
 
@@ -894,6 +931,9 @@ class CloudClient:
                 Default is "." (current directory).
             location_in_blob (str, optional): Remote directory path within the blob container
                 where files should be uploaded. Default is "." (container root).
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs which prevents deletion or modification of the blobs.
+            immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
+            read_only (bool, optional): Whether to set the uploaded blobs to read-only.
 
         Example:
             Upload a single file:
@@ -924,6 +964,9 @@ class CloudClient:
             blob_service_client=self.blob_service_client,
             local_root_dir=local_root_dir,
             remote_root_dir=location_in_blob,
+            legal_hold=legal_hold,
+            immutability_lock_days=immutability_lock_days,
+            read_only=read_only,
         )
         logger.info(f"Uploaded files to container '{container_name}'.")
 
@@ -936,6 +979,8 @@ class CloudClient:
         exclude_patterns: str | list | None = None,
         location_in_blob: str = ".",
         force_upload: bool = False,
+        legal_hold: bool = False,
+        immutability_lock_days: int = 0,
     ) -> list[str]:
         """Upload entire folders to an Azure Blob Storage container with filtering options.
 
@@ -962,6 +1007,9 @@ class CloudClient:
             force_upload (bool, optional): Whether to force upload files even if they
                 already exist in the container with the same size. Default is False
                 (skip existing files with same size).
+            legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs
+                which prevents deletion or modification of the blobs.
+            immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1006,6 +1054,8 @@ class CloudClient:
                 location_in_blob=location_in_blob,
                 blob_service_client=self.blob_service_client,
                 force_upload=force_upload,
+                legal_hold=legal_hold,
+                immutability_lock_days=immutability_lock_days,
             )
             _files += _uploaded_files
         logger.debug(f"uploaded {_files}")
@@ -1611,6 +1661,9 @@ class CloudClient:
         exclude_extensions: str | list | None = None,
         location_in_blob: str = ".",
         max_concurrent_uploads: int = 20,
+        legal_hold: bool = False,
+        immutability_lock_days: int = 0,
+        read_only: bool = False,
     ):
         """Upload entire folders to an Azure Blob Storage container asynchronously.
 
@@ -1633,6 +1686,10 @@ class CloudClient:
                 where folders should be uploaded. Default is "." (container root).
             max_concurrent_uploads (int, optional): Maximum number of concurrent
                 uploads to perform. Higher values may increase speed but use more RAM.
+            legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
+                which prevents deletion or modification of the blobs. Default is False.
+            immutability_lock_days (int, optional): Number of days to set an immutability policy.
+            read_only (bool, optional): Whether to set the uploaded blobs to read-only.
 
         Returns:
             list[str]: List of file paths that were successfully uploaded to the container.
@@ -1671,6 +1728,9 @@ class CloudClient:
                 location_in_blob=location_in_blob,
                 max_concurrent_uploads=max_concurrent_uploads,
                 credential=cred,
+                legal_hold=legal_hold,
+                immutability_lock_days=immutability_lock_days,
+                read_only=read_only,
             )
             logger.info(
                 f"Asynchronously uploaded folder '{folder}' to container '{container_name}'."

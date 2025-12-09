@@ -2,9 +2,10 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from shared_fixtures import FAKE_IMAGES
+from shared_fixtures import FAKE_IMAGES, MockLogger
 
 from cfa.cloudops._cloudclient import CloudClient
+from cfa.cloudops.batch_helpers import Task
 
 
 @pytest.fixture
@@ -13,6 +14,16 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "mock-subscription-id")
     monkeypatch.setenv("AZURE_CLIENT_ID", "mock-client-id")
     monkeypatch.setenv("AZURE_CLIENT_SECRET", "mock-client-secret")
+
+
+@pytest.fixture(autouse=True)
+def mock_logging(monkeypatch):
+    """
+    Monkeypatch the logging library to use a mock logger.
+    """
+    mock_logger = MockLogger(name=__name__)
+    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
+    return mock_logger
 
 
 @pytest.fixture
@@ -497,3 +508,16 @@ def test_list_available_images(
     )
     result = cloud_client_with_service_principal.list_available_images()
     assert result
+
+
+def test_run_dag(cloud_client_with_service_principal, mock_logging):
+    cloud_client_with_service_principal.create_job("dag_job", pool_name="test_pool")
+    t1 = Task("python step1.py")
+    t2 = Task("python step2.py")
+    t3 = Task("python step3.py")
+    t4 = Task("python step4.py")
+    t2.after(t1)
+    t3.after(t1)
+    t4.after([t2, t3])
+    cloud_client_with_service_principal.run_dag(t1, t2, t3, t4, job_name="dag_job")
+    assert mock_logging.messages == []
