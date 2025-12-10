@@ -198,7 +198,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
-            exists_ok (bool): Whether to allow pool creation if a pool with the same name already exists.
+            exists_ok (bool): Whether to skip pool creation if a pool with the same name already exists. When True, existing pools are left unchanged.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -238,15 +238,15 @@ class CloudClient:
             resource_group_name=self.cred.azure_resource_group_name,
             account_name=self.cred.azure_batch_account,
         )
-        p_exists = False
+        pool_exists = False
         for p in existing_pools:
             if p.name == pool_name:
-                p_exists = True
+                pool_exists = True
 
-        if p_exists and not exists_ok:
+        if pool_exists and not exists_ok:
             logger.error(f"Pool with name {pool_name} already exists.")
             raise ValueError(f"Pool with name {pool_name} already exists.")
-        elif p_exists and exists_ok:
+        elif pool_exists and exists_ok:
             logger.info(
                 f"Pool with name {pool_name} already exists. Skipping creation."
             )
