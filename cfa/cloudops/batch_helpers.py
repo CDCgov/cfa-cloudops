@@ -1593,13 +1593,13 @@ def check_mount_format(mount: str) -> str:
     """
     logger.debug(f"Checking mount format for: {mount}")
     starting_mount = mount
-    if mount.startswith("/") or mount.startswith("\\"):
+    if mount.startswith("/"):
         mount = mount[1:]
         logger.info(f"Removed leading slash: {mount}")
-    if mount.endswith("/") or mount.endswith("\\"):
+    if mount.endswith("/"):
         mount = mount[:-1]
         logger.info(f"Removed trailing slash: {mount}")
-    if "/" in mount or "\\" in mount:
+    if "/" in mount:
         raise ValueError(
             f"Invalid mount format: {starting_mount}. Mount should not contain slashes."
         )
