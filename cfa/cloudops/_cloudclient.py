@@ -234,7 +234,7 @@ class CloudClient:
             container images are accessible from the compute nodes.
         """
         # check pool exists
-        existing_pools = self.batch_mgmt_client.pool.list(
+        existing_pools = self.batch_mgmt_client.pool.list_by_batch_account(
             resource_group_name=self.cred.azure_resource_group_name,
             account_name=self.cred.azure_batch_account,
         )
