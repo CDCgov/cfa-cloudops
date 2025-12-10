@@ -1601,7 +1601,7 @@ def check_mount_format(mount: str) -> str:
         logger.info(f"Removed trailing slash: {mount}")
     if "/" in mount:
         raise ValueError(
-            f"Invalid mount format: {starting_mount}. Mount should not contain slashes."
+            f"Invalid mount format: {starting_mount}. Mount path should not contain internal slashes after removing leading/trailing slashes."
         )
     logger.info(f"Formatted mount: {mount}")
     return mount
