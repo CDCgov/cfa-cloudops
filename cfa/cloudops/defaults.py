@@ -137,6 +137,17 @@ default_pool_config_dict = dict(
     ),
 )
 
+default_kv_keys = [
+    "AZURE_BATCH_ACCOUNT",
+    "AZURE_KEYVAULT_LOCATION",
+    "AZURE_USER_ASSIGNED_IDENTITY",
+    "AZURE_SUBNET_ID",
+    "AZURE_CLIENT_ID",
+    "AZURE_KEYVAULT_SP_SECRET_ID",
+    "AZURE_BLOB_STORAGE_ACCOUNT",
+    "AZURE_CONTAINER_REGISTRY_ACCOUNT",
+]
+
 
 def set_env_vars():
     """Set default Azure environment variables.

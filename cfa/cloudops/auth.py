@@ -589,6 +589,10 @@ def load_env_vars(
     # get ManagedIdentityCredential
     mid_cred = ManagedIdentityCredential()
 
+    # delete existing kv keys
+    for key in d.default_kv_keys:
+        del os.environ[key]
+
     logger.debug("Loading environment variables.")
     load_dotenv(dotenv_path=dotenv_path, override=True)
 
@@ -598,6 +602,10 @@ def load_env_vars(
     os.environ["AZURE_SUBSCRIPTION_ID"] = account_info.subscription_id
     os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
     os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
+
+    # delete existing kv keys
+    for key in d.default_kv_keys:
+        del os.environ[key]
 
     # get Key Vault secrets
     if keyvault_name is not None:
@@ -1019,16 +1027,8 @@ def load_keyvault_vars(
         secret_client: SecretClient for accessing the Azure Key Vault.
         force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
     """
-    kv_keys = [
-        "AZURE_BATCH_ACCOUNT",
-        "AZURE_KEYVAULT_LOCATION",
-        "AZURE_USER_ASSIGNED_IDENTITY",
-        "AZURE_SUBNET_ID",
-        "AZURE_CLIENT_ID",
-        "AZURE_KEYVAULT_SP_SECRET_ID",
-        "AZURE_BLOB_STORAGE_ACCOUNT",
-        "AZURE_CONTAINER_REGISTRY_ACCOUNT",
-    ]
+    kv_keys = d.default_kv_keys
+
     for key in kv_keys:
         if force_keyvault:
             logger.debug(
