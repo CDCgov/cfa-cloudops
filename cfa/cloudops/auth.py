@@ -604,10 +604,6 @@ def load_env_vars(
     os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
     os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
 
-    # delete existing kv keys
-    for key in d.default_kv_keys:
-        del os.environ[key]
-
     # get Key Vault secrets
     if keyvault_name is not None:
         get_keyvault_vars(
