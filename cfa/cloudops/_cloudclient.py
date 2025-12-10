@@ -198,7 +198,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
-            exists_ok (bool): Whether to allow pool creation if a pool with the same name already exists.
+            exists_ok (bool): Whether to skip pool creation if a pool with the same name already exists. When True, existing pools are left unchanged.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
