@@ -589,11 +589,6 @@ def load_env_vars(
     # get ManagedIdentityCredential
     mid_cred = ManagedIdentityCredential()
 
-    # delete existing kv keys
-    for key in d.default_kv_keys:
-        if key in os.environ:
-            del os.environ[key]
-
     logger.debug("Loading environment variables.")
     load_dotenv(dotenv_path=dotenv_path, override=True)
 
