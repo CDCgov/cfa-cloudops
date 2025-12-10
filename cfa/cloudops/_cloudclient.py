@@ -159,6 +159,7 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
+        exists_ok: bool = True,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -197,6 +198,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
+            exists_ok (bool): Whether to allow pool creation if a pool with the same name already exists.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -231,7 +233,29 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
-        logger.debug(f"Creating pool: {pool_name}")
+        # check pool exists
+        existing_pools = self.batch_mgmt_client.pool.list(
+            resource_group_name=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+        p_exists = False
+        for p in existing_pools:
+            if p.name == pool_name:
+                p_exists = True
+
+        if p_exists and not exists_ok:
+            logger.error(f"Pool with name {pool_name} already exists.")
+            raise ValueError(f"Pool with name {pool_name} already exists.")
+        elif p_exists and exists_ok:
+            logger.info(
+                f"Pool with name {pool_name} already exists. Skipping creation."
+            )
+            print(f"Pool with name {pool_name} already exists. Skipping creation.")
+            self.pool_name = pool_name
+            return  # exit the function if pool exists and exists_ok is True
+        else:
+            logger.info(f"Creating new pool: {pool_name}")
+
         # Configure storage mounts if provided
         if mounts:
             logger.debug("Configuring storage mounts for pool.")
@@ -273,8 +297,6 @@ class CloudClient:
         logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
-        print("Verify the size of the VM is appropriate for the use case.")
-        print("**Please use smaller VMs for dev/testing.**")
 
         # Get base pool configuration
         logger.debug("Getting default pool configuration.")
@@ -367,7 +389,12 @@ class CloudClient:
             )
             logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
-            print(f"created pool: {pool_name}")
+            print("* " * 50)
+            print(
+                f"Created pool {pool_name}: Verify the size of the VM is appropriate for the use case."
+            )
+            print("**Please use smaller VMs for dev/testing.**")
+            print("* " * 50)
             logger.info(f"Pool '{pool_name}' created successfully.")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
