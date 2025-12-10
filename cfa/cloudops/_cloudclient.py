@@ -274,7 +274,7 @@ class CloudClient:
                 mounts = [
                     {
                         "source": check_mount_format(mount["source"]),
-                        "target": mount["target"],
+                        "target": check_mount_format(mount["target"]),
                     }
                     for mount in mounts
                 ]
