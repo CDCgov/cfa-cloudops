@@ -159,7 +159,7 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
-        exists_ok: bool = True,
+        exist_ok: bool = True,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -198,7 +198,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
-            exists_ok (bool): Whether to skip pool creation if a pool with the same name already exists. When True, existing pools are left unchanged.
+            exist_ok (bool): Whether to skip pool creation if a pool with the same name already exists. When True, existing pools are left unchanged.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -243,16 +243,16 @@ class CloudClient:
             if p.name == pool_name:
                 pool_exists = True
 
-        if pool_exists and not exists_ok:
+        if pool_exists and not exist_ok:
             logger.error(f"Pool with name {pool_name} already exists.")
             raise ValueError(f"Pool with name {pool_name} already exists.")
-        elif pool_exists and exists_ok:
+        elif pool_exists and exist_ok:
             logger.info(
                 f"Pool with name {pool_name} already exists. Skipping creation."
             )
             print(f"Pool with name {pool_name} already exists. Skipping creation.")
             self.pool_name = pool_name
-            return  # exit the function if pool exists and exists_ok is True
+            return  # exit the function if pool exists and exist_ok is True
         else:
             logger.info(f"Creating new pool: {pool_name}")
 
