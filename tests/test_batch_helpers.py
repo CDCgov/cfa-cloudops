@@ -7,6 +7,7 @@ from azure.storage.blob import BlobProperties
 
 from cfa.cloudops.batch_helpers import (
     add_task,
+    check_mount_format,
     download_job_stats,
     get_args_from_yaml,
     get_full_container_image_name,
@@ -214,4 +215,39 @@ def test_get_full_container_image_name_fail():
         )
         assert str(excinfo.value) == (
             "github_org must be provided for GitHub Container Registry."
+        )
+
+
+def test_check_mount_format():
+    # Test with leading and trailing slashes
+    mount = "/mnt/data/"
+    with pytest.raises(ValueError) as excinfo:
+        formatted_mount = check_mount_format(mount)
+        assert (
+            str(excinfo.value)
+            == "Mount path must not have leading or trailing slashes."
+        )
+
+    # Test with no slashes
+    mount = "data"
+    formatted_mount = check_mount_format(mount)
+    assert formatted_mount == "data"
+
+    # Test with only leading slash
+    mount = "/data"
+    formatted_mount = check_mount_format(mount)
+    assert formatted_mount == "data"
+
+    # Test with only trailing slash
+    mount = "data/"
+    formatted_mount = check_mount_format(mount)
+    assert formatted_mount == "data"
+
+    # Test with nested path
+    mount = "/mnt/data/files/"
+    with pytest.raises(ValueError) as excinfo:
+        formatted_mount = check_mount_format(mount)
+        assert (
+            str(excinfo.value)
+            == "Mount path must not have leading or trailing slashes."
         )
