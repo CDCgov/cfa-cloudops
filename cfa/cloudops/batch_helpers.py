@@ -1594,7 +1594,6 @@ def check_mount_format(mount: str) -> str:
     """
     logger.debug(f"Checking mount format for: {mount}")
     starting_mount = mount
-    print(f"Starting mount: {starting_mount}")
     # Strip leading and trailing slashes
     mount = Path(mount)
     if mount.parent.name:
@@ -1603,5 +1602,4 @@ def check_mount_format(mount: str) -> str:
         )
     mount = mount.name
     logger.info(f"Formatted mount: {mount}")
-    print(f"Formatted mount: {mount}")
     return mount
