@@ -4,6 +4,7 @@ import logging
 import os
 import time
 import uuid
+from pathlib import Path
 from zoneinfo import ZoneInfo as zi
 
 import azure.batch.models as batch_models
@@ -1593,12 +1594,9 @@ def check_mount_format(mount: str) -> str:
     """
     logger.debug(f"Checking mount format for: {mount}")
     starting_mount = mount
-    if mount.startswith("/"):
-        mount = mount[1:]
-        logger.info(f"Removed leading slash: {mount}")
-    if mount.endswith("/"):
-        mount = mount[:-1]
-        logger.info(f"Removed trailing slash: {mount}")
+    # Strip leading and trailing slashes
+    mount = str(Path(mount)).strip(os.sep)
+    logger.debug(f"Stripped leading/trailing slashes: {mount}")
     if "/" in mount:
         raise ValueError(
             f"Invalid mount format: {starting_mount}. Mount path should not contain internal slashes after removing leading/trailing slashes."
