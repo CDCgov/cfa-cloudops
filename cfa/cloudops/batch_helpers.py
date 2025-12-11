@@ -1595,11 +1595,11 @@ def check_mount_format(mount: str) -> str:
     logger.debug(f"Checking mount format for: {mount}")
     starting_mount = mount
     # Strip leading and trailing slashes
-    mount = str(Path(mount)).strip("/").strip("\\")
-    logger.debug(f"Stripped leading/trailing slashes: {mount}")
-    if "/" in mount or "\\" in mount:
+    mount = Path(mount)
+    if mount.parent.name:
         raise ValueError(
-            f"Invalid mount format: {starting_mount}. Mount path should not contain internal slashes after removing leading/trailing slashes."
+            f"Invalid mount format: {starting_mount}. Mount path should not contain internal slashes."
         )
+    mount = mount.name
     logger.info(f"Formatted mount: {mount}")
     return mount
