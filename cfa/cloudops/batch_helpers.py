@@ -1597,7 +1597,7 @@ def check_mount_format(mount: str) -> str:
     # Strip leading and trailing slashes
     mount = str(Path(mount)).strip(os.sep)
     logger.debug(f"Stripped leading/trailing slashes: {mount}")
-    if "/" in mount:
+    if os.sep in mount:
         raise ValueError(
             f"Invalid mount format: {starting_mount}. Mount path should not contain internal slashes after removing leading/trailing slashes."
         )
