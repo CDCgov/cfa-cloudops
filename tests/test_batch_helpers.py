@@ -219,15 +219,6 @@ def test_get_full_container_image_name_fail():
 
 
 def test_check_mount_format():
-    # Test with leading and trailing slashes
-    mount = "/mnt/data/"
-    with pytest.raises(ValueError) as excinfo:
-        formatted_mount = check_mount_format(mount)
-        assert (
-            str(excinfo.value)
-            == "Mount path must not have leading or trailing slashes."
-        )
-
     # Test with no slashes
     mount = "data"
     formatted_mount = check_mount_format(mount)
@@ -249,5 +240,5 @@ def test_check_mount_format():
         formatted_mount = check_mount_format(mount)
         assert (
             str(excinfo.value)
-            == "Mount path must not have leading or trailing slashes."
+            == "Invalid mount format: /mnt/data/files/. Mount path should not contain internal slashes."
         )

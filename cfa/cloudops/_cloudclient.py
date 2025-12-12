@@ -161,7 +161,9 @@ class CloudClient:
         cache_blobfuse: bool = True,
         exist_ok: bool = True,
     ):
-        """Create a pool in Azure Batch with the specified configuration.
+        """Create a pool in Azure Batch with the specified configuration. Calling this method when a pool with the same name already exists will not replace the existing pool.
+        If exist_ok is set to True, the method will skip pool creation if a pool with the same name already exists.
+        If exist_ok is set to False, the method will raise a ValueError if a pool with the same name already exists.
 
         A pool is a collection of compute nodes (virtual machines) on which your tasks run.
         This function creates a new pool with configurable scaling, container support,
