@@ -159,7 +159,7 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
-        replace_existing_pool: bool = True,
+        replace_existing_pool: bool = False,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -198,7 +198,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
-            replace_existing_pool (bool): Whether to replace the existing pool if it already exists.
+            replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
