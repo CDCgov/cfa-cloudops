@@ -15,7 +15,7 @@ from cfa.cloudops.blob import (
     create_storage_container_if_not_exists,
     download_from_storage_container,
     get_node_mount_config,
-    toggle_legal_hold_on_files,
+    update_blob_protection,
     upload_to_storage_container,
 )
 
@@ -294,11 +294,11 @@ def test_create_storage_container_if_not_exists(mock_blob_service_client):
         mock_print.assert_called_with("Container [my-container] already exists.")
 
 
-def test_toggle_legal_hold_on_files(mock_blob_service_client, mock_logging):
+def test_update_blob_protection(mock_blob_service_client, mock_logging):
     mock_blob_client = MagicMock()
     mock_blob_client.set_legal_hold.return_value = True
     mock_blob_service_client.get_blob_client.return_value = mock_blob_client
-    toggle_legal_hold_on_files(
+    update_blob_protection(
         file_paths=["myfile.txt"],
         blob_storage_container_name="my-container",
         blob_service_client=mock_blob_service_client,
@@ -336,7 +336,6 @@ async def test__async_upload_file_to_blob_success(tmp_path, mocker):
         semaphore=semaphore,
         legal_hold=True,
         immutability_lock_days=7,
-        read_only=True,
     )
     mock_container_client.get_blob_client.assert_called_once_with("folder/testfile.txt")
     mock_blob_client.upload_blob.assert_awaited_once()

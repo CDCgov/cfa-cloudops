@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.8
+- removed `read_only` parameter from blob upload functions since this is now being implemented through `update_blob_protection` operation
+
 ## v0.2.7
-- add `legal_hold` and `immutability_lock_days` options to `blob.py` for Blob protection. Also added `update_blob_protection` operation to CloudClient.
+- add `legal_hold` and `immutability_lock_days` options to `blob.py` for Blob protection. Also added `update_blob_protection` operation to CloudClient
 
 ## v0.2.6
 - add tagging automation on merges to main
