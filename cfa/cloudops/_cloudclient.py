@@ -240,19 +240,16 @@ class CloudClient:
         )
         pool_exists = any(p.name == pool_name for p in existing_pools)
 
-        if pool_exists and not replace_existing_pool:
-            logger.error(f"Pool with name {pool_name} already exists.")
-            raise ValueError(f"Pool with name {pool_name} already exists.")
-        elif pool_exists and replace_existing_pool:
-            logger.info(
-                f"Pool with name {pool_name} already exists. Replacing existing pool."
-            )
-            print(
-                f"Pool with name {pool_name} already exists. Replacing existing pool."
-            )
+        if pool_exists:
+            print(f"Pool with name {pool_name} already exists.")
+            if not replace_existing_pool:
+                print("Skipping pool creation.")
+                return
+            elif replace_existing_pool:
+                print("Replacing existing pool.")
             self.pool_name = pool_name
-        else:
-            logger.info(f"Creating new pool: {pool_name}")
+
+        logger.debug(f"Creating new pool: {pool_name}")
 
         # Configure storage mounts if provided
         if mounts:
