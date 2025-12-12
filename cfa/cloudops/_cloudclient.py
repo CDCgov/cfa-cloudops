@@ -240,10 +240,7 @@ class CloudClient:
             resource_group_name=self.cred.azure_resource_group_name,
             account_name=self.cred.azure_batch_account,
         )
-        pool_exists = False
-        for p in existing_pools:
-            if p.name == pool_name:
-                pool_exists = True
+        pool_exists = any(p.name == pool_name for p in existing_pools)
 
         if pool_exists and not exist_ok:
             logger.error(f"Pool with name {pool_name} already exists.")
