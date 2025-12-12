@@ -4,6 +4,7 @@ import logging
 import os
 import time
 import uuid
+from pathlib import Path
 from zoneinfo import ZoneInfo as zi
 
 import azure.batch.models as batch_models
@@ -1580,3 +1581,25 @@ def check_pool_exists(
     except Exception:
         logger.debug("Pool does not exist.")
         return False
+
+
+def check_mount_format(mount: str) -> str:
+    """Check and format the mount string to ensure it is in the correct format.
+
+    Args:
+        mount (str): The mount string to check.
+
+    Returns:
+        str: The formatted mount string, or raises an error if the format is invalid.
+    """
+    logger.debug(f"Checking mount format for: {mount}")
+    starting_mount = mount
+    # Strip leading and trailing slashes
+    mount = Path(mount)
+    if mount.parent.name:
+        raise ValueError(
+            f"Invalid mount format: {starting_mount}. Mount path should not contain internal slashes."
+        )
+    mount = mount.name
+    logger.info(f"Formatted mount: {mount}")
+    return mount
