@@ -287,6 +287,9 @@ class CloudClient:
                     "Invalid mounts format provided. Will not configure mounts."
                 )
                 mount_config = None
+        else:
+            logger.debug("No mounts provided. Skipping mount configuration.")
+            mount_config = None
 
         # validate pool name
         pool_name = pool_name.replace(" ", "_")
