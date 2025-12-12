@@ -159,11 +159,9 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
-        exist_ok: bool = True,
+        replace_existing_pool: bool = True,
     ):
-        """Create a pool in Azure Batch with the specified configuration. Calling this method when a pool with the same name already exists will not replace the existing pool.
-        If exist_ok is set to True, the method will skip pool creation if a pool with the same name already exists.
-        If exist_ok is set to False, the method will raise a ValueError if a pool with the same name already exists.
+        """Create a pool in Azure Batch with the specified configuration.
 
         A pool is a collection of compute nodes (virtual machines) on which your tasks run.
         This function creates a new pool with configurable scaling, container support,
@@ -200,7 +198,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
-            exist_ok (bool): Whether to skip pool creation if a pool with the same name already exists. When True, existing pools are left unchanged.
+            replace_existing_pool (bool): Whether to replace the existing pool if it already exists.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -242,16 +240,15 @@ class CloudClient:
         )
         pool_exists = any(p.name == pool_name for p in existing_pools)
 
-        if pool_exists and not exist_ok:
+        if pool_exists and not replace_existing_pool:
             logger.error(f"Pool with name {pool_name} already exists.")
             raise ValueError(f"Pool with name {pool_name} already exists.")
-        elif pool_exists and exist_ok:
+        elif pool_exists and replace_existing_pool:
             logger.info(
-                f"Pool with name {pool_name} already exists. Skipping creation."
+                f"Pool with name {pool_name} already exists. Replacing existing pool."
             )
             print(f"Pool with name {pool_name} already exists. Skipping creation.")
             self.pool_name = pool_name
-            return  # exit the function if pool exists and exist_ok is True
         else:
             logger.info(f"Creating new pool: {pool_name}")
 
@@ -389,9 +386,10 @@ class CloudClient:
             logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
             print("* " * 50)
-            print(
-                f"Created pool {pool_name}: Verify the size of the VM is appropriate for the use case."
-            )
+            if pool_exists:
+                print(f"Replaced existing pool: {pool_name}")
+            else:
+                print(f"Created pool: {pool_name}")
             print("**Please use smaller VMs for dev/testing.**")
             print("* " * 50)
             logger.info(f"Pool '{pool_name}' created successfully.")
