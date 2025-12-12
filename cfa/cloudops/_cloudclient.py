@@ -247,7 +247,9 @@ class CloudClient:
             logger.info(
                 f"Pool with name {pool_name} already exists. Replacing existing pool."
             )
-            print(f"Pool with name {pool_name} already exists. Skipping creation.")
+            print(
+                f"Pool with name {pool_name} already exists. Replacing existing pool."
+            )
             self.pool_name = pool_name
         else:
             logger.info(f"Creating new pool: {pool_name}")
