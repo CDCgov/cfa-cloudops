@@ -24,6 +24,7 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
+from .batch_helpers import check_mount_format
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -156,6 +157,7 @@ class CloudClient:
         task_slots_per_node: int = 1,
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
+        replace_existing_pool: bool = False,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -194,6 +196,7 @@ class CloudClient:
                 Default is "regional".
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
+            replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -228,12 +231,30 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
-        logger.debug(f"Creating pool: {pool_name}")
+        # check pool exists
+        existing_pools = self.batch_mgmt_client.pool.list_by_batch_account(
+            resource_group_name=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+        pool_exists = any(p.name == pool_name for p in existing_pools)
+
+        if pool_exists:
+            print(f"Pool with name {pool_name} already exists.")
+            if not replace_existing_pool:
+                print("Skipping pool creation.")
+                return
+            elif replace_existing_pool:
+                print("Replacing existing pool.")
+            self.pool_name = pool_name
+
+        logger.debug(f"Creating new pool: {pool_name}")
+
         # Configure storage mounts if provided
         if mounts:
             logger.debug("Configuring storage mounts for pool.")
             if isinstance(mounts[0], str):
                 logger.debug("Mounts provided as list of strings.")
+                mounts = [check_mount_format(mount) for mount in mounts]
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
                     account_names=self.cred.azure_blob_storage_account,
@@ -243,6 +264,13 @@ class CloudClient:
                 logger.debug("Generated mount configuration from string list.")
             elif isinstance(mounts[0], dict):
                 logger.debug("Mounts provided as list of dicts.")
+                mounts = [
+                    {
+                        "source": check_mount_format(mount["source"]),
+                        "target": check_mount_format(mount["target"]),
+                    }
+                    for mount in mounts
+                ]
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
@@ -256,14 +284,15 @@ class CloudClient:
                     "Invalid mounts format provided. Will not configure mounts."
                 )
                 mount_config = None
+        else:
+            logger.debug("No mounts provided. Skipping mount configuration.")
+            mount_config = None
 
         # validate pool name
         pool_name = pool_name.replace(" ", "_")
         logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
-        print("Verify the size of the VM is appropriate for the use case.")
-        print("**Please use smaller VMs for dev/testing.**")
 
         # Get base pool configuration
         logger.debug("Getting default pool configuration.")
@@ -356,7 +385,13 @@ class CloudClient:
             )
             logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
-            print(f"created pool: {pool_name}")
+            print("* " * 50)
+            if pool_exists:
+                print(f"Replaced existing pool: {pool_name}")
+            else:
+                print(f"Created pool: {pool_name}")
+            print("**Please use smaller VMs for dev/testing.**")
+            print("* " * 50)
             logger.info(f"Pool '{pool_name}' created successfully.")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"

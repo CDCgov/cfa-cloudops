@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.9
+- fixed issue when no mounts were provided during pool creation
+- added extra checks for mount strings
+- added replace_existing_pool flag in create_pool() to reduce accidental overriding of pools
+
 ## v0.2.8
 - removed `read_only` parameter from blob upload functions since this is now being implemented through `update_blob_protection` operation
 

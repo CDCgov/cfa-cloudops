@@ -9,8 +9,8 @@ Pools can easily be created with a `CloudClient` object while maintaining the fl
 - mounts: list of mounts to Blob Storage. Optional. There are two possible formats mounts can be passed as.
     - list of strings. These strings are the name of the Blob containers you would like to mount to the pool. For example, if you want to mount the Blob containers 'input-test' and 'output-test' and reference those directly in tasks, they can be passed as
     ```['input-test', 'output-test']```
-    - list of dictionaries. The dictionaries are in the form {'source': *container name*, 'target': *mount name*}. The source is the name of the Blob container and the target is how you want to reference the path in your code. For example, if we want to mount the Blob containers 'input-test' and 'output-test' and reference them via 'data/input' and 'data/output' in your code, pass the following to the `mounts` parameter:
-    ```[{'source': 'input-test', 'target': 'data/input'}, {'source': 'output-test', 'target': 'data/output'}]```
+    - list of dictionaries. The dictionaries are in the form {'source': *container name*, 'target': *mount name*}. The source is the name of the Blob container and the target is how you want to reference the path in your code. For example, if we want to mount the Blob containers 'input-test' and 'output-test' and reference them via 'input' and 'output' in your code, pass the following to the `mounts` parameter:
+    ```[{'source': 'input-test', 'target': 'input'}, {'source': 'output-test', 'target': 'output'}]```
 - vm_size: the name of the VM size to use. Default is standard_d4s_v3.
 - autoscale: either True or False, depending on if autoscale or fixed number of nodes should be used. Default is True.
 - autoscale_formula: the full text of an autoscale formula. If not provided a default autoscale formula will be used if autoscale is set to True.
@@ -20,6 +20,7 @@ Pools can easily be created with a `CloudClient` object while maintaining the fl
 - task_slots_per_node: the number of task slots per node. Default is 1.
 - availability_zones: either regional or zonal policy. Default is regional.
 - cache_blobfuse: whether to cache the blobfuse connection on the node. Default is True.
+- replace_existing_pool: whether to replace an existing pool with the new pool configuration. Default is False.
 
 
 A very basic example of creating a pool with the `CloudClient` is as follows:
