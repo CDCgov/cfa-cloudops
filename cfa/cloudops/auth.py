@@ -783,6 +783,11 @@ class DefaultCredentialHandler(CredentialHandler):
         sub_c = SubscriptionClient(d_cred)
 
         # load keyvault secrets
+        if keyvault is None:
+            try:
+                keyvault = os.environ["AZURE_KEYVAULT_NAME"]
+            except KeyError:
+                keyvault = None
         if keyvault is not None:
             get_keyvault_vars(
                 keyvault_name=keyvault,
