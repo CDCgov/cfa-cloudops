@@ -1033,6 +1033,7 @@ def load_keyvault_vars(
             logger.debug(
                 "Force Key Vault load enabled; loading secret regardless of existing environment variable."
             )
+            print("force keyvault")
             try:
                 secret = secret_client.get_secret(key.replace("_", "-")).value
                 os.environ[key] = secret
@@ -1042,11 +1043,13 @@ def load_keyvault_vars(
                 )
             except Exception as e:
                 logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
+                print("Error loading secret")
         else:
             if key in os.environ:
                 logger.debug(
                     f"Environment variable '{key}' already set; skipping Key Vault load."
                 )
+                print("Environment variable already set")
                 continue
             else:
                 try:
@@ -1055,8 +1058,10 @@ def load_keyvault_vars(
                     logger.debug(
                         f"Loaded secret '{key}' from Key Vault into environment variable."
                     )
+                    print(secret[:2])
                 except Exception as e:
                     logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
+                    print("Error loading secret")
 
 
 def get_keyvault_vars(
