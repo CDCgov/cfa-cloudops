@@ -774,27 +774,29 @@ class DefaultCredentialHandler(CredentialHandler):
         """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
-        print(keyvault)
+        print("Using keyvault:", keyvault)
         load_dotenv(dotenv_path=dotenv_path)
         logger.debug(
             "Retrieving Azure subscription information using DefaultCredential."
         )
         d_cred = DefaultCredential()
-        sub_c = SubscriptionClient(d_cred)
 
         # load keyvault secrets
         if keyvault is None:
+            print("keyvault is None")
             try:
                 keyvault = os.environ["AZURE_KEYVAULT_NAME"]
             except KeyError:
                 keyvault = None
         if keyvault is not None:
+            print("keyvault is not None")
             get_keyvault_vars(
                 keyvault_name=keyvault,
                 credential=d_cred,
                 force_keyvault=force_keyvault,
             )
         # pull subscription id from env vars
+        sub_c = SubscriptionClient(d_cred)
         sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
         if sub_id is None:
             logger.error("AZURE_SUBSCRIPTION_ID not found in environment variables.")
@@ -1061,7 +1063,7 @@ def load_keyvault_vars(
                     print(secret[:2])
                 except Exception as e:
                     logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
-                    print("Error loading secret")
+                    print(f"Error loading secret: {e}")
 
 
 def get_keyvault_vars(
