@@ -774,6 +774,7 @@ class DefaultCredentialHandler(CredentialHandler):
         """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
+        print(keyvault)
         load_dotenv(dotenv_path=dotenv_path)
         logger.debug(
             "Retrieving Azure subscription information using DefaultCredential."
@@ -1022,6 +1023,7 @@ def load_keyvault_vars(
     kv_keys = d.default_kv_keys
 
     for key in kv_keys:
+        print(key)
         if force_keyvault:
             logger.debug(
                 "Force Key Vault load enabled; loading secret regardless of existing environment variable."
@@ -1029,6 +1031,7 @@ def load_keyvault_vars(
             try:
                 secret = secret_client.get_secret(key.replace("_", "-")).value
                 os.environ[key] = secret
+                print(secret[:2])
                 logger.debug(
                     f"Loaded secret '{key}' from Key Vault into environment variable."
                 )
@@ -1072,4 +1075,5 @@ def get_keyvault_vars(
         credential=credential,
     )
     logger.debug("Loading Key Vault secrets into environment variables.")
+    print("loading keyvault vars")
     load_keyvault_vars(secret_client, force_keyvault=force_keyvault)
