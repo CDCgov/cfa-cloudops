@@ -1053,7 +1053,7 @@ def load_keyvault_vars(
                 )
             except Exception as e:
                 logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
-                print("Error loading secret")
+                print("Error loading secret: ", e)
         else:
             if key in os.environ:
                 logger.debug(
@@ -1090,10 +1090,15 @@ def get_keyvault_vars(
         logger.debug("No Key Vault name provided; skipping Key Vault variable loading.")
         return None
     logger.debug("Getting SecretClient for Azure Key Vault.")
-    secret_client = get_secret_client(
-        keyvault=keyvault_name,
-        credential=credential,
-    )
+    print("Getting secret client")
+    try:
+        secret_client = get_secret_client(
+            keyvault=keyvault_name,
+            credential=credential,
+        )
+    except Exception as e:
+        logger.error(f"Failed to get SecretClient: {e}")
+        raise
     logger.debug("Loading Key Vault secrets into environment variables.")
     print("loading keyvault vars")
     load_keyvault_vars(secret_client, force_keyvault=force_keyvault)
