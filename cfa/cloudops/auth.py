@@ -796,7 +796,13 @@ class DefaultCredentialHandler(CredentialHandler):
                 force_keyvault=force_keyvault,
             )
         # pull subscription id from env vars
-        sub_c = SubscriptionClient(d_cred)
+        print("Attempting to get subscription client")
+        try:
+            sub_c = SubscriptionClient(d_cred)
+            print
+        except Exception as e:
+            logger.error(f"Failed to create SubscriptionClient: {e}")
+            raise
         sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
         if sub_id is None:
             logger.error("AZURE_SUBSCRIPTION_ID not found in environment variables.")
@@ -804,11 +810,13 @@ class DefaultCredentialHandler(CredentialHandler):
         subscription = [
             sub for sub in sub_c.subscriptions.list() if sub.subscription_id == sub_id
         ]
+        print("Got subscription info: ", subscription)
         # pull info if sub exists
         logger.debug("Pulling subscription information.")
         if subscription:
             subscription = subscription[0]
             os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
+            print("Set AZURE_RESOURCE_GROUP_NAME:", subscription.display_name)
             logger.debug("Set AZURE_RESOURCE_GROUP_NAME from subscription information.")
         else:
             logger.error(
