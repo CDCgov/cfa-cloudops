@@ -1063,7 +1063,7 @@ def load_keyvault_vars(
                 continue
             else:
                 try:
-                    secret = secret_client.get_secret(key).value
+                    secret = secret_client.get_secret(key.replace("_", "-")).value
                     os.environ[key] = secret
                     logger.debug(
                         f"Loaded secret '{key}' from Key Vault into environment variable."
