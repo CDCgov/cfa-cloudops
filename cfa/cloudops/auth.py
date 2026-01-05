@@ -774,7 +774,6 @@ class DefaultCredentialHandler(CredentialHandler):
         """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
-        print("Using keyvault:", keyvault)
         load_dotenv(dotenv_path=dotenv_path)
         logger.debug(
             "Retrieving Azure subscription information using DefaultCredential."
@@ -783,23 +782,19 @@ class DefaultCredentialHandler(CredentialHandler):
 
         # load keyvault secrets
         if keyvault is None:
-            print("keyvault is None")
             try:
                 keyvault = os.environ["AZURE_KEYVAULT_NAME"]
             except KeyError:
                 keyvault = None
         if keyvault is not None:
-            print("keyvault is not None")
             get_keyvault_vars(
                 keyvault_name=keyvault,
                 credential=d_cred,
                 force_keyvault=force_keyvault,
             )
-        # pull subscription id from env vars
-        print("Attempting to get subscription client")
+
         try:
             sub_c = SubscriptionClient(d_cred)
-            print
         except Exception as e:
             logger.error(f"Failed to create SubscriptionClient: {e}")
             raise
@@ -810,13 +805,11 @@ class DefaultCredentialHandler(CredentialHandler):
         subscription = [
             sub for sub in sub_c.subscriptions.list() if sub.subscription_id == sub_id
         ]
-        print("Got subscription info: ", subscription)
         # pull info if sub exists
         logger.debug("Pulling subscription information.")
         if subscription:
             subscription = subscription[0]
             os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
-            print("Set AZURE_RESOURCE_GROUP_NAME:", subscription.display_name)
             logger.debug("Set AZURE_RESOURCE_GROUP_NAME from subscription information.")
         else:
             logger.error(
@@ -1038,16 +1031,13 @@ def load_keyvault_vars(
     kv_keys = d.default_kv_keys
 
     for key in kv_keys:
-        print(key)
         if force_keyvault:
             logger.debug(
                 "Force Key Vault load enabled; loading secret regardless of existing environment variable."
             )
-            print("force keyvault")
             try:
                 secret = secret_client.get_secret(key.replace("_", "-")).value
                 os.environ[key] = secret
-                print(secret[:2])
                 logger.debug(
                     f"Loaded secret '{key}' from Key Vault into environment variable."
                 )
@@ -1059,7 +1049,6 @@ def load_keyvault_vars(
                 logger.debug(
                     f"Environment variable '{key}' already set; skipping Key Vault load."
                 )
-                print("Environment variable already set")
                 continue
             else:
                 try:
@@ -1068,7 +1057,6 @@ def load_keyvault_vars(
                     logger.debug(
                         f"Loaded secret '{key}' from Key Vault into environment variable."
                     )
-                    print(secret[:2])
                 except Exception as e:
                     logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
                     print(f"Error loading secret: {e}")
@@ -1090,7 +1078,6 @@ def get_keyvault_vars(
         logger.debug("No Key Vault name provided; skipping Key Vault variable loading.")
         return None
     logger.debug("Getting SecretClient for Azure Key Vault.")
-    print("Getting secret client")
     try:
         secret_client = get_secret_client(
             keyvault=keyvault_name,
@@ -1100,5 +1087,4 @@ def get_keyvault_vars(
         logger.error(f"Failed to get SecretClient: {e}")
         raise
     logger.debug("Loading Key Vault secrets into environment variables.")
-    print("loading keyvault vars")
     load_keyvault_vars(secret_client, force_keyvault=force_keyvault)
