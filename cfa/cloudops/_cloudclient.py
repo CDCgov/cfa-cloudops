@@ -99,8 +99,7 @@ class CloudClient:
         **kwargs,
     ):
         logger.debug("Initializing CloudClient.")
-        if keyvault:
-            print(keyvault)
+
         if keyvault is None and not os.path.exists(".env") and dotenv_path is None:
             try:
                 keyvault = os.environ["AZURE_KEYVAULT_NAME"]
