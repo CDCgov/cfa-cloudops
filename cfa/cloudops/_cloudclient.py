@@ -92,7 +92,7 @@ class CloudClient:
     def __init__(
         self,
         keyvault: str = None,
-        dotenv_path: str = None,
+        dotenv_path: str = ".env",
         use_sp: bool = False,
         use_federated: bool = False,
         force_keyvault: bool = False,

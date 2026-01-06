@@ -535,7 +535,7 @@ class EnvCredentialHandler(CredentialHandler):
 
     def __init__(
         self,
-        dotenv_path: str = None,
+        dotenv_path: str = ".env",
         keyvault: str = None,
         force_keyvault: bool = False,
         **kwargs,
@@ -618,7 +618,7 @@ class SPCredentialHandler(CredentialHandler):
         azure_subscription_id: str = None,
         azure_client_id: str = None,
         azure_client_secret: str = None,
-        dotenv_path: str = None,
+        dotenv_path: str = ".env",
         keyvault: str = None,
         force_keyvault: bool = False,
         **kwargs,
@@ -742,7 +742,7 @@ class SPCredentialHandler(CredentialHandler):
 class DefaultCredentialHandler(CredentialHandler):
     def __init__(
         self,
-        dotenv_path: str | None = None,
+        dotenv_path: str | None = ".env",
         keyvault: str = None,
         force_keyvault: bool = False,
         **kwargs,
