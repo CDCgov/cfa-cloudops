@@ -92,15 +92,16 @@ class CloudClient:
     def __init__(
         self,
         keyvault: str = None,
-        dotenv_path: str = ".env",
+        dotenv_path: str = None,
         use_sp: bool = False,
         use_federated: bool = False,
         force_keyvault: bool = False,
         **kwargs,
     ):
         logger.debug("Initializing CloudClient.")
-
-        if keyvault is None and not os.path.exists(".env") and dotenv_path is None:
+        if keyvault is None:
+            dotenv_path = dotenv_path or ".env"
+        if keyvault is None and dotenv_path is None:
             try:
                 keyvault = os.environ["AZURE_KEYVAULT_NAME"]
             except KeyError:
