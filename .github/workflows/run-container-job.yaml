@@ -1,0 +1,30 @@
+name: Create Container App Job
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_script:
+        description: 'The Python script to run'
+        required: true
+        default: 'print("Hello from GitHub Actions!")'
+
+jobs:
+  run-dynamic-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Execute dynamic script
+      run: |
+        # Create a temporary file and write the input script into it
+        echo "${{ github.event.inputs.python_script }}" > dynamic_script.py
+        # Run the script
+        python3 dynamic_script.py
+      shell: bash
