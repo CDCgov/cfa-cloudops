@@ -1077,6 +1077,8 @@ def get_keyvault_vars(
     if keyvault_name is None:
         logger.debug("No Key Vault name provided; skipping Key Vault variable loading.")
         return None
+    else:
+        os.environ["AZURE_KEYVAULT_NAME"] = keyvault_name
     logger.debug("Getting SecretClient for Azure Key Vault.")
     try:
         secret_client = get_secret_client(
