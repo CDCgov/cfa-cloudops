@@ -49,6 +49,7 @@ class CloudClient:
     provides convenient methods for common batch operations.
 
     Args:
+        keyvault (str, optional): Name of the Azure Key Vault to use for secrets.
         dotenv_path (str, optional): Path to .env file containing environment variables.
             If None, uses default .env file discovery. Default is None.
         use_sp (bool, optional): Whether to use Service Principal authentication.
@@ -101,11 +102,6 @@ class CloudClient:
         logger.debug("Initializing CloudClient.")
         if keyvault is None:
             dotenv_path = dotenv_path or ".env"
-        if keyvault is None and dotenv_path is None:
-            try:
-                keyvault = os.environ["AZURE_KEYVAULT_NAME"]
-            except KeyError:
-                logger.error("Keyvault information not found.")
         if keyvault is None and force_keyvault:
             logger.error(
                 "Keyvault information not found but force_keyvault set to True."
