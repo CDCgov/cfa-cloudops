@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.2.10
+- add federated credential ability for ContainerAppClient
+
 ## v0.2.9
 - fixed issue when no mounts were provided during pool creation
 - added extra checks for mount strings
