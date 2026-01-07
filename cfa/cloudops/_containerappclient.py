@@ -2,7 +2,7 @@ import logging
 import os
 
 import dotenv
-from azure.identity import ManagedIdentityCredential
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.mgmt.appcontainers import ContainerAppsAPIClient
 from azure.mgmt.appcontainers.models import (
     JobExecutionContainer,
@@ -28,6 +28,7 @@ class ContainerAppClient:
         resource_group=None,
         subscription_id=None,
         job_name=None,
+        use_federated=False,
     ):
         """
         Initialize a ContainerAppClient for Azure Container Apps jobs.
@@ -37,15 +38,22 @@ class ContainerAppClient:
             resource_group (str, optional): Azure resource group name. If None, uses env var AZURE_RESOURCE_GROUP_NAME.
             subscription_id (str, optional): Azure subscription ID. If None, uses env var AZURE_SUBSCRIPTION_ID.
             job_name (str, optional): Job name for Container App Job.
+            use_federated (bool, optional): Whether to use federated identity for authentication. Default is False.
 
         Raises:
             ValueError: If required parameters are missing and not set in environment variables.
         """
         logger.debug("Initializing ContainerAppClient.")
-        logger.debug("Setting up Managed Identity Credential.")
-        self.credential = ManagedIdentityCredential()
         logger.debug("Loading environment variables from .env file if provided.")
         dotenv.load_dotenv(dotenv_path)
+        logger.debug("Setting up credential.")
+        if use_federated:
+            self.credential = DefaultAzureCredential()
+            logger.debug("Using DefaultAzureCredential with federated identity.")
+        else:
+            self.credential = ManagedIdentityCredential()
+            logger.debug("Using ManagedIdentityCredential.")
+
         logger.debug("Fetching subscription information.")
         sub_c = SubscriptionClient(self.credential)
         # pull in account info and save to environment vars
@@ -60,7 +68,7 @@ class ContainerAppClient:
             if resource_group is None:
                 logger.error("No resource group found in environment variables.")
                 raise ValueError(
-                    "No resource_group provided and no RESOURCE_GROUP env var found."
+                    "No resource_group provided and no AZURE_RESOURCE_GROUP_NAME env var found."
                 )
         self.resource_group = resource_group
         logger.debug("Resource group set. ")
