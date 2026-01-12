@@ -1,0 +1,7 @@
+
+Agent: BatchOrchestrator
+Goal: Manage Azure Batch pools, jobs, tasks
+Tools:
+  - create_pool -> POST https://api/batch/pool
+  - create_job  -> POST https://api/batch/job
+  - add_task    -> POST https://api/batch/task

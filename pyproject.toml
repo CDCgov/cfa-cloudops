@@ -33,7 +33,8 @@ dependencies = [
     "toml>=0.10.2",
     "networkx>=3.4.2",
     "anyio>=4.10.0",
-    "aiohttp>=3.12.15"
+    "aiohttp>=3.12.15",
+    "openai>=2.11.0"
 ]
 
 [build-system]
