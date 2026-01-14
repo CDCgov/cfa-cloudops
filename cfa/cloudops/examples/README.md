@@ -1,5 +1,8 @@
 # How to Invoke
 
+## Goal
+Schedule a job that runs daily at 9 PM except weekends and computes the Measles inference using daily partition stored in input-test folder of CFAAzureBatchPrd storage account. Use the measles-script:v1 container for this job.
+    
 ## Open AI Only
 `python agent_openai.py`
 
