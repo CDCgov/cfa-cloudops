@@ -3,6 +3,7 @@ import inspect
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
+from typing import Optional
 
 import networkx as nx
 import pandas as pd
@@ -13,6 +14,9 @@ from azure.batch.models import (
     OnAllTasksComplete,
     OnTaskFailure,
 )
+from azure.keyvault.secrets import SecretClient
+
+# from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
 from azure.mgmt.resource import SubscriptionClient
 
@@ -46,6 +50,7 @@ class CloudClient:
     provides convenient methods for common batch operations.
 
     Args:
+        keyvault (str, optional): Name of the Azure Key Vault to use for secrets.
         dotenv_path (str, optional): Path to .env file containing environment variables.
             If None, uses default .env file discovery. Default is None.
         use_sp (bool, optional): Whether to use Service Principal authentication.
@@ -88,23 +93,47 @@ class CloudClient:
 
     def __init__(
         self,
+        keyvault: str = None,
         dotenv_path: str = None,
         use_sp: bool = False,
         use_federated: bool = False,
+        force_keyvault: bool = False,
         **kwargs,
     ):
         logger.debug("Initializing CloudClient.")
+        if keyvault is None:
+            dotenv_path = dotenv_path or ".env"
+        if keyvault is None and force_keyvault:
+            logger.error(
+                "Keyvault information not found but force_keyvault set to True."
+            )
+            raise ValueError("Keyvault information is required but not found.")
         # authenticate to get credentials
         if not use_sp and not use_federated:
-            self.cred = EnvCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.cred = EnvCredentialHandler(
+                dotenv_path=dotenv_path,
+                keyvault=keyvault,
+                force_keyvault=force_keyvault,
+                **kwargs,
+            )
             self.method = "env"
-            logger.info("Using environment-based credentials.")
+            logger.info("Using managed identity credentials.")
         elif use_federated:
-            self.cred = DefaultCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.cred = DefaultCredentialHandler(
+                dotenv_path=dotenv_path,
+                keyvault=keyvault,
+                force_keyvault=force_keyvault,
+                **kwargs,
+            )
             self.method = "default"
             logger.info("Using default credentials.")
         else:
-            self.cred = SPCredentialHandler(dotenv_path=dotenv_path, **kwargs)
+            self.cred = SPCredentialHandler(
+                dotenv_path=dotenv_path,
+                keyvault=keyvault,
+                force_keyvault=force_keyvault,
+                **kwargs,
+            )
             self.method = "sp"
             logger.info("Using service principal credentials.")
         # get clients
@@ -1736,6 +1765,7 @@ class CloudClient:
                     location_in_blob="project")
 
         Note:
+
             The blob container must exist before uploading. Directory structure is
             preserved in the container. Use filtering options to avoid uploading
             unnecessary files like temporary files or build artifacts.
@@ -2215,3 +2245,33 @@ class CloudClient:
                         dlist.append(str(dp))
                 task_df.at[i, "deps"] = dlist
         logger.info(f"Completed DAG run for job '{job_name}'.")
+
+    def get_kv_secret(self, secret_name: str, keyvault: str) -> Optional[str]:
+        """Retrieve a secret from Azure Key Vault.
+
+        Args:
+            secret_name (str): The name of the secret to retrieve.
+            keyvault (str): The name of the Key Vault.
+
+        Returns:
+            Optional[str]: The value of the secret, or None if not found.
+        """
+        if self.method == "env":
+            cred = self.cred.user_credential
+        elif self.method == "default":
+            cred = self.cred.user_credential
+        else:
+            cred = self.cred.client_secret_credential
+        try:
+            secret_client = SecretClient(
+                vault_url=f"https://{keyvault}.vault.azure.net/",
+                credential=cred,
+            )
+            secret = secret_client.get_secret(secret_name)
+            return secret.value
+        except Exception as e:
+            logger.error(
+                f"Failed to retrieve secret '{secret_name}' from Key Vault '{keyvault}': {e}"
+            )
+            print(f"Error retrieving secret '{secret_name}': {e}")
+            return None
