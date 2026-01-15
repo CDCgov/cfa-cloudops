@@ -1,4 +1,4 @@
-name: Create Container App Job
+name: Run Container App Job
 
 on:
   workflow_dispatch:
@@ -10,21 +10,37 @@ on:
 
 jobs:
   run-dynamic-script:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout Repo
+        id: checkout_repo
+        uses: actions/checkout@v5
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Execute dynamic script
-      run: |
-        # Create a temporary file and write the input script into it
-        echo "${{ github.event.inputs.python_script }}" > dynamic_script.py
-        # Run the script
-        python3 dynamic_script.py
-      shell: bash
+      - name: Setup Python Env
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Python Packages
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r container_requirements.txt
+
+      - name: Execute dynamic script
+        run: |
+          # Create a temporary file and write the input script into it
+          echo "${{ github.event.inputs.python_script }}" > dynamic_script.py
+          # Run the script
+          python3 dynamic_script.py
+        shell: bash
