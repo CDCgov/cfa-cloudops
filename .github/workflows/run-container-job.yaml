@@ -5,8 +5,17 @@ on:
     inputs:
       python_script:
         description: 'The Python script to run'
-        required: true
-        default: 'print("Hello from GitHub Actions!")'
+        required: false
+        default: 'run_container.py'
+      job_name:
+        description: 'Container App job name to create if not exists'
+        required: false
+      job_command:
+        description: 'Command to be run inside Docker container when job launches'
+        required: false
+      job_environment:
+        description: 'Key=Value pairs separated by commas to be passed as environment variables to job'
+        required: false
 
 jobs:
   run-dynamic-script:
@@ -32,12 +41,79 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Split command into list
+        id: split_job_command
+        shell: bash
+        if: ${{ github.event.inputs.job_command != '' }}
+        run: |
+          COMMAND="${{ github.event.inputs.job_command }}"
+          # Split on whitespace into a bash array
+          read -ra CMD_ARRAY <<< "$COMMAND"
+          # Convert array to JSON array
+          JSON_ARRAY=$(printf '%s\n' "${CMD_ARRAY[@]}" | jq -R . | jq -s .)
+          # Expose as output
+          echo "command_list=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+
+      - name: Split environment variables into list
+        id: split_job_environment
+        shell: bash
+        if: ${{ github.event.inputs.job_environment != '' }}
+        run: |
+          JOB_ENVIRONMENT="${{ github.event.inputs.job_environment }}"
+          # Split on comma into a bash array
+          IFS=',' read -ra PAIRS <<< "$COMMAND"
+          JSON_OBJECT=$(printf '%s\n' "${PAIRS[@]}" \
+            | jq -Rn '
+                reduce inputs as $line ({};
+                  ($line | split("=")) as $kv
+                  | .[$kv[0]] = $kv[1]
+                )
+              ')
+
+          # Expose as output
+          echo "env_var_list=$JSON_OBJECT" >> "$GITHUB_OUTPUT"
+
       - name: Install Python Packages
         run: |
           python3 -m pip install --upgrade pip
           pip install -r container_requirements.txt
 
+
+      - name: Launch container app job
+        if: >
+          github.event.inputs.job_name != '' &&
+          steps.split_job_command.outputs.command_list != ''
+        shell: bash
+        env:
+          JOB_NAME: ${{ github.event.inputs.job_name }}
+          COMMAND_LIST: ${{ steps.split_job_command.outputs.command_list }}
+          ENV_VAR_LIST: ${{ steps.split_job_environment.outputs.env_var_list }}
+        run: |
+          python << 'EOF'
+          import json
+          import sys
+          from cfa.cloudops import ContainerAppClient
+
+          client = ContainerAppClient(use_federated=True)
+
+          job_name = "${JOB_NAME}"
+
+          command = json.loads("${COMMAND_LIST}")
+          env_vars = json.loads("${ENV_VAR_LIST}")
+
+          if not client.check_job_exists(job_name):
+              client.start_job(
+                  job_name=job_name,
+                  command=command,
+                  env=env_vars
+              )
+          else:
+              print(f"Container job {job_name} already exists. Skipping creation.")
+              sys.exit(1)
+          EOF
+
       - name: Execute dynamic script
+        if: ${{ github.event.inputs.job_name == '' }}
         run: |
           # Create a temporary file and write the input script into it
           echo "${{ github.event.inputs.python_script }}" > dynamic_script.py
