@@ -5,6 +5,7 @@ import dotenv
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.mgmt.appcontainers import ContainerAppsAPIClient
 from azure.mgmt.appcontainers.models import (
+    EnvironmentVar,
     JobExecutionContainer,
     JobExecutionTemplate,
 )
@@ -199,7 +200,8 @@ class ContainerAppClient:
         job_name: str | None = None,
         command: list[str] | None = None,
         args: list[str] | None = None,
-        env: list[str] | None = None,
+        env: dict | None = None,
+        secret_ref: dict | None = None,
     ):
         """
         Start a Container App job, optionally overriding command, args, or environment.
@@ -208,7 +210,8 @@ class ContainerAppClient:
             job_name (str, optional): Name of the job to start. If None, uses default job_name.
             command (list[str], optional): Command to run in the container.
             args (list[str], optional): Arguments for the command.
-            env (list[str], optional): Environment variables for the container.
+            env (dict, optional): Environment variables for the container.
+            secret_ref (dict, optional): Secret references for environment variables.
 
         Raises:
             ValueError: If required parameters are missing or not in correct format.
@@ -222,7 +225,7 @@ class ContainerAppClient:
             else:
                 job_name = self.job_name
                 logger.debug(f"Job name {self.job_name} pulled from instance variable.")
-        if not command and not args and not env:
+        if not command and not args and not env and not secret_ref:
             logger.debug("submitting job start request.")
             self.client.jobs.begin_start(
                 resource_group_name=self.resource_group, job_name=job_name
@@ -236,9 +239,22 @@ class ContainerAppClient:
             if args is not None and not isinstance(args, list):
                 logger.error("Args not in list format.")
                 raise ValueError("Args must be in list format.")
-            if env is not None and not isinstance(env, list):
-                logger.error("Env not in list format.")
-                raise ValueError("Env must be in list format.")
+            if env is not None and not isinstance(env, dict):
+                logger.error("Env not in dict format.")
+                raise ValueError("Env must be in dict format.")
+            # format env and secret_ref into EnvironmentVar objects
+            if env is not None or secret_ref is not None:
+                logger.debug("Formatting environment variables.")
+                env_vars = []
+                if env is not None:
+                    for k, v in env.items():
+                        env_var = EnvironmentVar(name=k, value=v)
+                        env_vars.append(env_var)
+                if secret_ref is not None:
+                    for k, v in secret_ref.items():
+                        env_var = EnvironmentVar(name=k, secret_ref=v)
+                        env_vars.append(env_var)
+                env = env_vars
             new_containers = []
             logger.debug("Gathering job info.")
             for i in self.client.jobs.list_by_resource_group(self.resource_group):
