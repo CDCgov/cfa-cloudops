@@ -242,7 +242,7 @@ class ContainerAppClient:
             if env is not None and not isinstance(env, dict):
                 logger.error("Env not in dict format.")
                 raise ValueError("Env must be in dict format.")
-            # format env and secret_ref into EnvironmentVar objects
+            # Format env and secret_ref into EnvironmentVar objects
             if env is not None or secret_ref is not None:
                 logger.debug("Formatting environment variables.")
                 env_vars = []
