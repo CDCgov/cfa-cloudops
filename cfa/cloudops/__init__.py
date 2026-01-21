@@ -15,9 +15,6 @@ logger = logging.getLogger(__name__)
 run_time = datetime.datetime.now()
 now_string = f"{run_time:%Y-%m-%d_%H:%M:%S%z}"
 # Logging
-if not os.path.exists("logs"):
-    os.mkdir("logs")
-logfile = os.path.join("logs", f"{now_string}.log")
 FORMAT = "[%(levelname)s] %(asctime)s: %(message)s"
 
 log_status = os.getenv("LOG_OUTPUT")
@@ -25,9 +22,15 @@ if log_status is None:
     handler = [logging.StreamHandler(sys.stdout)]
     logger.info("Logging output set to stdout only.")
 elif log_status.lower().startswith("both"):
+    if not os.path.exists("logs"):
+        os.mkdir("logs")
+    logfile = os.path.join("logs", f"{now_string}.log")
     handler = [logging.StreamHandler(sys.stdout), logging.FileHandler(logfile)]
     logger.info("Logging output set to both stdout and file.")
 elif log_status.lower().startswith("file"):
+    if not os.path.exists("logs"):
+        os.mkdir("logs")
+    logfile = os.path.join("logs", f"{now_string}.log")
     handler = [logging.FileHandler(logfile)]
     logger.info("Logging output set to file only.")
 elif log_status.lower().startswith("std"):
