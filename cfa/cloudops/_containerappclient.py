@@ -210,8 +210,8 @@ class ContainerAppClient:
             job_name (str, optional): Name of the job to start. If None, uses default job_name.
             command (list[str], optional): Command to run in the container.
             args (list[str], optional): Arguments for the command.
-            env (dict, optional): Environment variables for the container.
-            secret_ref (dict, optional): Secret references for environment variables.
+            env (dict, optional): Environment variables for the container. It has the format {"key": "value", "key2": "value2", ...}.
+            secret_ref (dict, optional): Secret references for environment variables. The keys are the environment variable names, and the values are the environment variables in the container to pull the secret value. It has the format {"key": "secret_name_in_container", ...}.
 
         Raises:
             ValueError: If required parameters are missing or not in correct format.
