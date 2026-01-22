@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.1
+- update the usability of environment variables in container app clients
+
 ## v0.3.0
 - add keyvault capabilities
 - remove the automatic creation of ./logs/ folder
