@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.0
+- add keyvault capabilities
+- remove the automatic creation of ./logs/ folder
+
 ## v0.2.10
 - add federated credential ability for ContainerAppClient
 
