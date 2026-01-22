@@ -60,7 +60,7 @@ client.start_job(
     job_name="my-job",
     command=["python", "main.py"],
     args=["--input", "data.csv"],
-    env=[{"name": "ENV_VAR", "value": "value"}]
+    env={"ENV_VAR": "value"}
 )
 
 # Stop a job
