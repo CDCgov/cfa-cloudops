@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.2
+- add examples for using Metaflow to run long-running jobs in Azure Batch
+
 ## v0.3.1
 - update the usability of environment variables in container app clients
 
