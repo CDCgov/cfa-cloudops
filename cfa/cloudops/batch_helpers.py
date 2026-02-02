@@ -269,8 +269,12 @@ def monitor_tasks(
                 if download_task_output:
                     os.makedirs(f"{job_name}_output", exist_ok=True)
                     if task.id not in previously_completed:
-                        _download_task_file(batch_client, job_name, task.id, "stdout.txt")
-                        _download_task_file(batch_client, job_name, task.id, "stderr.txt")
+                        _download_task_file(
+                            batch_client, job_name, task.id, "stdout.txt"
+                        )
+                        _download_task_file(
+                            batch_client, job_name, task.id, "stderr.txt"
+                        )
                         print(f"\nOutput saved from task {task.id}")
                         previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
