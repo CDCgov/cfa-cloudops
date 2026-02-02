@@ -116,6 +116,34 @@ def _generate_task_dependencies(depends_on, depends_on_range):
     return task_deps
 
 
+def _download_task_file(
+    batch_client: object, job_name: str, task_id: str, file_name: str
+):
+    """Download specified file from completed Batch task as a stream and save it to a local file after decoding it.
+
+    Args:
+        batch_client (object): Azure Batch service client instance for API calls.
+        job_name (str): Name/ID of the job to monitor. The job must exist and be active.
+        task_id (str): Name/ID of the task to monitor.
+        file_name (str): File name to download from task (e.g. stdout.txt)
+    """
+    stream = batch_client.file.get_from_task(job_name, task_id, file_name)
+    with open(
+        os.path.join(f"{job_name}_output", f"{task_id}_{file_name}"),
+        "w",
+    ) as f:
+        file_content_bytes = b"".join(stream)
+        try:
+            f.write(file_content_string=file_content_bytes.decode("utf-8"))
+        except UnicodeDecodeError:
+            logger.error(
+                "Could not decode with utf-8, trying another encoding or handling errors."
+            )
+            f.write(
+                file_content_string=file_content_bytes.decode("utf-8", errors="replace")
+            )
+
+
 def monitor_tasks(
     job_name: str,
     timeout: int,
@@ -241,24 +269,8 @@ def monitor_tasks(
                 if download_task_output:
                     os.makedirs(f"{job_name}_output", exist_ok=True)
                     if task.id not in previously_completed:
-                        stdout = batch_client.file.get_from_task(
-                            job_name, task.id, "stdout.txt"
-                        )
-                        stderr = batch_client.file.get_from_task(
-                            job_name, task.id, "stderr.txt"
-                        )
-                        with open(
-                            os.path.join(f"{job_name}_output", f"{task.id}_stdout.txt"),
-                            "w",
-                        ) as f:
-                            for data in stdout:
-                                f.write(data.decode("utf-8"))
-                        with open(
-                            os.path.join(f"{job_name}_output", f"{task.id}_stderr.txt"),
-                            "w",
-                        ) as f:
-                            for data in stderr:
-                                f.write(data.decode("utf-8"))
+                        _download_task_file(job_name, task.id, "stdout.txt")
+                        _download_task_file(job_name, task.id, "stderr.txt")
                         print(f"\nOutput saved from task {task.id}")
                         previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
