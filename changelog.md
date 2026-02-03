@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.3
+- add exception handling for `monitor_tasks` method when `download_task_output` is set to `True`
+
 ## v0.3.2
 - add examples for using Metaflow to run long-running jobs in Azure Batch
 
