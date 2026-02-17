@@ -29,12 +29,3 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json
 #####
-# Local-fixes
--   repo: local
-    hooks:
-      - id: remove-init-file-breaking-ns-packaging
-        name: Remove __init__.py files from ./cfa/
-        files: ^cfa/.*__init__\.py$
-        stages: [pre-commit]
-        language: system
-        entry: bash -c 'find ./cfa -maxdepth 1 -name "__init__.py" -delete'
