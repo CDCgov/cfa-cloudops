@@ -1,4 +1,3 @@
-import importlib
 import inspect
 import logging
 import os
@@ -327,12 +326,6 @@ class FunctionAppClient:
                 f"FunctionAppClient._restart_function(): Error restarting Function App {e}"
             )
             return False
-
-    def invoke_package(command_line: str, *args):
-        package_name, function_name = command_line.split(".")
-        module = importlib.import_module(package_name)
-        func = getattr(module, function_name)
-        return func(args)
 
     def deploy_function(
         self,
