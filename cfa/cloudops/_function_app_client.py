@@ -5,7 +5,7 @@ import pathlib
 import shutil
 import subprocess
 import time
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from azure.mgmt.web import WebSiteManagementClient
 
@@ -23,8 +23,8 @@ SLEEP_INTERVAL_SECONDS = 5
 class FunctionAppClient:
     def __init__(
         self,
-        keyvault: str = None,
-        dotenv_path: str = None,
+        keyvault: Optional[str] = None,
+        dotenv_path: Optional[str] = None,
         use_sp: bool = False,
         use_federated: bool = False,
         force_keyvault: bool = False,
@@ -102,7 +102,7 @@ class FunctionAppClient:
             )
             return False
 
-    def _find_available_function_app(self, service_principal_credentials: str) -> str:
+    def _find_available_function_app(self) -> str:
         # TODO: Query the table
         # TODO: If unable to access table, then list the ones from cloud
         # TODO: Check if health check is enabled for each function
@@ -135,11 +135,11 @@ class FunctionAppClient:
             available_function_app = available_function_apps[0]
         return available_function_app
 
-    def _allocate_function_app(self, function_name) -> bool:
+    def _allocate_function_app(self, function_app_name) -> bool:
         # TODO: Update the table
         return True
 
-    def _enable_health_check(self, function_name):
+    def _enable_health_check(self, function_app_name):
         try:
             subprocess.run(
                 [
@@ -148,7 +148,7 @@ class FunctionAppClient:
                     "config",
                     "set",
                     "--name",
-                    function_name,
+                    function_app_name,
                     "--resource-group",
                     self.cred.azure_resource_group_name,
                     "--generic-configurations",
@@ -166,7 +166,7 @@ class FunctionAppClient:
             )
             return False
 
-    def _update_app_settings(self, function_name, settings: List[Tuple[str, str]]):
+    def _update_app_settings(self, function_app_name, settings: List[Tuple[str, str]]):
         try:
             arguments = [
                 "az",
@@ -175,7 +175,7 @@ class FunctionAppClient:
                 "appsettings",
                 "set",
                 "--name",
-                function_name,
+                function_app_name,
                 "--resource-group",
                 self.cred.azure_resource_group_name,
                 "--settings",
@@ -202,14 +202,14 @@ class FunctionAppClient:
             f.write(source_code)
             f.write(f"\n{user_package.__name__}()")
 
-    def _delete_deployment_folder(self, function_name: str) -> bool:
+    def _delete_deployment_folder(self, function_app_name: str) -> bool:
         try:
-            shutil.rmtree(function_name)
+            shutil.rmtree(function_app_name)
             return True
         except Exception:
             return False
 
-    def _copy_template_to_deployment(self, parent_folder: str, function_name: str):
+    def _copy_template_to_deployment(self, parent_folder: str, function_app_name: str):
         template_folder = f"{parent_folder}/template/"
         python_scripts = [
             "timer_blueprint",
@@ -220,7 +220,7 @@ class FunctionAppClient:
         for script_file in python_scripts:
             shutil.copyfile(
                 f"{template_folder}{script_file}.txt",
-                f"{function_name}/{script_file}.py",
+                f"{function_app_name}/{script_file}.py",
             )
         json_files = [
             "host",
@@ -228,16 +228,18 @@ class FunctionAppClient:
         ]
         for json_file in json_files:
             shutil.copyfile(
-                f"{template_folder}{json_file}.txt", f"{function_name}/{json_file}.json"
+                f"{template_folder}{json_file}.txt",
+                f"{function_app_name}/{json_file}.json",
             )
         shutil.copyfile(
-            f"{template_folder}requirements.txt", f"{function_name}/requirements.txt"
+            f"{template_folder}requirements.txt",
+            f"{function_app_name}/requirements.txt",
         )
 
     # Publish the function
     def _publish_function(
         self,
-        function_name: str,
+        function_app_name: str,
         schedule: str,
         user_package: any,
         dependencies: List[str] = None,
@@ -246,17 +248,18 @@ class FunctionAppClient:
         try:
             # First delete any function app folders with same name from previous runs
             fam_package_folder = pathlib.Path(__file__).parent.resolve()
-            self._delete_deployment_folder(function_name)
-            os.makedirs(f"{function_name}/bin")
-            os.makedirs(f"{function_name}/python_packages/lib/site-packages")
+            self._delete_deployment_folder(function_app_name)
+
+            os.makedirs(f"{function_app_name}/bin")
+            os.makedirs(f"{function_app_name}/python_packages/lib/site-packages")
             # Copy all files from template subfolder to the destination function app folder
             self._copy_template_to_deployment(
-                parent_folder=fam_package_folder, function_name=function_name
+                parent_folder=fam_package_folder, function_app_name=function_app_name
             )
             # Now switch to the function app folde
             parent_path = os.getcwd()
-            os.chdir(f"{parent_path}/{function_name}")
-            # Append dependencies (one per line) to {function_name}/requirements.txt')
+            os.chdir(f"{parent_path}/{function_app_name}")
+            # Append dependencies (one per line) to {function_app_name}/requirements.txt')
             if dependencies:
                 with open("requirements.txt", "a") as f:
                     f.write("\n".join(dependencies))
@@ -264,19 +267,20 @@ class FunctionAppClient:
             self._add_user_package_to_deployment(user_package)
 
             subprocess.run(
-                ["func", "azure", "functionapp", "publish", function_name], check=True
+                ["func", "azure", "functionapp", "publish", function_app_name],
+                check=True,
             )
 
             # Delete the temporary folder created for function app deployment
             os.chdir(parent_path)
-            self._delete_deployment_folder(function_name)
+            self._delete_deployment_folder(function_app_name)
             logger.info(
                 "cfaazurefunction.publish_function(): Function app published successfully."
             )
 
             # Now update the schedule in function app
             self._update_app_settings(
-                function_name,
+                function_app_name,
                 [
                     ("CFANotificationV2CRON", schedule),
                     ("WEBSITE_RUN_FROM_PACKAGE", "1"),
@@ -285,24 +289,24 @@ class FunctionAppClient:
             )
 
             if environment_variables:
-                self._update_app_settings(function_name, environment_variables)
+                self._update_app_settings(function_app_name, environment_variables)
 
             logger.info(
                 "FunctionAppClient._publish_function(): Function app settings updated."
             )
-            self._enable_health_check(function_name)
+            self._enable_health_check(function_app_name)
             time.sleep(SLEEP_INTERVAL_SECONDS)
             return True
         except subprocess.CalledProcessError as e:
             logger.error(
                 f"FunctionAppClient._publish_function(): Error publishing Function App: {e}"
             )
-            if os.path.exists(f"{parent_path}/{function_name}"):
+            if os.path.exists(f"{parent_path}/{function_app_name}"):
                 os.chdir(parent_path)
-                self._delete_deployment_folder(function_name)
+                self._delete_deployment_folder(function_app_name)
             return False
 
-    def _restart_function(self, function_name: str):
+    def _restart_function(self, function_app_name: str):
         try:
             subprocess.run(
                 [
@@ -310,7 +314,7 @@ class FunctionAppClient:
                     "functionapp",
                     "restart",
                     "--name",
-                    function_name,
+                    function_app_name,
                     "--resource-group",
                     self.cred.azure_resource_group_name,
                 ],
@@ -333,6 +337,7 @@ class FunctionAppClient:
         user_package,
         dependencies: List[str] = None,
         environment_variables: List[Tuple[str, str]] = None,
+        function_app_name: Optional[str] = None,
     ) -> bool:
         """Deploy a function app and configure it to run on specified schedule.
 
@@ -342,6 +347,8 @@ class FunctionAppClient:
             dependencies (list, optional): List of dependent packages
             environment_variables (list, optional): WList of (key,value) pairs to be set
                 as environment variables.
+            function_app_name (str, optional): Target function app name e.g. cfapredictafmprdfunc08.
+                If omitted (default behavior), the first available function app will be selected.
 
         Example:
             Define inline code to be executed in Function App
@@ -360,23 +367,29 @@ class FunctionAppClient:
                 "FunctionAppClient.deploy_function(): Deployment aborted due to login failure."
             )
             return False
-        function_name = self._find_available_function_app()
-        if not function_name:
-            logger.error(
-                "FunctionAppClient.deploy_function(): Deployment aborted because no function apps are available."
-            )
-            return False
+        if not function_app_name:
+            first_available_function = self._find_available_function_app()
+            if not first_available_function:
+                logger.error(
+                    "FunctionAppClient.deploy_function(): Deployment aborted because no function apps are available."
+                )
+                return False
+            function_app_name = first_available_function
         if not self._publish_function(
-            function_name, schedule, user_package, dependencies, environment_variables
+            function_app_name,
+            schedule,
+            user_package,
+            dependencies,
+            environment_variables,
         ):
             logger.error(
                 "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
             )
             return False
         # ToDo: Uncomment this when we have a table available for storing funcion app mappings
-        # if not allocate_function_app(function_name):
+        # if not allocate_function_app(function_app_name):
         #    logger.info('cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion.')
-        if not self._restart_function(function_name):
+        if not self._restart_function(function_app_name):
             logger.error(
                 "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
             )
