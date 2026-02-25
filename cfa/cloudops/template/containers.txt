@@ -1,0 +1,6 @@
+from dependency_injector import containers, providers
+
+from cfa_service import CFAService
+
+class Container(containers.DeclarativeContainer):
+    service = providers.Factory(CFAService)

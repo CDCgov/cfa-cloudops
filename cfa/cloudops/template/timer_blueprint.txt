@@ -1,0 +1,19 @@
+import logging
+import azure.functions as func
+from dependency_injector.wiring import Provide, inject
+from cfa_service import CFAService
+
+timer_bp = func.Blueprint()
+
+@timer_bp.function_name(name="cfatimer")
+@timer_bp.timer_trigger(schedule="%CFANotificationV2CRON%", arg_name="cfatimer", use_monitor=True, run_on_startup=False)
+def MyTimerTrigger(cfatimer: func.TimerRequest) -> None:
+    if cfatimer.past_due:
+        logging.info('The timer is past due!')
+    my_service = CFAService()
+    my_service.execute()
+
+@timer_bp.route(route="HealthCheck")
+def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request on HealthCheck endpoint.')
+    return func.HttpResponse("This HTTP triggered function executed successfully.")
