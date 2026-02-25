@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.5
+- fixed defect in `monitor_tasks` method when `download_task_output` is set to `True`
+
 ## v0.3.4
 - add a maximum allowed version for azure-mgmt-resource to fix breaking issues with newest version.
 
