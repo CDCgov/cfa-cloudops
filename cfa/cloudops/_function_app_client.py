@@ -239,7 +239,7 @@ class FunctionAppClient:
     def _publish_function(
         self,
         schedule: str,
-        user_package: any,
+        user_package: Callable,
         dependencies: List[str] = None,
         environment_variables: List[Tuple[str, str]] = None,
     ):
