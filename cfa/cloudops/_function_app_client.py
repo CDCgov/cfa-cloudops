@@ -297,7 +297,6 @@ class FunctionAppClient:
         user_package: Callable,
         dependencies: List[str] = None,
         environment_variables: List[Tuple[str, str]] = None,
-        function_app_name: Optional[str] = None,
     ) -> bool:
         """Deploy a function app and configure it to run on specified schedule.
 
@@ -307,8 +306,6 @@ class FunctionAppClient:
             dependencies (list, optional): List of dependent packages
             environment_variables (list, optional): WList of (key,value) pairs to be set
                 as environment variables.
-            function_app_name (str, optional): Target function app name e.g. cfapredictafmprdfunc08.
-                If omitted (default behavior), the first available function app will be selected.
 
         Example:
             Define inline code to be executed in Function App
