@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.3.5
+## v0.3.6
 - add `FunctionAppClient` for managing Azure Function Apps.
 
 ## v0.3.4
