@@ -104,39 +104,6 @@ class FunctionAppClient:
             )
             return False
 
-    def _find_available_function_app(self) -> str:
-        # TODO: Query the table
-        # TODO: If unable to access table, then list the ones from cloud
-        # TODO: Check if health check is enabled for each function
-        available_function_app = None
-        web_mgmt_client = WebSiteManagementClient(
-            self.cred.client_secret_sp_credential, self.cred.azure_subscription_id
-        )
-        function_app_details = web_mgmt_client.web_apps.list()
-        candidate_function_apps = []
-        for function_app in function_app_details:
-            if function_app.tags:
-                if (
-                    "Purpose" in function_app.tags
-                    and function_app.tags["Purpose"] == "Run Scheduled Job"
-                ):
-                    candidate_function_apps.append(function_app.name)
-                if (
-                    "purpose" in function_app.tags
-                    and function_app.tags["purpose"] == "Run Scheduled Job"
-                ):
-                    candidate_function_apps.append(function_app.name)
-        available_function_apps = []
-        for candidate in candidate_function_apps:
-            function_app_config = web_mgmt_client.web_apps.get_configuration(
-                self.cred.azure_resource_group_name, candidate
-            )
-            if not function_app_config.health_check_path:
-                available_function_apps.append(candidate)
-        if available_function_apps:
-            available_function_app = available_function_apps[0]
-        return available_function_app
-
     def _enable_health_check(self):
         try:
             subprocess.run(
@@ -239,7 +206,7 @@ class FunctionAppClient:
     def _publish_function(
         self,
         schedule: str,
-        user_package: any,
+        user_package: Callable,
         dependencies: List[str] = None,
         environment_variables: List[Tuple[str, str]] = None,
     ):
