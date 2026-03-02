@@ -5,7 +5,6 @@ The `FunctionAppClient` class provides a Python interface for running short-runn
 ## 1. Features
 - Authenticate using Azure Managed Identity and environment variables
 - Curate any Python script into a Azure Function App package
-- Deploy the package into one of 10 available Azure Function Apps
 - Enable health checks for Azure Function App
 
 
@@ -115,13 +114,11 @@ func_app_client = FunctionAppClient(keyvault='cfa-predict')
 
 ## 4. Design/Process Diagram
 
-![Architecture Diagram](https://github.com/cdcent/cfa-azure-function-manager/blob/master/documentation/CFAFunctionAppDetailed.png)
+![Architecture Diagram](CFAFunctionAppDetailed.png)
 
 When the user invokes deploy_function operation, FunctionAppClient first logs into the Azure Portal. It assumes the identity of the service principal configured in environment or key vault.
 
-Since the process of creating function apps needs to be standardized, a pool of 10 function apps has already been created with prefix **cfapredictafmprdfunc** followed by index (e.g. cfapredictafmprdfunc01, cfapredictafmprdfunc02, etc). If no function apps are available, deployment shall be aborted and CFA Tech team shall submit a ticket to EDAV for provisioning more function apps.
-
-Third step is to integrate the user's Python package into a ZIP file that also contains requirements.txt, function app code and dependency injection components. To prepare the code for packaging as ZIP file, FunctionAppClient creates a temporary folder with function name and copies all artifacts to that folder. The ZIP file is uploaded to the function app that was identified in previous step. If deployment was successful, FunctionAppClient configures the application settings and health check for function app. Any user-specified environment variables necessary for the user Python package are also applied to the function app.
+Next it integrate the user's Python package into a ZIP file that also contains requirements.txt, function app code and dependency injection components. To prepare the code for packaging as ZIP file, FunctionAppClient creates a temporary folder with function name and copies all artifacts to that folder. The ZIP file is uploaded to the function app that was specified by the user. If deployment was successful, FunctionAppClient configures the application settings and health check for function app. Any user-specified environment variables necessary for the user Python package are also applied to the function app.
 
 
 ## 5. Scripts for Testing Function App based on scenario
