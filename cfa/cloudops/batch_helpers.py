@@ -1647,11 +1647,11 @@ def get_vm_size(size="small"):
     """
     logger.debug(f"Getting VM size for descriptor: {size}")
     size_mapping = {
-        "xsmall": "Standard_DS2_v3",
-        "small": "Standard_DS4_v3",
-        "medium": "Standard_DS8_v3",
-        "large": "Standard_DS16_v3",
-        "xlarge": "Standard_DS32_v3",
+        "xsmall": "Standard_D2S_v3",
+        "small": "Standard_D4S_v3",
+        "medium": "Standard_D8S_v3",
+        "large": "Standard_D16S_v3",
+        "xlarge": "Standard_D32S_v3",
     }
     vm_size = size_mapping.get(size.lower())
     if vm_size is None:
