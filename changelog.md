@@ -9,7 +9,6 @@ The versioning pattern is `major.minor.patch`.
 ---
 ## v0.3.6
 - add `FunctionAppClient` for managing Azure Function Apps.
-
 ## v0.3.4
 - add a maximum allowed version for azure-mgmt-resource to fix breaking issues with newest version.
 
