@@ -28,7 +28,7 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
-from .batch_helpers import check_mount_format
+from .batch_helpers import check_mount_format, get_vm_size
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -324,7 +324,7 @@ class CloudClient:
         # validate vm size
         valid_vm_sizes = ["xsmall", "small", "medium", "large", "xlarge"]
         if vm_size in valid_vm_sizes:
-            vm_size = blob.get_vm_size(vm_size)
+            vm_size = get_vm_size(vm_size)
         logger.info(f"Using VM size: {vm_size}")
 
         # Get base pool configuration
