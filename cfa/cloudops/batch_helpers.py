@@ -134,14 +134,12 @@ def _download_task_file(
     ) as f:
         file_content_bytes = b"".join(stream)
         try:
-            f.write(file_content_string=file_content_bytes.decode("utf-8"))
+            f.write(file_content_bytes.decode("utf-8"))
         except UnicodeDecodeError:
             logger.error(
                 "Could not decode with utf-8, trying another encoding or handling errors."
             )
-            f.write(
-                file_content_string=file_content_bytes.decode("utf-8", errors="replace")
-            )
+            f.write(file_content_bytes.decode("utf-8", errors="replace"))
 
 
 def monitor_tasks(
