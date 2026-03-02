@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.3.7
-- fixed incorrect indexing of uploading files. Count starts at 1.
+- updated upload progress reporting to use a tqdm-based progress bar.
 
 ## v0.3.5
 - fixed defect in `monitor_tasks` method when `download_task_output` is set to `True`
