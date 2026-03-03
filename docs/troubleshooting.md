@@ -16,5 +16,5 @@ If you experience when creating an instance of `CloudClient()` using a .env file
 ### File Not Found During Job
 
 If you are interacting with files during a job and getting errors like a file is not found, it can be originating from two places:
-1. incorrect mount reference. The blob container should be mounted during pool creation and referenced at the root of the Docker container. For example, a container called `my-container` would be referenced as `/my-container` in code.
+1. incorrect mount reference. The blob container should be mounted during pool creation and referenced at the root of the Docker container. For example, a container called `my-container` would be referenced as `/my-container` in code, unless you provided a relative mount path when creating the pool.
 2. file not present in container. If you are a referencing a file that should exist in your Docker container, confirm the path where it exists. Note that Docker sets a working directory so any relative paths will start from the working directory specified in your Docker container.
