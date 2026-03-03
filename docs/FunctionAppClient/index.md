@@ -105,11 +105,11 @@ func_app_client = FunctionAppClient(
 
 ### Azure Key Vault - Option 4
 
-Use secrets stored in `CFA-Predict` vault in Azure Key Vault. Initialize the `FunctionAppClient` with `keyvault` set to `cfa-predict`.
+Use secrets stored in Azure Key Vault (e.g. `my-team-vault`).
 
 ```python
 from cfa.cloudops import FunctionAppClient
-func_app_client = FunctionAppClient(keyvault='cfa-predict')
+func_app_client = FunctionAppClient(keyvault='my-team-vault')
 ```
 
 ## 4. Design/Process Diagram
