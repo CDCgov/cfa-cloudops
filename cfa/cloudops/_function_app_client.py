@@ -7,8 +7,6 @@ import subprocess
 import time
 from typing import Callable, List, Optional, Tuple
 
-from azure.mgmt.web import WebSiteManagementClient
-
 from .auth import (
     DefaultCredentialHandler,
     EnvCredentialHandler,
