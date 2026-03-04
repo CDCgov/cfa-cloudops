@@ -231,7 +231,7 @@ def upload_files_in_folder(
     # check if files should be force uploaded
     if not force_upload:
         fnum_sum = len(final_list)
-        if fnum_sum > 25:
+        if fnum_sum > 50:
             print(f"You are about to upload {fnum_sum} files.")
             resp = input("Continue? [Y/n]: ")
             if resp == "Y" or resp == "y":
