@@ -238,7 +238,7 @@ def upload_files_in_folder(
                 pass
             else:
                 print("Upload aborted.")
-                return None
+                return []
 
     for file in final_list:
         logger.debug(f"Calling upload_blob_file for {file}")
