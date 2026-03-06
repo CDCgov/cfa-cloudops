@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.3.7
-- fixed incorrect indexing of uploading files. Count starts at 1.
+- updated upload progress reporting to use a tqdm-based progress bar.
 
 ## v0.3.6
 - add `FunctionAppClient` for managing Azure Function Apps.
