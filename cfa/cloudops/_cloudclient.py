@@ -28,7 +28,7 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
-from .batch_helpers import check_mount_format
+from .batch_helpers import check_mount_format, get_vm_size
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -206,7 +206,7 @@ class CloudClient:
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
-                Defaults to the value from defaults module.
+                Defaults to the value from defaults module. VM size can also be given in the form "xmall", "small", "medium", "large", or "xlarge" for convenience, which will be mapped to specific Azure VM sizes.
             autoscale (bool): Whether to enable autoscaling (True) or use fixed scaling (False).
                 Default is True.
             autoscale_formula (str): Autoscale formula to use when autoscale=True.
@@ -240,7 +240,7 @@ class CloudClient:
                 client.create_pool(
                     pool_name="my-compute-pool",
                     container_image_name="myapp:latest",
-                    vm_size="Standard_D2s_v3"
+                    vm_size="small"
                 )
 
             Create a pool with storage mounts and fixed scaling:
@@ -322,6 +322,10 @@ class CloudClient:
         logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
+        valid_vm_sizes = ["xsmall", "small", "medium", "large", "xlarge"]
+        if vm_size in valid_vm_sizes:
+            vm_size = get_vm_size(vm_size)
+        logger.info(f"Using VM size: {vm_size}")
 
         # Get base pool configuration
         logger.debug("Getting default pool configuration.")

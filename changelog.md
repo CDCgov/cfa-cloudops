@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.8
+- add tshirt sizing capability for vm sizes when creating a pool
+
 ## v0.3.7
 - updated upload progress reporting to use a tqdm-based progress bar.
 
