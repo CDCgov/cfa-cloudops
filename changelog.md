@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.9
+- check number of upload files after exclusions accounted for
+
 ## v0.3.8
 - add tshirt sizing capability for vm sizes when creating a pool
 

@@ -167,20 +167,7 @@ def upload_files_in_folder(
         ) from None
     # check number of files if force_upload False
     logger.debug(f"Blob container {container_name} found. Uploading files...")
-    # check if files should be force uploaded
-    if not force_upload:
-        fnum = []
-        for _, _, file in os.walk(os.path.realpath(f"./{folder}")):
-            fnum.append(len(file))
-        fnum_sum = sum(fnum)
-        if fnum_sum > 50:
-            print(f"You are about to upload {fnum_sum} files.")
-            resp = input("Continue? [Y/n]: ")
-            if resp == "Y" or resp == "y":
-                pass
-            else:
-                print("Upload aborted.")
-                return None
+
     # get all files in folder
     file_list = []
     # check if folder is valid
@@ -241,6 +228,17 @@ def upload_files_in_folder(
         logger.debug(f"Excluded {excluded_by_pattern} files due to pattern matching")
 
     logger.debug(f"Final upload list contains {len(final_list)} files")
+    # check if files should be force uploaded
+    if not force_upload:
+        fnum_sum = len(final_list)
+        if fnum_sum > 50:
+            print(f"You are about to upload {fnum_sum} files.")
+            resp = input("Continue? [Y/n]: ")
+            if resp == "Y" or resp == "y":
+                pass
+            else:
+                print("Upload aborted.")
+                return []
 
     for file in final_list:
         logger.debug(f"Calling upload_blob_file for {file}")
