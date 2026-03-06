@@ -1617,3 +1617,49 @@ def check_mount_format(mount: str) -> str:
     mount = mount.name
     logger.info(f"Formatted mount: {mount}")
     return mount
+
+
+def get_vm_size(size="small"):
+    """Get the Azure VM size based on a simple size descriptor.
+
+    Args:
+        size (str): A simple descriptor for the desired VM size. Options include
+            "xsmall", "small", "medium", "large", "xlarge". Defaults to "small".
+
+    Returns:
+        str: The corresponding Azure VM size string.
+
+    Example:
+        Get a small VM size:
+
+            vm_size = get_vm_size("small")
+            print(vm_size)  # Output: "Standard_DS4_v3"
+
+        Get a medium VM size:
+
+            vm_size = get_vm_size("medium")
+            print(vm_size)  # Output: "Standard_DS8_v3"
+
+        Get a large VM size:
+
+            vm_size = get_vm_size("large")
+            print(vm_size)  # Output: "Standard_DS16_v3"
+    """
+    logger.debug(f"Getting VM size for descriptor: {size}")
+    size_mapping = {
+        "xsmall": "Standard_D2s_v3",
+        "small": "Standard_D4s_v3",
+        "medium": "Standard_D8s_v3",
+        "large": "Standard_D16s_v3",
+        "xlarge": "Standard_D32s_v3",
+    }
+    vm_size = size_mapping.get(size.lower())
+    if vm_size is None:
+        logger.error(
+            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge'."
+        )
+        raise ValueError(
+            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge'."
+        )
+    logger.info(f"Selected VM size: {vm_size} for descriptor: {size}")
+    return vm_size

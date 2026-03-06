@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "WEBSITE_RUN_FROM_PACKAGE": 1,
+    "WEBSITE_VNET_ROUTE_ALL": 1,
+    "CFANotificationV2CRON": "*/5 * * * * *",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+    "AzureWebJobsStorage": ""
+  }
+}

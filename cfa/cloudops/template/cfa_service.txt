@@ -1,0 +1,23 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+class CFAService:
+    def execute_old(self) -> bool:
+        return True
+
+    def execute(self) -> bool:
+        try:
+            source_code = None
+            with open('user_package.py', 'r') as f:
+                source_code = f.read()
+            if source_code:
+                return_val = {}
+                exec(source_code, globals(), return_val)
+                logger.info(f"Source code was successfully executed: return_val={return_val}")
+                return True
+            logger.info("No source code provided")
+            return False
+        except Exception as exc:
+            logger.error(exc)
+            return False

@@ -16,6 +16,7 @@ from azure.storage.blob import (
     ImmutabilityPolicy,
     aio,
 )
+from tqdm import tqdm
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -150,7 +151,6 @@ def upload_to_storage_container(
         ...     local_root_dir="/local/path",
         ...     remote_root_dir="uploads"
         ... )
-        Uploading file 0 of 2
         Uploaded 2 files to blob storage container
     """
     logger.debug(f"Starting upload to container '{blob_storage_container_name}'")
@@ -169,11 +169,7 @@ def upload_to_storage_container(
             policy_mode=BlobImmutabilityPolicyMode.UNLOCKED,
         )
 
-    for i_file, file_path in enumerate(file_paths):
-        if i_file % (1 + int(n_total_files / 10)) == 0:
-            print("Uploading file {} of {}".format(i_file, n_total_files))
-            logger.debug(f"Upload progress: {i_file}/{n_total_files} files completed")
-
+    for file_path in tqdm(file_paths, desc="Uploading files"):
         local_file_path = os.path.join(local_root_dir, file_path)
         remote_file_path = os.path.join(remote_root_dir, file_path)
 
