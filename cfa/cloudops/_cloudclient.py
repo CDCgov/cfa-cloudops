@@ -2275,3 +2275,18 @@ class CloudClient:
             )
             print(f"Error retrieving secret '{secret_name}': {e}")
             return None
+
+    def list_acr_tags(self, registry_name: str, repository_name: str) -> list[str]:
+        """List all tags for a given repository in Azure Container Registry.
+
+        Args:
+            registry_name (str): The name of the Azure Container Registry.
+            repository_name (str): The name of the repository within the registry.
+
+        Returns:
+            list[str]: A list of tags available for the specified repository.
+        """
+        tags = helpers.list_acr_tags(
+            registry_name=registry_name, repository_name=repository_name
+        )
+        return tags
