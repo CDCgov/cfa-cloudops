@@ -396,8 +396,9 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
     if result.returncode != 0:
         logger.error(f"Failed to list tags for {registry_name}.azurecr.io/{repo_name}")
         logger.error(f"Error output: {result.stderr}")
+        error_msg = result.stderr.strip() if result.stderr else "Unknown error"
         raise Exception(
-            f"Could not list tags for {registry_name}.azurecr.io/{repo_name}"
+            f"Could not list tags for {registry_name}.azurecr.io/{repo_name}: {error_msg}"
         )
 
     tags = json.loads(result.stdout.strip())
