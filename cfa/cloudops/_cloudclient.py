@@ -2281,7 +2281,7 @@ class CloudClient:
 
         Args:
             registry_name (str): The name of the Azure Container Registry.
-            repository_name (str): The name of the repository within the registry.
+            repo_name (str): The name of the repository within the registry.
 
         Returns:
             list[str]: A list of tags available for the specified repository.
