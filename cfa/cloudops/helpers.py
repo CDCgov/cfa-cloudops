@@ -378,7 +378,18 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
     logger.info(
         f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
     )
-    acr_tags_command = f"az acr repository show-tags --name {registry_name} --repository {repo_name} --output json"
+    acr_tags_command = [
+        "az",
+        "acr",
+        "repository",
+        "show-tags",
+        "--name",
+        registry_name,
+        "--repository",
+        repo_name,
+        "--output",
+        "json",
+    ]
     logger.debug(f"Executing command to list ACR tags: {acr_tags_command}")
     result = sp.run(acr_tags_command, capture_output=True, text=True)
 
