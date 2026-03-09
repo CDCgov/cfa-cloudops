@@ -94,42 +94,22 @@ class FunctionAppClient:
         -------
         Function app name
         """
-        # TODO: Query the table
-        # TODO: If unable to access table, then list the ones from cloud
-        # TODO: Check if health check is enabled for each function
         available_function_app = None
-        # Download the file locally
-        self.local_file_path = "cfa_predict_function_apps.csv"
-        with open(self.local_file_path, "wb") as file:
-            self.blob_client.download_blob().readinto(file)
 
         # Generate a pre-signed URL
-        # blob_url = blob_client.url
-        # print(f"Pre-signed URL: {blob_url}")
+        blob_url = self.blob_client.url
 
         # Initialize DuckDB and enable the HTTPFS extension
         self.con = duckdb.connect(database=":memory:")  # In-memory database
-        query = f"""
-            CREATE TABLE function_apps AS
-            SELECT * FROM read_csv_auto('{self.local_file_path}')
-        """
-        self.con.execute(query).fetchdf()
-        query = "SELECT * FROM function_apps WHERE IsDeployed = False LIMIT 1"
-        result = self.con.execute(query).fetchdf()
-
-        # con.execute("SET s3_region='auto';")  # Required for Azure Blob Storage
-        # con.execute("SET s3_endpoint='https://<your_storage_account_name>.blob.core.windows.net';")
-        # con.execute("SET s3_access_key_id=$AZURE_STORAGE_ACCOUNT_NAME;")
-        # con.execute("SET s3_secret_access_key=$AZURE_STORAGE_ACCOUNT_KEY;")
-
-        # Path to the file in Azure Blob Storage
-        # blob_file_path = "https://<your_storage_account_name>.blob.core.windows.net/<container_name>/<file_name>.parquet"
+        self.con.execute("SET s3_region='auto';")  # Required for Azure Blob Storage
+        self.con.execute(
+            "SET s3_endpoint='https://cfaazurebatchprd.blob.core.windows.net';"
+        )
 
         # Query the file directly from Azure Blob Storage
-        # query = f"SELECT * FROM read_csv_auto('{blob_file_path}')"
-        # result = con.execute(query).fetchdf()
+        query = f"SELECT * FROM read_csv_auto('{blob_url}')"
+        result = self.con.execute(query).fetchdf()
         if not result.empty:
-            print(result)
             available_function_app = result.iloc[0]["FunctionAppName"]
         return available_function_app
 
@@ -416,24 +396,24 @@ class FunctionAppClient:
                 return False
             self.function_app_name = function_name
         print(self.function_app_name)
-        if not self._publish_function(
-            schedule,
-            user_package,
-            dependencies,
-            environment_variables,
-        ):
-            logger.error(
-                "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
-            )
-            return False
-        if not self._allocate_function_app():
-            logger.info(
-                "cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion."
-            )
-        if not self._restart_function():
-            logger.error(
-                "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
-            )
-            return False
+        # if not self._publish_function(
+        #    schedule,
+        #    user_package,
+        #    dependencies,
+        #    environment_variables,
+        # ):
+        #    logger.error(
+        #        "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
+        #    )
+        #    return False
+        # if not self._allocate_function_app():
+        #    logger.info(
+        #        "cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion."
+        #    )
+        # if not self._restart_function():
+        #    logger.error(
+        #        "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
+        #    )
+        #    return False
         logger.info("Deployment complete")
         return True
