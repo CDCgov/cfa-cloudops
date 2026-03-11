@@ -29,7 +29,7 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json
 #####
- Local-fixes
+# Local-fixes
 -   repo: local
     hooks:
       - id: remove-init-file-breaking-ns-packaging
