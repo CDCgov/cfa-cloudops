@@ -79,9 +79,11 @@ def _generate_command_for_saving_logs(
     if not save_logs_rel_path.startswith("/"):
         save_logs_rel_path = "/" + save_logs_rel_path
     _folder = f"{save_logs_rel_path}/{logs_folder}/"
-    sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
-    logger.debug(f"Logs will be saved to: '{sout}'")
-    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} 2>&1 | tee {sout}" """
+    stdout_file = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
+    stderr_file = f"{_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
+    logger.debug(f"Stdout will be saved to: '{stdout_file}'")
+    logger.debug(f"Stderr will be saved to: '{stderr_file}'")
+    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} > {stdout_file} 2> {stderr_file}" """
 
 
 def _generate_mount_string(mounts):

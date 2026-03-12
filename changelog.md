@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.10
+- save stderr and stdout to separate files when `save_logs_to_blob` is used for CloudClient
+
 ## v0.3.9
 - check number of upload files after exclusions accounted for
 
