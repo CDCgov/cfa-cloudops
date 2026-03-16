@@ -99,7 +99,9 @@ Then initialize the `FunctionAppClient` with `dotenv_path` set to environment fi
 ```python
 from cfa.cloudops import FunctionAppClient
 func_app_client = FunctionAppClient(
-    function_app_name='cfapredictafmprdfunc02', dotenv_path='cfa_cloudops.env', use_sp=True
+    function_app_name='cfapredictafmprdfunc02',   # Omit this if you want first available function
+    dotenv_path='cfa_cloudops.env',
+    use_sp=True
 )
 ```
 
@@ -118,7 +120,11 @@ func_app_client = FunctionAppClient(keyvault='my-team-vault')
 
 When the user invokes deploy_function operation, FunctionAppClient first logs into the Azure Portal. It assumes the identity of the service principal configured in environment or key vault.
 
-Next it integrate the user's Python package into a ZIP file that also contains requirements.txt, function app code and dependency injection components. To prepare the code for packaging as ZIP file, FunctionAppClient creates a temporary folder with function name and copies all artifacts to that folder. The ZIP file is uploaded to the function app that was specified by the user. If deployment was successful, FunctionAppClient configures the application settings and health check for function app. Any user-specified environment variables necessary for the user Python package are also applied to the function app.
+Next it integrate the user's Python package into a ZIP file that also contains requirements.txt, function app code and dependency injection components. To prepare the code for packaging as ZIP file, FunctionAppClient creates a temporary folder with function name and copies all artifacts to that folder.
+
+The ZIP file is uploaded to the function app that was specified by the user in the `function_app_name` parameter. Otherwise if no function app is specified, the FunctionAppClient selects the first available function app from a pool of 10 function apps (cfapredictafmprdfunc01, cfapredictafmprdfunc02, etc) that have already been provisioned for use.
+
+If function_If deployment was successful, FunctionAppClient configures the application settings and health check for function app. Any user-specified environment variables necessary for the user Python package are also applied to the function app.
 
 
 ## 5. Scripts for Testing Function App based on scenario
