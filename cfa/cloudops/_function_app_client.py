@@ -287,7 +287,7 @@ class FunctionAppClient:
             os.chdir(parent_path)
             self._delete_deployment_folder()
             logger.info(
-                "cfaazurefunction.publish_function(): Function app published successfully."
+                "cfaazurefunction.publish_function(): Function app published successfully to {self.function_app_name}."
             )
 
             # Now update the schedule in function app
@@ -303,7 +303,7 @@ class FunctionAppClient:
                 self._update_app_settings(environment_variables)
 
             logger.info(
-                "FunctionAppClient._publish_function(): Function app settings updated."
+                "FunctionAppClient._publish_function(): Function app settings updated for {self.function_app_name}."
             )
             self._enable_health_check()
             time.sleep(SLEEP_INTERVAL_SECONDS)
@@ -384,7 +384,6 @@ class FunctionAppClient:
                 )
                 return False
             self.function_app_name = function_name
-        print(self.function_app_name)
         if not self._publish_function(
             schedule,
             user_package,
