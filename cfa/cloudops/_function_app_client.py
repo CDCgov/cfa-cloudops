@@ -8,8 +8,6 @@ import time
 from typing import Callable, List, Optional, Tuple
 
 import duckdb
-from azure.identity import ClientSecretCredential
-from azure.storage.blob import BlobClient, BlobLeaseClient
 
 from .auth import (
     DefaultCredentialHandler,
@@ -20,6 +18,7 @@ from .auth import (
 logger = logging.getLogger(__name__)
 
 SLEEP_INTERVAL_SECONDS = 5
+FUNCTION_APPS_CSV_PATH = "az://input-test/data/cfa_predict_function_apps_v2.csv"
 
 
 class FunctionAppClient:
@@ -70,22 +69,6 @@ class FunctionAppClient:
             )
             self.method = "sp"
             logger.info("Using service principal credentials.")
-        # get clients
-        account_name = "cfaazurebatchprd"
-        container_name = "input-test"
-        self.blob_name = "data/cfa_predict_function_apps.csv"
-        sp_cred = ClientSecretCredential(
-            tenant_id=self.cred.azure_tenant_id,
-            client_id=self.cred.azure_client_id,
-            client_secret=self.cred.azure_client_secret,
-        )
-        self.blob_client = BlobClient(
-            account_url=f"https://{account_name}.blob.core.windows.net",
-            container_name=container_name,
-            blob_name=self.blob_name,
-            credential=sp_cred,
-        )
-        logger.debug("Getting Azure clients and setting other attributes.")
 
     def _find_available_function_app(self) -> str:
         """List all function apps that are not currently in use and return the first one from this list
@@ -96,19 +79,28 @@ class FunctionAppClient:
         """
         available_function_app = None
 
-        # Generate a pre-signed URL
-        blob_url = self.blob_client.url
-
         # Initialize DuckDB and enable the HTTPFS extension
-        self.con = duckdb.connect(database=":memory:")  # In-memory database
-        self.con.execute("SET s3_region='auto';")  # Required for Azure Blob Storage
-        self.con.execute(
-            "SET s3_endpoint='https://cfaazurebatchprd.blob.core.windows.net';"
+        self.conn = duckdb.connect(database=":memory:")  # In-memory database
+        self.conn.sql("SET azure_transport_option_type='curl';")
+        self.conn.sql(
+            f"CREATE SECRET IF NOT EXISTS azure_spn \
+                    ( \
+                        TYPE AZURE, \
+                        PROVIDER SERVICE_PRINCIPAL, \
+                        TENANT_ID '{self.cred.azure_tenant_id}', \
+                        CLIENT_ID '{self.cred.azure_client_id}', \
+                        CLIENT_SECRET '{self.cred.azure_client_secret}', \
+                        ACCOUNT_NAME '{self.cred.azure_blob_storage_account}' \
+            );"
         )
 
         # Query the file directly from Azure Blob Storage
-        query = f"SELECT * FROM read_csv_auto('{blob_url}')"
-        result = self.con.execute(query).fetchdf()
+        query = f"CREATE TABLE function_apps AS SELECT * FROM '{FUNCTION_APPS_CSV_PATH}' WHERE ISDEPLOYED = False"
+        result = self.conn.sql(query)
+        query = (
+            "SELECT FunctionAppName FROM function_apps WHERE IsDeployed = False LIMIT 1"
+        )
+        result = self.conn.sql(query).fetchdf()
         if not result.empty:
             available_function_app = result.iloc[0]["FunctionAppName"]
         return available_function_app
@@ -119,16 +111,13 @@ class FunctionAppClient:
             SET IsDeployed = True
             WHERE FunctionAppName = '{self.function_app_name}'
         """
-        self.con.execute(update_query)
-        self.con.execute(f"""
-            COPY function_apps TO '{self.local_file_path}' (HEADER, DELIMITER ',')
+        logger.info("Running update query to mark function app as deployed")
+        self.conn.execute(update_query)
+        self.conn.execute(f"""
+            COPY function_apps
+            TO '{FUNCTION_APPS_CSV_PATH}'
+            (HEADER, DELIMITER ',', OVERWRITE 1)
         """)
-
-        lease = BlobLeaseClient(self.blob_client)
-        lease.acquire()
-        with open(self.local_file_path, "rb") as data:
-            self.blob_client.upload_blob(data, overwrite=True, lease=lease)
-        lease.release()
         return True
 
     def _log_into_portal(self) -> bool:
@@ -396,24 +385,24 @@ class FunctionAppClient:
                 return False
             self.function_app_name = function_name
         print(self.function_app_name)
-        # if not self._publish_function(
-        #    schedule,
-        #    user_package,
-        #    dependencies,
-        #    environment_variables,
-        # ):
-        #    logger.error(
-        #        "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
-        #    )
-        #    return False
-        # if not self._allocate_function_app():
-        #    logger.info(
-        #        "cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion."
-        #    )
-        # if not self._restart_function():
-        #    logger.error(
-        #        "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
-        #    )
-        #    return False
+        if not self._publish_function(
+            schedule,
+            user_package,
+            dependencies,
+            environment_variables,
+        ):
+            logger.error(
+                "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
+            )
+            return False
+        if not self._allocate_function_app():
+            logger.info(
+                "cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion."
+            )
+        if not self._restart_function():
+            logger.error(
+                "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
+            )
+            return False
         logger.info("Deployment complete")
         return True
