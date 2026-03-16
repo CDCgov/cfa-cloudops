@@ -1635,17 +1635,17 @@ def get_vm_size(size="small"):
         Get a small VM size:
 
             vm_size = get_vm_size("small")
-            print(vm_size)  # Output: "Standard_DS4_v3"
+            print(vm_size)  # Output: "Standard_D4s_v3"
 
         Get a medium VM size:
 
             vm_size = get_vm_size("medium")
-            print(vm_size)  # Output: "Standard_DS8_v3"
+            print(vm_size)  # Output: "Standard_D8s_v3"
 
         Get a large VM size:
 
             vm_size = get_vm_size("large")
-            print(vm_size)  # Output: "Standard_DS16_v3"
+            print(vm_size)  # Output: "Standard_D16s_v3"
     """
     logger.debug(f"Getting VM size for descriptor: {size}")
     size_mapping = {
