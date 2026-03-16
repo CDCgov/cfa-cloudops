@@ -33,7 +33,7 @@ client.create_pool("sample_pool_name")
 
 The `vm_size` parameter in `create_pool()` can take t-shirt sizes for easier creation. These sizes are "xsmall", "small", "medium", "large", and "xlarge". These sizes are mapped in the following way with the corresponding VM capabilities:
 
-| t-shirt size | VM name | vCPUs | RAM (GB) | Temp Disk Size (GiB) | Disc Cache Size (GiB) | Cached Disk Random Read IOPS |
+| t-shirt size | VM name | vCPUs | RAM (GB) | Temp Disk Size (GiB) | Disk Cache Size (GiB) | Cached Disk Random Read IOPS |
 | -- | -- | -- | -- | -- | -- | -- |
 | xsmall | standard_d2s_v3 | 2 | 8 | 16 | 50 | 4,000 |
 | small | standard_d4s_v3 | 4 | 16 | 32 | 100 | 8,000 |
