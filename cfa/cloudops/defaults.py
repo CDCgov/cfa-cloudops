@@ -128,7 +128,6 @@ default_pool_config_dict = dict(
         virtual_machine_configuration=default_vm_configuration
     ),
     vm_size=default_vm_size,
-    target_node_communication_mode="Simplified",
     scale_settings=models.ScaleSettings(
         auto_scale=models.AutoScaleSettings(
             formula=default_autoscale_formula,
