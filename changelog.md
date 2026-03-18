@@ -10,6 +10,9 @@ The versioning pattern is `major.minor.patch`.
 ## v0.3.14
 - fixed defect in `batch_helpers.get_rel_mnt_path` function for getting optional mount configuration in a pool
 
+## v0.3.13
+- add documentation for VM t-shirt sizing
+
 ## v0.3.12
 - added concurrency control and function app management with in-memory DuckDB database to FunctionAppClient
 

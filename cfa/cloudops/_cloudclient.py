@@ -206,7 +206,15 @@ class CloudClient:
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
-                Defaults to the value from defaults module. VM size can also be given in the form "xmall", "small", "medium", "large", or "xlarge" for convenience, which will be mapped to specific Azure VM sizes.
+                Defaults to the value from defaults module.
+                VM size can also be given in the form "xsmall", "small", "medium", "large", or "xlarge" for convenience,
+                which will be mapped to specific Azure VM sizes. The sizes map to the following Azure VM sizes:
+                    - "xsmall": "Standard_D2s_v3"
+                    - "small": "Standard_D4s_v3"
+                    - "medium": "Standard_D8s_v3"
+                    - "large": "Standard_D16s_v3"
+                    - "xlarge": "Standard_D32s_v3"
+                 Note that not all VM sizes may be available in all regions, so ensure the specified size is available in your Azure region.
             autoscale (bool): Whether to enable autoscaling (True) or use fixed scaling (False).
                 Default is True.
             autoscale_formula (str): Autoscale formula to use when autoscale=True.
