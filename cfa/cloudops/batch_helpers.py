@@ -1161,17 +1161,17 @@ def get_pool_mounts(
 
     mounts = []
     try:
-        mc = pool_info.as_dict().get("mount_configuration")
+        mc = pool_info.as_dict().get("properties", {}).get("mountConfiguration", {})
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
             mount_info = {
-                "source": m["azure_blob_file_system_configuration"][
-                    "relative_mount_path"
-                ],
-                "target": m["azure_blob_file_system_configuration"][
-                    "relative_mount_path"
-                ],
+                "source": m.get("azureBlobFileSystemConfiguration", {}).get(
+                    "relativeMountPath"
+                ),
+                "target": m.get("azureBlobFileSystemConfiguration", {}).get(
+                    "relativeMountPath"
+                ),
             }
             mounts.append(mount_info)
             logger.debug(f"Added mount: {mount_info}")
