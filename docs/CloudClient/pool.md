@@ -11,7 +11,7 @@ Pools can easily be created with a `CloudClient` object while maintaining the fl
     ```['input-test', 'output-test']```
     - list of dictionaries. The dictionaries are in the form {'source': *container name*, 'target': *mount name*}. The source is the name of the Blob container and the target is how you want to reference the path in your code. For example, if we want to mount the Blob containers 'input-test' and 'output-test' and reference them via 'input' and 'output' in your code, pass the following to the `mounts` parameter:
     ```[{'source': 'input-test', 'target': 'input'}, {'source': 'output-test', 'target': 'output'}]```
-- vm_size: the name of the VM size to use. Default is standard_d4s_v3.
+- vm_size: the name of the VM size to use. Default is Standard_D4s_v3. T-shirt sizing is also available, such as "xsmall", "small", "medium", etc.
 - autoscale: either True or False, depending on if autoscale or fixed number of nodes should be used. Default is True.
 - autoscale_formula: the full text of an autoscale formula. If not provided a default autoscale formula will be used if autoscale is set to True.
 - dedicated_nodes: the number of dedicated nodes to use if not autoscaling. Default is 0.
@@ -28,6 +28,20 @@ A very basic example of creating a pool with the `CloudClient` is as follows:
 client = CloudClient()
 client.create_pool("sample_pool_name")
 ```
+
+## VM Sizing
+
+The `vm_size` parameter in `create_pool()` can take t-shirt sizes for easier creation. These sizes are "xsmall", "small", "medium", "large", and "xlarge". These sizes are mapped in the following way with the corresponding VM capabilities:
+
+| t-shirt size | VM name | vCPUs | RAM (GB) | Temp Disk Size (GiB) | Disk Cache Size (GiB) | Cached Disk Random Read IOPS |
+| -- | -- | -- | -- | -- | -- | -- |
+| xsmall | Standard_D2s_v3 | 2 | 8 | 16 | 50 | 4,000 |
+| small | Standard_D4s_v3 | 4 | 16 | 32 | 100 | 8,000 |
+| medium | Standard_D8s_v3 | 8 | 32 | 64 | 200 | 16,000 |
+| large | Standard_D16s_v3 | 16 | 64 | 128 | 400 | 32,000 |
+| xlarge | Standard_D32s_v3 | 32 | 128 | 256 | 800 | 64,000|
+
+
 
 ## Autoscale Pool Example
 
@@ -72,6 +86,7 @@ client.create_pool(
     pool_name = "sample-pool-debug",
     container_image_name = "my_azure_registry/azurecr.io/test_repo:latest",
     mounts = ["input-files"],
+    vm_size = "medium",
     autoscale = False,
     low_priority_nodes = 3,
     task_slots_per_node = 2

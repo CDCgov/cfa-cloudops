@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.13
+- add documentation for VM t-shirt sizing
+
 ## v0.3.12
 - added concurrency control and function app management with in-memory DuckDB database to FunctionAppClient
 
