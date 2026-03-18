@@ -7,6 +7,8 @@ import subprocess
 import time
 from typing import Callable, List, Optional, Tuple
 
+import duckdb
+
 from .auth import (
     DefaultCredentialHandler,
     EnvCredentialHandler,
@@ -16,12 +18,13 @@ from .auth import (
 logger = logging.getLogger(__name__)
 
 SLEEP_INTERVAL_SECONDS = 5
+FUNCTION_APPS_CSV_PATH = "az://input-test/data/cfa_predict_function_apps_v2.csv"
 
 
 class FunctionAppClient:
     def __init__(
         self,
-        function_app_name: str,
+        function_app_name: Optional[str] = None,
         keyvault: Optional[str] = None,
         dotenv_path: Optional[str] = None,
         use_sp: bool = False,
@@ -66,8 +69,56 @@ class FunctionAppClient:
             )
             self.method = "sp"
             logger.info("Using service principal credentials.")
-        # get clients
-        logger.debug("Getting Azure clients and setting other attributes.")
+
+    def _find_available_function_app(self) -> str:
+        """List all function apps that are not currently in use and return the first one from this list
+
+        Returns
+        -------
+        Function app name
+        """
+        available_function_app = None
+
+        # Initialize DuckDB and enable the HTTPFS extension
+        self.conn = duckdb.connect(database=":memory:")  # In-memory database
+        self.conn.sql("SET azure_transport_option_type='curl';")
+        self.conn.sql(
+            f"CREATE SECRET IF NOT EXISTS azure_spn \
+                    ( \
+                        TYPE AZURE, \
+                        PROVIDER SERVICE_PRINCIPAL, \
+                        TENANT_ID '{self.cred.azure_tenant_id}', \
+                        CLIENT_ID '{self.cred.azure_client_id}', \
+                        CLIENT_SECRET '{self.cred.azure_client_secret}', \
+                        ACCOUNT_NAME '{self.cred.azure_blob_storage_account}' \
+            );"
+        )
+
+        # Query the file directly from Azure Blob Storage
+        query = f"CREATE TABLE function_apps AS SELECT * FROM '{FUNCTION_APPS_CSV_PATH}' WHERE ISDEPLOYED = False"
+        result = self.conn.sql(query)
+        query = (
+            "SELECT FunctionAppName FROM function_apps WHERE IsDeployed = False LIMIT 1"
+        )
+        result = self.conn.sql(query).fetchdf()
+        if not result.empty:
+            available_function_app = result.iloc[0]["FunctionAppName"]
+        return available_function_app
+
+    def _allocate_function_app(self):
+        update_query = f"""
+            UPDATE function_apps
+            SET IsDeployed = True
+            WHERE FunctionAppName = '{self.function_app_name}'
+        """
+        logger.info("Running update query to mark function app as deployed")
+        self.conn.execute(update_query)
+        self.conn.execute(f"""
+            COPY function_apps
+            TO '{FUNCTION_APPS_CSV_PATH}'
+            (HEADER, DELIMITER ',', OVERWRITE 1)
+        """)
+        return True
 
     def _log_into_portal(self) -> bool:
         try:
@@ -236,7 +287,7 @@ class FunctionAppClient:
             os.chdir(parent_path)
             self._delete_deployment_folder()
             logger.info(
-                "cfaazurefunction.publish_function(): Function app published successfully."
+                "cfaazurefunction.publish_function(): Function app published successfully to {self.function_app_name}."
             )
 
             # Now update the schedule in function app
@@ -252,7 +303,7 @@ class FunctionAppClient:
                 self._update_app_settings(environment_variables)
 
             logger.info(
-                "FunctionAppClient._publish_function(): Function app settings updated."
+                "FunctionAppClient._publish_function(): Function app settings updated for {self.function_app_name}."
             )
             self._enable_health_check()
             time.sleep(SLEEP_INTERVAL_SECONDS)
@@ -325,6 +376,14 @@ class FunctionAppClient:
                 "FunctionAppClient.deploy_function(): Deployment aborted due to login failure."
             )
             return False
+        if not self.function_app_name:
+            function_name = self._find_available_function_app()
+            if not function_name:
+                logger.error(
+                    "cfaazurefunction.deploy_function(): Deployment aborted because no function apps are available. Please provision additional function apps."
+                )
+                return False
+            self.function_app_name = function_name
         if not self._publish_function(
             schedule,
             user_package,
@@ -335,6 +394,10 @@ class FunctionAppClient:
                 "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
             )
             return False
+        if not self._allocate_function_app():
+            logger.info(
+                "cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion."
+            )
         if not self._restart_function():
             logger.error(
                 "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
