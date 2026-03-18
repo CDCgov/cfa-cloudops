@@ -207,7 +207,7 @@ class CloudClient:
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
             vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
                 Defaults to the value from defaults module.
-                VM size can also be given in the form "xmall", "small", "medium", "large", or "xlarge" for convenience,
+                VM size can also be given in the form "xsmall", "small", "medium", "large", or "xlarge" for convenience,
                 which will be mapped to specific Azure VM sizes. The sizes map to the following Azure VM sizes:
                     - "xsmall": "Standard_D2s_v3"
                     - "small": "Standard_D4s_v3"
