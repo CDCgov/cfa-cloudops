@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.14
+- fixed defect in `batch_helpers.get_rel_mnt_path` function for getting optional mount configuration in a pool
+
 ## v0.3.13
 - add documentation for VM t-shirt sizing
 
@@ -26,10 +29,10 @@ The versioning pattern is `major.minor.patch`.
 - add tshirt sizing capability for vm sizes when creating a pool
 
 ## v0.3.7
-- updated upload progress reporting to use a tqdm-based progress bar.
+- updated upload progress reporting to use a tqdm-based progress bar
 
 ## v0.3.6
-- add `FunctionAppClient` for managing Azure Function Apps.
+- add `FunctionAppClient` for managing Azure Function Apps
 
 ## v0.3.5
 - fixed defect in `monitor_tasks` method when `download_task_output` is set to `True`
