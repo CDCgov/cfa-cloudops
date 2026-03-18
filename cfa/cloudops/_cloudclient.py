@@ -187,6 +187,9 @@ class CloudClient:
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
         replace_existing_pool: bool = False,
+        enable_node_monitoring: bool = False,
+        monitoring_script_url: str | None = None,
+        monitoring_interval_seconds: int = 15,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -336,6 +339,20 @@ class CloudClient:
             mount_configuration=mount_config,
             vm_size=vm_size,
         )
+
+        # Attach node monitoring Start Task
+        if enable_node_monitoring:
+            if not monitoring_script_url
+                raise ValueError(
+                    "monitoring_script_url is required when enabling node monitoring"
+                )
+
+                start_task_command = rf"""/bin/bash -c 'set -euo pipefail mkdir 
+                                       -p /mnt/batch/tasks/startup/wd/node-metrics chmod +x ./start-metrics.sh
+                                        nohup ./start-metrics.sh {monitoring_interval_seconds} \
+                                        >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
+                                        2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &'
+                                    """ 
 
         # Configure scaling settings
         if autoscale:
