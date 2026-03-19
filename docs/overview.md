@@ -32,3 +32,4 @@ There are several components of this repo that provide benefits to developers in
   - more info found [here](./CloudClient/index.md)
 - automation component to run jobs/tasks from a configuration file
 - ContainerAppClient object for easy interaction with Container App Jobs
+  - more info found [here](./ContainerAppClient/index.md)
