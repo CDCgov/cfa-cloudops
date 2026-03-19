@@ -11,7 +11,7 @@ Solution: confirm your VM has the right Managed Identity setup for the Azure env
 
 ### Error Instantiating CloudClient
 
-If you experience when creating an instance of `CloudClient()` using a .env file, it's possible the issue is coming from the .env file itself. Make sure the keys in your .env file match exactly with the keys in the sample .env. If all keys are present, it's likely an issue with a value in the .env. Confirm all values are correct.
+If you experience errors when creating an instance of `CloudClient()` using a .env file, it's possible the issue is coming from the .env file itself. Make sure the keys in your .env file match exactly with the keys in the sample .env. If all keys are present, it's likely an issue with a value in the .env. Confirm all values are correct.
 
 ### File Not Found During Job
 
