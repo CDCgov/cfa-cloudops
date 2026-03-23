@@ -18,7 +18,7 @@ from .auth import (
 logger = logging.getLogger(__name__)
 
 SLEEP_INTERVAL_SECONDS = 5
-FUNCTION_APPS_CSV_PATH = "az://input-test/data/cfa_predict_function_apps_v2.csv"
+FUNCTION_APPS_CSV_PATH = "az://input-test/data/cfa_predict_function_apps.csv"
 
 
 class FunctionAppClient:
@@ -95,7 +95,9 @@ class FunctionAppClient:
         )
 
         # Query the file directly from Azure Blob Storage
-        query = f"CREATE TABLE function_apps AS SELECT * FROM '{FUNCTION_APPS_CSV_PATH}' WHERE ISDEPLOYED = False"
+        query = (
+            f"CREATE TABLE function_apps AS SELECT * FROM '{FUNCTION_APPS_CSV_PATH}'"
+        )
         result = self.conn.sql(query)
         query = (
             "SELECT FunctionAppName FROM function_apps WHERE IsDeployed = False LIMIT 1"
