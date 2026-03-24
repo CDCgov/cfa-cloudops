@@ -298,7 +298,7 @@ class CloudClient:
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
                     account_names=self.cred.azure_blob_storage_account,
-                    identity_references=self.cred.compute_node_identity_reference.as_dict(),
+                    identity_references=self.cred.compute_node_identity_reference,
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                 )
                 logger.debug("Generated mount configuration from string list.")
@@ -314,7 +314,7 @@ class CloudClient:
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
-                    identity_references=self.cred.compute_node_identity_reference.as_dict(),
+                    identity_references=self.cred.compute_node_identity_reference,
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                     mount_names=[mount["target"] for mount in mounts],
                 )
