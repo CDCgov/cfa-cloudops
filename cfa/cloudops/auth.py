@@ -388,7 +388,7 @@ class CredentialHandler:
             resource_id=self.azure_user_assigned_identity
         )
         logger.debug("Created ComputeNodeIdentityReference.")
-        return comp_id_ref
+        return comp_id_ref.as_dict()
 
     @cached_property
     def azure_container_registry(self):

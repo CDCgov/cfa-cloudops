@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import anyio
 import pytest
 from azure.batch import models
+from azure.mgmt.batch import models as mgmt_models
 from shared_fixtures import FAKE_BLOBS, MockLogger
 
 from cfa.cloudops.blob import (
@@ -80,6 +81,10 @@ def test_get_node_mount_config_success(mock_compute_node):
     )
     assert mounts
     assert len(mounts) == 2
+    assert isinstance(
+        mounts[0].azure_blob_file_system_configuration.identity_reference,
+        mgmt_models.ComputeNodeIdentityReference,
+    )
 
 
 def test_get_node_mount_config_success_alternate(mock_compute_node):

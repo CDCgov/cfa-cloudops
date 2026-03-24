@@ -6,10 +6,11 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import anyio
-from azure.batch import models
 from azure.identity import ManagedIdentityCredential
+from azure.mgmt.batch import models
 from azure.storage.blob import (
     BlobImmutabilityPolicyMode,
     BlobServiceClient,
@@ -290,9 +291,7 @@ def download_from_storage_container(
 def get_node_mount_config(
     storage_containers: str | list[str],
     account_names: str | list[str],
-    identity_references: (
-        models.ComputeNodeIdentityReference | list[models.ComputeNodeIdentityReference]
-    ),
+    identity_references: Any,
     shared_relative_mount_path: str = "",
     mount_names: list[str] = None,
     blobfuse_options: str | list[str] = "",
@@ -334,7 +333,7 @@ def get_node_mount_config(
             storage_containers and isn't exactly 1.
 
     Example:
-        >>> from azure.batch import models
+        >>> from azure.mgmt.batch import models
         >>> identity_ref = models.ComputeNodeIdentityReference(
         ...     resource_id="/subscriptions/.../resourceGroups/.../providers/..."
         ... )
@@ -431,10 +430,33 @@ def get_node_mount_config(
         blob_str = " -o direct_io"
         logger.debug("Caching disabled - adding direct_io option")
 
+    def _to_mgmt_identity_reference(
+        identity_reference: Any,
+    ) -> models.ComputeNodeIdentityReference:
+        if isinstance(identity_reference, models.ComputeNodeIdentityReference):
+            return identity_reference
+
+        resource_id = None
+        if isinstance(identity_reference, str):
+            resource_id = identity_reference
+        elif isinstance(identity_reference, dict):
+            resource_id = identity_reference.get("resource_id")
+        else:
+            resource_id = getattr(identity_reference, "resource_id", None)
+
+        if not resource_id:
+            raise TypeError(
+                "Each identity reference must be a ComputeNodeIdentityReference, "
+                "a dict containing 'resource_id', or a resource_id string."
+            )
+
+        return models.ComputeNodeIdentityReference(resource_id=resource_id)
+
     mount_configs = []
     for account_name, container_name, relative_mount_path, identity_reference in zip(
         account_names, storage_containers, relative_mount_paths, identity_references
     ):
+        mgmt_identity_reference = _to_mgmt_identity_reference(identity_reference)
         logger.debug(
             f"Creating mount config: container '{container_name}' from account '{account_name}' -> '{relative_mount_path}'"
         )
@@ -446,7 +468,7 @@ def get_node_mount_config(
                     container_name=container_name,
                     relative_mount_path=relative_mount_path,
                     blobfuse_options=blobfuse_options + blob_str,
-                    identity_reference=identity_reference,
+                    identity_reference=mgmt_identity_reference,
                     **kwargs,
                 )
             )

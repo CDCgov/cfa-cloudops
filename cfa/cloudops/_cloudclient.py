@@ -298,7 +298,7 @@ class CloudClient:
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
                     account_names=self.cred.azure_blob_storage_account,
-                    identity_references=self.cred.compute_node_identity_reference,
+                    identity_references=self.cred.compute_node_identity_reference.as_dict(),
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                 )
                 logger.debug("Generated mount configuration from string list.")
@@ -314,10 +314,15 @@ class CloudClient:
                 mount_config = get_node_mount_config(
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
-                    identity_references=self.cred.compute_node_identity_reference,
+                    identity_references=self.cred.compute_node_identity_reference.as_dict(),
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                     mount_names=[mount["target"] for mount in mounts],
                 )
+                mount_config = [m.__dict__ for m in mount_config]
+                for m in mount_config:
+                    m["azure_blob_file_system_configuration"] = m[
+                        "azure_blob_file_system_configuration"
+                    ].__dict__
                 logger.debug("Generated mount configuration from dict list.")
             else:
                 logger.debug(
@@ -354,7 +359,7 @@ class CloudClient:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
-
+            else:
                 start_task_command = rf"""/bin/bash -c 'set -euo pipefail mkdir
                                        -p /mnt/batch/tasks/startup/wd/node-metrics chmod +x ./start-metrics.sh
                                         nohup ./start-metrics.sh {monitoring_interval_seconds} \
