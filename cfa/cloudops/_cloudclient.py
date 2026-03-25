@@ -318,11 +318,6 @@ class CloudClient:
                     cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
                     mount_names=[mount["target"] for mount in mounts],
                 )
-                mount_config = [m.__dict__ for m in mount_config]
-                for m in mount_config:
-                    m["azure_blob_file_system_configuration"] = m[
-                        "azure_blob_file_system_configuration"
-                    ].__dict__
                 logger.debug("Generated mount configuration from dict list.")
             else:
                 logger.debug(
