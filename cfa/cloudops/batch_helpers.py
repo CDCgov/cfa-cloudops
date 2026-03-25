@@ -1,5 +1,6 @@
 import csv
 import datetime
+import json
 import logging
 import os
 import time
@@ -1668,3 +1669,39 @@ def get_vm_size(size="small"):
         )
     logger.info(f"Selected VM size: {vm_size} for descriptor: {size}")
     return vm_size
+
+
+def get_task_status(
+    job_name: str, task_id: str | None = None, batch_client=None
+) -> dict:
+    if not check_job_exists(job_name, batch_client):
+        raise ValueError(f"Job {job_name} does not exist.")
+
+    tasks = list(batch_client.task.list(job_name))
+    if task_id is not None:
+        if task_id not in [t.id for t in tasks]:
+            raise ValueError(f"Task {task_id} does not exist in job {job_name}.")
+
+        for t in tasks:
+            if t.id == task_id:
+                return json.dumps(
+                    {
+                        "id": t.id,
+                        "state": t.state.value,
+                        "exit_code": t.execution_info.exit_code,
+                    }
+                )
+    else:
+        tasks = list(batch_client.task.list(job_name))
+
+    out_json = []
+    for t in tasks:
+        out_json.append(
+            {
+                "id": t.id,
+                "state": t.state.value,
+                "exit_code": t.execution_info.exit_code,
+            }
+        )
+
+    return json.dumps(out_json)
