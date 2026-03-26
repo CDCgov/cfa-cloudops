@@ -1,4 +1,5 @@
 import builtins
+import json
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -13,6 +14,7 @@ from cfa.cloudops.batch_helpers import (
     get_full_container_image_name,
     get_pool_mounts,
     get_rel_mnt_path,
+    get_task_status,
     monitor_tasks,
 )
 
@@ -242,3 +244,86 @@ def test_check_mount_format():
             str(excinfo.value)
             == "Invalid mount format: /mnt/data/files/. Mount path should not contain internal slashes."
         )
+
+
+def test_get_task_status_requires_batch_client():
+    with pytest.raises(ValueError) as excinfo:
+        get_task_status(job_name="my-job", batch_client=None)
+    assert str(excinfo.value) == "Batch client must be provided to get task status."
+
+
+def test_get_task_status_job_does_not_exist():
+    mock_batch_client = MagicMock()
+    mock_batch_client.job.list.return_value = []
+
+    with pytest.raises(ValueError) as excinfo:
+        get_task_status(job_name="missing-job", batch_client=mock_batch_client)
+    assert str(excinfo.value) == "Job missing-job does not exist."
+
+
+def test_get_task_status_all_tasks():
+    mock_batch_client = MagicMock()
+    mock_batch_client.job.list.return_value = [MagicMock(id="my-job")]
+
+    mock_batch_client.task.list.return_value = [
+        MagicMock(
+            id="t1",
+            state=models.TaskState.running,
+            execution_info=MagicMock(exit_code=None),
+        ),
+        MagicMock(
+            id="t2",
+            state=models.TaskState.completed,
+            execution_info=MagicMock(exit_code=0),
+        ),
+    ]
+
+    result = get_task_status(job_name="my-job", batch_client=mock_batch_client)
+    payload = json.loads(result)
+
+    assert isinstance(payload, list)
+    assert {item["id"] for item in payload} == {"t1", "t2"}
+    assert {item["state"] for item in payload} == {"running", "completed"}
+
+
+def test_get_task_status_single_task():
+    mock_batch_client = MagicMock()
+    mock_batch_client.job.list.return_value = [MagicMock(id="my-job")]
+
+    mock_batch_client.task.list.return_value = [
+        MagicMock(
+            id="t1",
+            state=models.TaskState.completed,
+            execution_info=MagicMock(exit_code=0),
+        ),
+        MagicMock(
+            id="t2",
+            state=models.TaskState.completed,
+            execution_info=MagicMock(exit_code=1),
+        ),
+    ]
+
+    result = get_task_status(
+        job_name="my-job", task_id="t2", batch_client=mock_batch_client
+    )
+    payload = json.loads(result)
+
+    assert payload == {"id": "t2", "state": "completed", "exit_code": 1}
+
+
+def test_get_task_status_unknown_task_id():
+    mock_batch_client = MagicMock()
+    mock_batch_client.job.list.return_value = [MagicMock(id="my-job")]
+    mock_batch_client.task.list.return_value = [
+        MagicMock(
+            id="t1",
+            state=models.TaskState.completed,
+            execution_info=MagicMock(exit_code=0),
+        )
+    ]
+
+    with pytest.raises(ValueError) as excinfo:
+        get_task_status(
+            job_name="my-job", task_id="nope", batch_client=mock_batch_client
+        )
+    assert str(excinfo.value) == "Task nope does not exist in job my-job."

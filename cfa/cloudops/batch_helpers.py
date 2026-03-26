@@ -1673,7 +1673,23 @@ def get_vm_size(size="small"):
 
 def get_task_status(
     job_name: str, task_id: str | None = None, batch_client=None
-) -> dict:
+) -> json:
+    """Get the status of a task or all tasks in a job.
+
+    Args:
+        job_name (str): The name of the job.
+        task_id (str | None, optional): The ID of the task. If None, returns the status of all tasks. Defaults to None.
+        batch_client (_type_, optional): The batch client to use. Defaults to None.
+
+    Raises:
+        ValueError: If the job does not exist.
+        ValueError: If the specified task does not exist in the job.
+
+    Returns:
+        json: A JSON object containing the status information of the specified task(s).
+    """
+    if batch_client is None:
+        raise ValueError("Batch client must be provided to get task status.")
     if not check_job_exists(job_name, batch_client):
         raise ValueError(f"Job {job_name} does not exist.")
 
@@ -1682,25 +1698,23 @@ def get_task_status(
         if task_id not in [t.id for t in tasks]:
             raise ValueError(f"Task {task_id} does not exist in job {job_name}.")
 
-        for t in tasks:
-            if t.id == task_id:
+        for task in tasks:
+            if task.id == task_id:
                 return json.dumps(
                     {
-                        "id": t.id,
-                        "state": t.state.value,
-                        "exit_code": t.execution_info.exit_code,
+                        "id": task.id,
+                        "state": task.state.value,
+                        "exit_code": task.execution_info.exit_code,
                     }
                 )
-    else:
-        tasks = list(batch_client.task.list(job_name))
 
     out_json = []
-    for t in tasks:
+    for task in tasks:
         out_json.append(
             {
-                "id": t.id,
-                "state": t.state.value,
-                "exit_code": t.execution_info.exit_code,
+                "id": task.id,
+                "state": task.state.value,
+                "exit_code": task.execution_info.exit_code,
             }
         )
 
