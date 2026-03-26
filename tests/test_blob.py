@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import anyio
 import pytest
 from azure.batch import models
+from azure.mgmt.batch import models as mgmt_models
 from shared_fixtures import FAKE_BLOBS, MockLogger
 
 from cfa.cloudops.blob import (
@@ -80,6 +81,38 @@ def test_get_node_mount_config_success(mock_compute_node):
     )
     assert mounts
     assert len(mounts) == 2
+    assert isinstance(
+        mounts[0].azure_blob_file_system_configuration.identity_reference,
+        mgmt_models.ComputeNodeIdentityReference,
+    )
+
+
+def test_get_node_mount_config_success_identity_dict():
+    mounts = get_node_mount_config(
+        storage_containers=["mock-container-1", "mock-container-2"],
+        account_names=["mock-account-1"],
+        identity_references={"resource_id": "mock-resource-id"},
+    )
+    assert mounts
+    assert len(mounts) == 2
+    assert isinstance(
+        mounts[0].azure_blob_file_system_configuration.identity_reference,
+        mgmt_models.ComputeNodeIdentityReference,
+    )
+
+
+def test_get_node_mount_config_success_identity_str():
+    mounts = get_node_mount_config(
+        storage_containers=["mock-container-1", "mock-container-2"],
+        account_names=["mock-account-1"],
+        identity_references="mock-resource-id",
+    )
+    assert mounts
+    assert len(mounts) == 2
+    assert isinstance(
+        mounts[0].azure_blob_file_system_configuration.identity_reference,
+        mgmt_models.ComputeNodeIdentityReference,
+    )
 
 
 def test_get_node_mount_config_success_alternate(mock_compute_node):
