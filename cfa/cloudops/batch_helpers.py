@@ -1673,7 +1673,7 @@ def get_vm_size(size="small"):
 
 def get_task_status(
     job_name: str, task_id: str | None = None, batch_client=None
-) -> json:
+) -> str:
     """Get the status of a task or all tasks in a job.
 
     Args:
@@ -1686,7 +1686,7 @@ def get_task_status(
         ValueError: If the specified task does not exist in the job.
 
     Returns:
-        json: A JSON object containing the status information of the specified task(s).
+        str: A JSON string containing the status information of the specified task(s).
     """
     if batch_client is None:
         raise ValueError("Batch client must be provided to get task status.")

@@ -1,6 +1,5 @@
 import datetime
 import inspect
-import json
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
@@ -2336,7 +2335,7 @@ class CloudClient:
         tags = helpers.list_acr_tags(registry_name=registry_name, repo_name=repo_name)
         return tags
 
-    def get_task_status(self, job_name: str, task_id: str | None = None) -> json:
+    def get_task_status(self, job_name: str, task_id: str | None = None) -> str:
         """Get the status of a specific task or all tasks within a job.
 
         Args:
@@ -2344,7 +2343,7 @@ class CloudClient:
             task_id (str, optional): The ID of the specific task to check. If None,
                 returns the status of all tasks in the job. Default is None.
         Returns:
-            json: A JSON object containing the status information of the specified task(s).
+            str: A string (json) containing the status information of the specified task(s).
         """
         return batch_helpers.get_task_status(
             job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
