@@ -113,6 +113,8 @@ def test_get_node_mount_config_success_identity_str():
         mounts[0].azure_blob_file_system_configuration.identity_reference,
         mgmt_models.ComputeNodeIdentityReference,
     )
+
+
 def test_get_node_mount_config_success_alternate(mock_compute_node):
     mounts = get_node_mount_config(
         storage_containers=["mock-container-1", "mock-container-2"],
