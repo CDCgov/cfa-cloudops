@@ -354,7 +354,7 @@ class CloudClient:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
-
+            else:
                 start_task_command = rf"""/bin/bash -c 'set -euo pipefail mkdir
                                        -p /mnt/batch/tasks/startup/wd/node-metrics chmod +x ./start-metrics.sh
                                         nohup ./start-metrics.sh {monitoring_interval_seconds} \
