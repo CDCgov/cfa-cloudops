@@ -32,6 +32,12 @@ View the documentation [here](docs/index.md) for more help getting started with 
 
 To build documentation locally, clone this repo, navigate to the root of this repo, then run `poetry run mkdocs serve`.
 
+To run tests with `uv`, use the project test command:
+
+```bash
+uv run test
+```
+
 
 ## Public Domain Standard Notice
 This repository constitutes a work of the United States Government and is not
