@@ -1695,19 +1695,16 @@ def get_task_status(
 
     tasks = list(batch_client.task.list(job_name))
     if task_id is not None:
-        if task_id not in [t.id for t in tasks]:
+        task = next((t for t in tasks if t.id == task_id), None)
+        if task is None:
             raise ValueError(f"Task {task_id} does not exist in job {job_name}.")
-
-        for task in tasks:
-            if task.id == task_id:
-                return json.dumps(
-                    {
-                        "id": task.id,
-                        "state": task.state.value,
-                        "exit_code": task.execution_info.exit_code,
-                    }
-                )
-
+        return json.dumps(
+            {
+                "id": task.id,
+                "state": task.state.value,
+                "exit_code": task.execution_info.exit_code,
+            }
+        )
     out_json = []
     for task in tasks:
         out_json.append(

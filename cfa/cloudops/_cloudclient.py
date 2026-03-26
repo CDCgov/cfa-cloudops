@@ -2342,8 +2342,10 @@ class CloudClient:
             job_name (str): The name of the job containing the task(s).
             task_id (str, optional): The ID of the specific task to check. If None,
                 returns the status of all tasks in the job. Default is None.
+
         Returns:
-            str: A string (json) containing the status information of the specified task(s).
+            str: A JSON-encoded string containing the status information of the specified
+                task(s).
         """
         return batch_helpers.get_task_status(
             job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
