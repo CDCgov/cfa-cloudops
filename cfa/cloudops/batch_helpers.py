@@ -1701,8 +1701,8 @@ def get_task_status(
         return json.dumps(
             {
                 "id": task.id,
-                "state": str(task.state.value),
-                "exit_code": task.execution_info.exit_code,
+                "state": getattr(task.state, "value", str(task.state)),
+                "exit_code": getattr(task.execution_info, "exit_code", None),
             }
         )
     out_json = []
@@ -1710,8 +1710,8 @@ def get_task_status(
         out_json.append(
             {
                 "id": task.id,
-                "state": str(task.state.value),
-                "exit_code": task.execution_info.exit_code,
+                "state": getattr(task.state, "value", str(task.state)),
+                "exit_code": getattr(task.execution_info, "exit_code", None),
             }
         )
 

@@ -276,14 +276,20 @@ def test_get_task_status_all_tasks():
             state=models.TaskState.completed,
             execution_info=MagicMock(exit_code=0),
         ),
+        MagicMock(
+            id="t3",
+            state="active",
+            execution_info=None,
+        ),
     ]
 
     result = get_task_status(job_name="my-job", batch_client=mock_batch_client)
     payload = json.loads(result)
 
     assert isinstance(payload, list)
-    assert {item["id"] for item in payload} == {"t1", "t2"}
-    assert {item["state"] for item in payload} == {"running", "completed"}
+    assert {item["id"] for item in payload} == {"t1", "t2", "t3"}
+    assert {item["state"] for item in payload} == {"running", "completed", "active"}
+    assert next(item["exit_code"] for item in payload if item["id"] == "t3") is None
 
 
 def test_get_task_status_single_task():
