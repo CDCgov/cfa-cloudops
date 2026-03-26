@@ -51,6 +51,7 @@ allow-direct-references = true
 
 [project.scripts]
 hello = "cfa.cloudops.scripts:hello"
+test = "cfa.cloudops.scripts:test"
 create_pool = "cfa.cloudops.scripts:create_pool"
 create_job = "cfa.cloudops.scripts:create_job"
 create_job_schedule = "cfa.cloudops.scripts:create_job_schedule"
@@ -80,10 +81,21 @@ suspend_schedule = "cfa.cloudops.scripts:suspend_job_schedule"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.9.9",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=1.2.0",
+    "pytest-mock>=3.14.0",
+    "pytest-cov>=6.1.1",
+    "coverage-badge>=1.1.2"
+]
+
 [project.optional-dependencies]
 dev = [
     "ruff>=0.9.9",
     "pytest>=8.3.5",
+    "pytest-asyncio>=1.2.0",
     "pytest-mock>=3.14.0",
     "pytest-cov>=6.1.1",
     "coverage-badge>=1.1.2"
