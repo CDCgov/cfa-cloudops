@@ -27,7 +27,6 @@ dependencies = [
     "azure-mgmt-appcontainers>=4.0.0,<4.1.0",
     "azure-mgmt-authorization>=4.0.0,<4.1.0",
     "python-dotenv>=1.1.1,<2.0.0",
-    "pathlib>=1.0.0,<1.1.0",
     "docker>=7.1.0,<7.2.0",
     "pyyaml>=6.0.2,<6.1.0",
     "griddler @ git+https://github.com/CDCgov/pygriddler.git",
