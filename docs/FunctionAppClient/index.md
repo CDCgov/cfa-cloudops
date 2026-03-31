@@ -303,9 +303,9 @@ FunctionAppClient performs the following operations when the user invokes the `d
 
 | Sequence | Operation        | Purpose                                                                                           | Error Log Prefix                                                                           |
 |----------|------------------|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| 1        | log_into_portal  | Log into Azure portal as service principal                                                       | `cfaazurefunction.log_into_portal(): Error logging into Azure Portal.`                     |
-| 2        | publish_function | Create a zip file with Python template and user package. Upload the zip file to function app created in the previous step. | `cfaazurefunction.publish_function(): Error publishing Function App`                       |
-| 3        | restart_function | Restart the function app                                                                          | `cfaazurefunction.restart_function(): Error restarting Function App`                       |
+| 1        | log_into_portal  | Log into Azure portal as service principal                                                       | `FunctionAppClient.log_into_portal(): Error logging into Azure Portal.`                     |
+| 2        | publish_function | Create a zip file with Python template and user package. Upload the zip file to function app created in the previous step. | `FunctionAppClient.publish_function(): Error publishing Function App`                       |
+| 3        | restart_function | Restart the function app                                                                          | `FunctionAppClient.restart_function(): Error restarting Function App`                       |
 
 All errors and exceptions encountered during deployment shall be written to the console (e.g., Shell, PowerShell). The error log prefix indicates which stage that error occurred in.
 
@@ -327,29 +327,29 @@ Select logs from cfatimer panel:
 ### Detailed Error Messages
 
 ### Login Errors:
-- `cfaazurefunction.retrieve_secret()`: Unable to connect to Key Vault: `AZURE_SERVICE_PRINCIPAL_ID` environment variable is missing.
-- `cfaazurefunction.retrieve_secret()`: One of these must be provided: `AZURE_SERVICE_PRINCIPAL_SECRET_NAME` or `AZURE_SERVICE_PRINCIPAL_SECRET`
-- `cfaazurefunction.log_into_portal()`: Error logging into Azure Portal.
+- `FunctionAppClient.retrieve_secret()`: Unable to connect to Key Vault: `AZURE_SERVICE_PRINCIPAL_ID` environment variable is missing.
+- `FunctionAppClient.retrieve_secret()`: One of these must be provided: `AZURE_SERVICE_PRINCIPAL_SECRET_NAME` or `AZURE_SERVICE_PRINCIPAL_SECRET`
+- `FunctionAppClient.log_into_portal()`: Error logging into Azure Portal.
 
 ### Health Check Errors:
-- `cfaazurefunction.enable_health_check()`: Error updating health check
+- `FunctionAppClient.enable_health_check()`: Error updating health check
 
 ### App Settings Errors:
-- `cfaazurefunction.update_app_settings()`: Error updating app settings for Function App
+- `FunctionAppClient.update_app_settings()`: Error updating app settings for Function App
 
 ### Publishing Errors:
-- `cfaazurefunction.publish_function()`: Error publishing Function App
+- `FunctionAppClient.publish_function()`: Error publishing Function App
 
 ### Restart Errors:
-- `cfaazurefunction.restart_function()`: Error restarting Function App
+- `FunctionAppClient.restart_function()`: Error restarting Function App
 
 ### Deployment Errors:
 
-- `cfaazurefunction.deploy_function()`: Deployment aborted due to missing service principal credentials.
-- `cfaazurefunction.deploy_function()`: Deployment aborted due to login failure.
-- `cfaazurefunction.deploy_function()`: Deployment aborted because no function apps are available.
-- `cfaazurefunction.deploy_function()`: Deployment did not complete because Function App publish operation failed.
-- `cfaazurefunction.deploy_function()`: Deployment was completed however Function App restart operation failed.
+- `FunctionAppClient.deploy_function()`: Deployment aborted due to missing service principal credentials.
+- `FunctionAppClient.deploy_function()`: Deployment aborted due to login failure.
+- `FunctionAppClient.deploy_function()`: Deployment aborted because no function apps are available.
+- `FunctionAppClient.deploy_function()`: Deployment did not complete because Function App publish operation failed.
+- `FunctionAppClient.deploy_function()`: Deployment was completed however Function App restart operation failed.
 
 ### Permissions Issues
 Ensure the Service Principal has the necessary permissions to read from and write to the Azure Blob Storage.
