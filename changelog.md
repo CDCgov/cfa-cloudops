@@ -7,10 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-<<<<<<< fix_log_messages
-## v0.3.15
+## v0.3.18
 - updated log messages in `FunctionAppClient` module to store the correct class name
-=======
+
 ## v0.3.17
 - set a maximum version for libraries to avoid breaking changes from updates
 
