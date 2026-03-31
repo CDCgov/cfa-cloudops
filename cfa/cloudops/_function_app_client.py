@@ -105,6 +105,9 @@ class FunctionAppClient:
         result = self.conn.sql(query).fetchdf()
         if not result.empty:
             available_function_app = result.iloc[0]["FunctionAppName"]
+            logger.info(
+                f"FunctionAppClient._find_available_function_app: Found available function app: {available_function_app}"
+            )
         return available_function_app
 
     def _allocate_function_app(self):
@@ -120,6 +123,9 @@ class FunctionAppClient:
             TO '{FUNCTION_APPS_CSV_PATH}'
             (HEADER, DELIMITER ',', OVERWRITE 1)
         """)
+        logger.info(
+            f"FunctionAppClient._allocate_function_app: Assigned function app to user package: {self.function_app_name}"
+        )
         return True
 
     def _log_into_portal(self) -> bool:
@@ -146,12 +152,12 @@ class FunctionAppClient:
                 check=True,
             )
             logger.info(
-                "cfaazurefunction.log_into_portal(): Logged into Azure Portal successfully "
+                "FunctionAppClient.log_into_portal(): Logged into Azure Portal successfully "
             )
             return True
         except subprocess.CalledProcessError as e:
             logger.error(
-                f"cfaazurefunction.log_into_portal(): Error logging into Azure Portal.{e}"
+                f"FunctionAppClient.log_into_portal(): Error logging into Azure Portal.{e}"
             )
             return False
 
@@ -173,12 +179,12 @@ class FunctionAppClient:
                 check=True,
             )
             logger.info(
-                "cfaazurefunction.enable_health_check(): Function health check enabled."
+                "FunctionAppClient.enable_health_check(): Function health check enabled."
             )
             return True
         except subprocess.CalledProcessError as e:
             logger.error(
-                f"cfaazurefunction.enable_health_check(): Error updating health check {e}"
+                f"FunctionAppClient.enable_health_check(): Error updating health check {e}"
             )
             return False
 
@@ -200,12 +206,12 @@ class FunctionAppClient:
                 arguments.append(f"{key}={value}")
             subprocess.run(arguments, check=True)
             logger.info(
-                "cfaazurefunction.update_app_settings(): Function app settings updated successfully."
+                "FunctionAppClient.update_app_settings(): Function app settings updated successfully."
             )
             return True
         except subprocess.CalledProcessError as e:
             logger.error(
-                f"cfaazurefunction.update_app_settings(): Error updating app settings for Function App {e}"
+                f"FunctionAppClient.update_app_settings(): Error updating app settings for Function App {e}"
             )
             return False
 
@@ -289,7 +295,7 @@ class FunctionAppClient:
             os.chdir(parent_path)
             self._delete_deployment_folder()
             logger.info(
-                "cfaazurefunction.publish_function(): Function app published successfully to {self.function_app_name}."
+                "FunctionAppClient.publish_function(): Function app published successfully to {self.function_app_name}."
             )
 
             # Now update the schedule in function app
@@ -382,7 +388,7 @@ class FunctionAppClient:
             function_name = self._find_available_function_app()
             if not function_name:
                 logger.error(
-                    "cfaazurefunction.deploy_function(): Deployment aborted because no function apps are available. Please provision additional function apps."
+                    "FunctionAppClient.deploy_function(): Deployment aborted because no function apps are available. Please provision additional function apps."
                 )
                 return False
             self.function_app_name = function_name
@@ -398,7 +404,7 @@ class FunctionAppClient:
             return False
         if not self._allocate_function_app():
             logger.info(
-                "cfaazurefunction.deploy_function(): Unable to assign function app to user provided applicaion."
+                "FunctionAppClient.deploy_function(): Unable to assign function app to user provided application."
             )
         if not self._restart_function():
             logger.error(
