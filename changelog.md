@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.18
+- reverted to snake_cake notation for reading batch mount properties
+
 ## v0.3.17
 - set a maximum version for libraries to avoid breaking changes from updates
 
