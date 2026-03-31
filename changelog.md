@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.15
+- updated log messages in `FunctionAppClient` module to store the correct class name
+
 ## v0.3.14
 - fixed defect in `batch_helpers.get_rel_mnt_path` function for getting optional mount configuration in a pool
 
