@@ -95,7 +95,9 @@ class FunctionAppClient:
         )
 
         # Query the file directly from Azure Blob Storage
-        query = f"CREATE TABLE function_apps AS SELECT * FROM '{FUNCTION_APPS_CSV_PATH}' WHERE ISDEPLOYED = False"
+        query = (
+            f"CREATE TABLE function_apps AS SELECT * FROM '{FUNCTION_APPS_CSV_PATH}'"
+        )
         result = self.conn.sql(query)
         query = (
             "SELECT FunctionAppName FROM function_apps WHERE IsDeployed = False LIMIT 1"

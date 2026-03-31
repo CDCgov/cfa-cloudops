@@ -354,7 +354,7 @@ class CloudClient:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
-
+            else:
                 start_task_command = rf"""/bin/bash -c 'set -euo pipefail mkdir
                                        -p /mnt/batch/tasks/startup/wd/node-metrics chmod +x ./start-metrics.sh
                                         nohup ./start-metrics.sh {monitoring_interval_seconds} \
@@ -2334,3 +2334,19 @@ class CloudClient:
         """
         tags = helpers.list_acr_tags(registry_name=registry_name, repo_name=repo_name)
         return tags
+
+    def get_task_status(self, job_name: str, task_id: str | None = None) -> str:
+        """Get the status of a specific task or all tasks within a job.
+
+        Args:
+            job_name (str): The name of the job containing the task(s).
+            task_id (str, optional): The ID of the specific task to check. If None,
+                returns the status of all tasks in the job. Default is None.
+
+        Returns:
+            str: A JSON-encoded string containing the status information of the specified
+                task(s).
+        """
+        return batch_helpers.get_task_status(
+            job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
+        )

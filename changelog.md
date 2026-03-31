@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+<<<<<<< fix_log_messages
 ## v0.3.15
 - updated log messages in `FunctionAppClient` module to store the correct class name
+=======
+## v0.3.17
+- set a maximum version for libraries to avoid breaking changes from updates
+
+## v0.3.16
+- add a get_task_status() function to CloudClient to get point in time task status
+
+## v0.3.15
+- set an upper limit for azure-mgmt-batch package to undo its breaking changes
+>>>>>>> main
 
 ## v0.3.14
 - fixed defect in `batch_helpers.get_rel_mnt_path` function for getting optional mount configuration in a pool

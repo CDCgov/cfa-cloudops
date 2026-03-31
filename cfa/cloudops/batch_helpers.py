@@ -1,5 +1,6 @@
 import csv
 import datetime
+import json
 import logging
 import os
 import time
@@ -1668,3 +1669,50 @@ def get_vm_size(size="small"):
         )
     logger.info(f"Selected VM size: {vm_size} for descriptor: {size}")
     return vm_size
+
+
+def get_task_status(
+    job_name: str, task_id: str | None = None, batch_client=None
+) -> str:
+    """Get the status of a task or all tasks in a job.
+
+    Args:
+        job_name (str): The name of the job.
+        task_id (str | None, optional): The ID of the task. If None, returns the status of all tasks. Defaults to None.
+        batch_client (_type_, optional): The batch client to use. Defaults to None.
+
+    Raises:
+        ValueError: If the job does not exist.
+        ValueError: If the specified task does not exist in the job.
+
+    Returns:
+        str: A JSON string containing the status information of the specified task(s).
+    """
+    if batch_client is None:
+        raise ValueError("Batch client must be provided to get task status.")
+    if not check_job_exists(job_name, batch_client):
+        raise ValueError(f"Job {job_name} does not exist.")
+
+    tasks = list(batch_client.task.list(job_name))
+    if task_id is not None:
+        task = next((t for t in tasks if t.id == task_id), None)
+        if task is None:
+            raise ValueError(f"Task {task_id} does not exist in job {job_name}.")
+        return json.dumps(
+            {
+                "id": task.id,
+                "state": getattr(task.state, "value", str(task.state)),
+                "exit_code": getattr(task.execution_info, "exit_code", None),
+            }
+        )
+    out_json = []
+    for task in tasks:
+        out_json.append(
+            {
+                "id": task.id,
+                "state": getattr(task.state, "value", str(task.state)),
+                "exit_code": getattr(task.execution_info, "exit_code", None),
+            }
+        )
+
+    return json.dumps(out_json)

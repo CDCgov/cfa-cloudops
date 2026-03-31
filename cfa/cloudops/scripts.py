@@ -1,4 +1,5 @@
 import argparse
+import sys
 import textwrap
 
 from cfa.cloudops import CloudClient
@@ -1215,3 +1216,15 @@ def generate_sample_env():
         print("Sample .env file 'cloudops-sample.env' created successfully.")
     except Exception as e:
         print(f"Error creating sample .env file: {e}")
+
+
+def test():
+    try:
+        import pytest
+    except ImportError as exc:
+        raise RuntimeError(
+            "pytest is not installed. Run `uv run test` from the project root, "
+            "or install the dev dependencies first with `uv sync --group dev`."
+        ) from exc
+
+    raise SystemExit(pytest.main(sys.argv[1:]))
