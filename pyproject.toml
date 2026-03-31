@@ -1,10 +1,6 @@
 [project]
 name = "cfa.cloudops"
-<<<<<<< fix_log_messages
-version = "0.3.15"
-=======
-version = "0.3.17"
->>>>>>> main
+version = "0.3.18"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
