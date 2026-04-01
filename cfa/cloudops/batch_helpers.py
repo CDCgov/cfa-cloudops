@@ -1041,16 +1041,16 @@ def get_rel_mnt_path(
         )
         return "ERROR!"
 
-    mc = pool_info.as_dict().get("properties", {}).get("mountConfiguration", {})
+    mc = pool_info.as_dict().get("mount_configuration", {})
     logger.debug(f"Searching through {len(mc)} mount configurations")
 
     for m in mc:
         if (
-            m.get("azureBlobFileSystemConfiguration", {}).get("containerName")
+            m.get("azure_blob_file_system_configuration", {}).get("container_name")
             == blob_name
         ):
-            rel_mnt_path = m.get("azureBlobFileSystemConfiguration", {}).get(
-                "relativeMountPath"
+            rel_mnt_path = m.get("azure_blob_file_system_configuration", {}).get(
+                "relative_mount_path"
             )
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
@@ -1162,16 +1162,16 @@ def get_pool_mounts(
 
     mounts = []
     try:
-        mc = pool_info.as_dict().get("properties", {}).get("mountConfiguration", {})
+        mc = pool_info.as_dict().get("mount_configuration", {})
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
             mount_info = {
-                "source": m.get("azureBlobFileSystemConfiguration", {}).get(
-                    "relativeMountPath"
+                "source": m.get("azure_blob_file_system_configuration", {}).get(
+                    "relative_mount_path"
                 ),
-                "target": m.get("azureBlobFileSystemConfiguration", {}).get(
-                    "relativeMountPath"
+                "target": m.get("azure_blob_file_system_configuration", {}).get(
+                    "relative_mount_path"
                 ),
             }
             mounts.append(mount_info)
