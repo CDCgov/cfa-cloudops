@@ -388,7 +388,7 @@ _Response_:
 
 #### get_function_details
 
-Fetch details of specific function within a function app. You can invoke the `list_functions` method to obtain list of function names from the function app.  
+Fetch details of specific function within a function app. You can invoke the `list_functions` method to obtain list of function names from the function app.
 
 _Example_:
 ```python
@@ -403,7 +403,7 @@ _Response_:
 
 #### get_health_check_flag
 
-Retrieves the current status (True or False) of health check enabled on a function app. 
+Retrieves the current status (True or False) of health check enabled on a function app.
 
 _Example_:
 ```python
@@ -418,7 +418,7 @@ True
 
 #### get_tags
 
-Retrieves the tags assigned to an app. This is a subset of the response returned from `get_configuration` method. 
+Retrieves the tags assigned to an app. This is a subset of the response returned from `get_configuration` method.
 
 _Example_:
 ```python
@@ -433,7 +433,7 @@ _Response_:
 
 #### list_functions
 
-Retrieves list of all functions packaged and deployed to the specified function app. 
+Retrieves list of all functions packaged and deployed to the specified function app.
 
 _Example_:
 ```python
