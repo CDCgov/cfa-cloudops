@@ -377,7 +377,7 @@ Retrieves the configuration details an app, such as platform version, runtime en
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-func_details = FunctionAppClient.get_configuration(function_app_name='cfapredictafmprdfunc03')
+FunctionAppClient.get_configuration(function_app_name='cfapredictafmprdfunc03')
 ```
 
 _Response_:
@@ -393,7 +393,7 @@ Fetch details of specific function within a function app. You can invoke the `li
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-func_details = FunctionAppClient.get_function_details(function_app_name='cfapredictafmprdfunc03', function_name='cfatimer')
+FunctionAppClient.get_function_details(function_app_name='cfapredictafmprdfunc03', function_name='cfatimer')
 ```
 
 _Response_:
@@ -408,7 +408,7 @@ Retrieves the current status (True or False) of health check enabled on a functi
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-func_details = FunctionAppClient.get_health_check_flag(function_app_name='cfapredictafmprdfunc03')
+FunctionAppClient.get_health_check_flag(function_app_name='cfapredictafmprdfunc03')
 ```
 
 _Response_:
@@ -423,7 +423,7 @@ Retrieves the tags assigned to an app. This is a subset of the response returned
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-func_details = FunctionAppClient.get_tags(function_app_name='cfapredictafmprdfunc03')
+FunctionAppClient.get_tags(function_app_name='cfapredictafmprdfunc03')
 ```
 
 _Response_:
@@ -438,7 +438,7 @@ Retrieves list of all functions packaged and deployed to the specified function 
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-func_details = FunctionAppClient.list_functions(function_app_name='cfapredictafmprdfunc03')
+FunctionAppClient.list_functions(function_app_name='cfapredictafmprdfunc03')
 ```
 
 _Response_:
