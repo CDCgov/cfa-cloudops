@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.20
+- added metadata lookup methods for Azure Function Apps to the `FunctionAppClient` module
+
 ## v0.3.19
 - reverted to snake_cake notation for reading batch mount properties
 

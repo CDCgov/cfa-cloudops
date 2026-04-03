@@ -363,6 +363,30 @@ After creating the function app, please contact EDAV team and request permission
 - Debugging the function app in Azure requires specific permissions. Currently, debugging is not supported directly. Users may need to work with the EDAV team for additional access if needed.
 - Currently the Azure Function Manager can only be invoked from a Linux environment such as Bash shell, Git Bash or Windows Subsystem for Linux. In a future release, support shall be added for Windows Command prompt.
 
+## 6. Scripts for getting metadata about exising Azure Function App
+
+After successfully deploying a function app, you can use one of the following class methods on `FunctionAppClient` to retrieve configuration and runtime details about the function app. All these class methods expect Azure resource group and subscription ID to be provided. There are 2 ways of setting this up:
+
+* set the `AZURE_RESOURCE_GROUP` and `AZURE_SUBSCRIPTION_ID` environment variables, or
+* set the `resource_group` and `subscription_id` method parameters on each invocation
+
+### FunctionAppClient.get_configuration
+
+Retrieves the configuration details an app, such as platform version, runtime environment, handler mappings, IP security restrictions, default documents, virtual applications, Always On, etc.
+
+Example:
+```python
+from cfa.cloudops import FunctionAppClient
+func_details = FunctionAppClient.get_configuration(function_app_name='cfapredictafmprdfunc03')
+```
+
+Response:
+```json
+{'additional_properties': {'location': 'East US', 'tags': {'center': 'cfa', 'dateCreated': '2024-07-25 00:00:00', 'division': 'none', 'environment': 'prd', 'project': 'afm', 'requestor': ' ure7@cdc.gov', 'Purpose': 'Run Scheduled Job', 'costid': 'cfa', 'resourcename': 'cfapredictafmprdfunc03', 'issharedresource': 'no', 'owner': 'edav', 'createdby': 'none'}}, 'id': '/subscriptions/ef340bd6-2809-4635-b18b-7e6583a8803b/resourceGroups/EXT-EDAV-CFA-PRD/providers/Microsoft.Web/sites/cfapredictafmprdfunc03/config/web', 'name': 'cfapredictafmprdfunc03', 'kind': None, 'type': 'Microsoft.Web/sites/config', 'number_of_workers': 1, 'default_documents': ['Default.htm', 'Default.html', 'Default.asp', 'index.htm', 'index.html', 'iisstart.htm', 'default.aspx', 'index.php'], 'net_framework_version': 'v4.0', 'php_version': '', 'python_version': '', 'node_version': '', 'power_shell_version': '', 'linux_fx_version': 'PYTHON|3.9', 'windows_fx_version': None, 'request_tracing_enabled': False, 'request_tracing_expiration_time': None, 'remote_debugging_enabled': False, 'remote_debugging_version': None, 'http_logging_enabled': False, 'acr_use_managed_identity_creds': False, 'acr_user_managed_identity_id': None, 'logs_directory_size_limit': 35, 'detailed_error_logging_enabled': False, 'publishing_username': '$cfapredictafmprdfunc03', 'app_settings': None, 'metadata': None, 'connection_strings': None, 'machine_key': None, 'handler_mappings': None, 'document_root': None, 'scm_type': 'None', 'use32_bit_worker_process': False, 'web_sockets_enabled': False, 'always_on': True, 'java_version': None, 'java_container': None, 'java_container_version': None, 'app_command_line': '', 'managed_pipeline_mode': 'Integrated', 'virtual_applications': [<azure.mgmt.web.models._models_py3.VirtualApplication object at 0x789ab99aee00>], 'load_balancing': 'LeastRequests', 'experiments': <azure.mgmt.web.models._models_py3.Experiments object at 0x789ab99ac340>, 'limits': None, 'auto_heal_enabled': False, 'auto_heal_rules': None, 'tracing_options': None, 'vnet_name': '', 'vnet_route_all_enabled': False, 'vnet_private_ports_count': 0, 'cors': <azure.mgmt.web.models._models_py3.CorsSettings object at 0x789ab99ac5e0>, 'push': None, 'api_definition': None, 'api_management_config': None, 'auto_swap_slot_name': None, 'local_my_sql_enabled': False, 'managed_service_identity_id': None, 'x_managed_service_identity_id': None, 'key_vault_reference_identity': None, 'ip_security_restrictions': [<azure.mgmt.web.models._models_py3.IpSecurityRestriction object at 0x789ab99acfd0>], 'ip_security_restrictions_default_action': 'Allow', 'scm_ip_security_restrictions': [<azure.mgmt.web.models._models_py3.IpSecurityRestriction object at 0x789ab99aebc0>], 'scm_ip_security_restrictions_default_action': 'Allow', 'scm_ip_security_restrictions_use_main': False, 'http20_enabled': False, 'http20_proxy_flag': 0, 'min_tls_version': '1.2', 'min_tls_cipher_suite': None, 'scm_min_tls_version': '1.2', 'ftps_state': 'Disabled', 'pre_warmed_instance_count': 0, 'function_app_scale_limit': 0, 'elastic_web_app_scale_limit': None, 'health_check_path': '/api/HealthCheck', 'functions_runtime_scale_monitoring_enabled': False, 'website_time_zone': None, 'minimum_elastic_instance_count': 1, 'azure_storage_accounts': {}, 'public_network_access': 'Enabled'}
+{'location': 'East US', 'tags': {'center': 'cfa', 'dateCreated': '2024-07-25 00:00:00', 'division': 'none', 'environment': 'prd', 'project': 'afm', 'requestor': ' ure7@cdc.gov', 'Purpose': 'Run Scheduled Job', 'costid': 'cfa', 'resourcename': 'cfapredictafmprdfunc03', 'issharedresource': 'no', 'owner': 'edav', 'createdby': 'none'}}
+```
+
+
 ### Conclusion
 By following this guide, you should be able to set up and use the CFA Azure Function test effectively. Ensure that all environment variables are correctly set and that your Service Principal has the necessary permissions.
 
