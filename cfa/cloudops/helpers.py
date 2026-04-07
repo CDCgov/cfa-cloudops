@@ -378,6 +378,9 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
     logger.info(
         f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
     )
+    # login
+    sp.run("az login --identity")
+    # get tags command
     acr_tags_command = [
         "az",
         "acr",
