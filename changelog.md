@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.20
+
+- Added managed identity login to `list_acr_tags`
+
 ## v0.3.19
 - reverted to snake_cake notation for reading batch mount properties
 
