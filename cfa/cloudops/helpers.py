@@ -379,21 +379,11 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
         f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
     )
     # Check whether Azure CLI is already authenticated before attempting login.
-    auth_check = sp.run(
-        ["az", "account", "show"],
-        capture_output=True,
-        text=True,
-        stdout=sp.DEVNULL,
-        stderr=sp.DEVNULL,
-    )
+    auth_check = sp.run(["az", "account", "show"], capture_output=True, text=True)
     if auth_check.returncode != 0:
         logger.info("Azure CLI is not authenticated; attempting managed identity login")
         login_result = sp.run(
-            ["az", "login", "--identity"],
-            capture_output=True,
-            text=True,
-            stdout=sp.DEVNULL,
-            stderr=sp.PIPE,
+            ["az", "login", "--identity"], capture_output=True, text=True
         )
         if login_result.returncode != 0:
             error_msg = (
