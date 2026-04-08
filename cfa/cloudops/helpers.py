@@ -379,40 +379,45 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
         f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
     )
     # Check whether Azure CLI is already authenticated before attempting login.
-    auth_check = sp.run(["az", "account", "show"], capture_output=True, text=True)
+    auth_check = sp.run(
+        ["az", "account", "show", "--output", "none"],
+        capture_output=True,
+        text=True,
+    )
+
     if auth_check.returncode != 0:
         logger.info("Azure CLI is not authenticated; attempting managed identity login")
         login_result = sp.run(
-            ["az", "login", "--identity"], capture_output=True, text=True
-        )
-        if login_result.returncode != 0:
-            error_msg = (
-                login_result.stderr.strip() if login_result.stderr else "Unknown error"
-            )
-            raise Exception(f"Azure CLI login failed: {error_msg}")
-    if login_result.returncode != 0:
-        login_error = (
-            login_result.stderr.strip() if login_result.stderr else "Unknown error"
-        )
-        logger.warning(
-            "Managed identity login failed; checking for an existing Azure CLI session. "
-            f"az login --identity error: {login_error}"
-        )
-        account_show_result = sp.run(
-            ["az", "account", "show", "--output", "json"],
+            ["az", "login", "--identity", "--output", "none"],
             capture_output=True,
             text=True,
         )
-        if account_show_result.returncode != 0:
-            raise Exception(
-                "Azure CLI authentication failed: managed identity login was unsuccessful "
-                f"and no existing authenticated session was found. az login --identity "
-                f"error: {login_error}"
+
+        if login_result.returncode != 0:
+            login_error = (
+                login_result.stderr.strip() if login_result.stderr else "Unknown error"
             )
-        logger.info(
-            "Managed identity login failed, but an existing Azure CLI session is "
-            "authenticated; proceeding with the existing session."
-        )
+            logger.warning(
+                "Managed identity login failed; checking for an existing Azure CLI session. "
+                f"az login --identity error: {login_error}"
+            )
+
+            account_show_result = sp.run(
+                ["az", "account", "show", "--output", "none"],
+                capture_output=True,
+                text=True,
+            )
+            if account_show_result.returncode != 0:
+                raise Exception(
+                    "Azure CLI authentication failed: managed identity login was unsuccessful "
+                    "and no existing authenticated session was found. "
+                    f"az login --identity error: {login_error}"
+                )
+
+            logger.info(
+                "Managed identity login failed, but an existing Azure CLI session is "
+                "authenticated; proceeding with the existing session."
+            )
     # get tags command
     acr_tags_command = [
         "az",
