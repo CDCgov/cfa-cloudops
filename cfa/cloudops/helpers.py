@@ -379,12 +379,34 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
         f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
     )
     # login
-    sp.run(
+    login_result = sp.run(
         ["az", "login", "--identity"],
-        capture_output=False,
-        stdout=sp.DEVNULL,
-        stderr=sp.DEVNULL,
+        capture_output=True,
+        text=True,
     )
+    if login_result.returncode != 0:
+        login_error = (
+            login_result.stderr.strip() if login_result.stderr else "Unknown error"
+        )
+        logger.warning(
+            "Managed identity login failed; checking for an existing Azure CLI session. "
+            f"az login --identity error: {login_error}"
+        )
+        account_show_result = sp.run(
+            ["az", "account", "show", "--output", "json"],
+            capture_output=True,
+            text=True,
+        )
+        if account_show_result.returncode != 0:
+            raise Exception(
+                "Azure CLI authentication failed: managed identity login was unsuccessful "
+                f"and no existing authenticated session was found. az login --identity "
+                f"error: {login_error}"
+            )
+        logger.info(
+            "Managed identity login failed, but an existing Azure CLI session is "
+            "authenticated; proceeding with the existing session."
+        )
     # get tags command
     acr_tags_command = [
         "az",
