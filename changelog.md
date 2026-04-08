@@ -9,7 +9,7 @@ The versioning pattern is `major.minor.patch`.
 ---
 ## v0.3.20
 
-- add a managed identity login to list_acr_tags
+- Added managed identity login to `list_acr_tags`
 
 ## v0.3.19
 - reverted to snake_cake notation for reading batch mount properties
