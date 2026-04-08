@@ -386,7 +386,10 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
     )
 
     if auth_check.returncode != 0:
-        logger.info("Azure CLI is not authenticated; attempting managed identity login")
+        auth_check_error = auth_check.stderr.strip() if auth_check.stderr else ""
+        if auth_check_error:
+            logger.debug(f"Azure CLI account check stderr: {auth_check_error}")
+        logger.info("Azure CLI account check failed; attempting managed identity login")
         login_result = sp.run(
             ["az", "login", "--identity", "--output", "none"],
             capture_output=True,
