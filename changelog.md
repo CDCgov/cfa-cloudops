@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.3.20
+## v0.3.21
+- added metadata lookup methods for Azure Function Apps to the `FunctionAppClient` module
 
+## v0.3.20
 - Added managed identity login to `list_acr_tags`
 
 ## v0.3.19
