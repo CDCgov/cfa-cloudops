@@ -378,6 +378,50 @@ def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
     logger.info(
         f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
     )
+    # Check whether Azure CLI is already authenticated before attempting login.
+    auth_check = sp.run(
+        ["az", "account", "show", "--output", "none"],
+        capture_output=True,
+        text=True,
+    )
+
+    if auth_check.returncode != 0:
+        auth_check_error = auth_check.stderr.strip() if auth_check.stderr else ""
+        if auth_check_error:
+            logger.debug(f"Azure CLI account check stderr: {auth_check_error}")
+        logger.info("Azure CLI account check failed; attempting managed identity login")
+        login_result = sp.run(
+            ["az", "login", "--identity", "--output", "none"],
+            capture_output=True,
+            text=True,
+        )
+
+        if login_result.returncode != 0:
+            login_error = (
+                login_result.stderr.strip() if login_result.stderr else "Unknown error"
+            )
+            logger.warning(
+                "Managed identity login failed; checking for an existing Azure CLI session. "
+                f"az login --identity error: {login_error}"
+            )
+
+            account_show_result = sp.run(
+                ["az", "account", "show", "--output", "none"],
+                capture_output=True,
+                text=True,
+            )
+            if account_show_result.returncode != 0:
+                raise Exception(
+                    "Azure CLI authentication failed: managed identity login was unsuccessful "
+                    "and no existing authenticated session was found. "
+                    f"az login --identity error: {login_error}"
+                )
+
+            logger.info(
+                "Managed identity login failed, but an existing Azure CLI session is "
+                "authenticated; proceeding with the existing session."
+            )
+    # get tags command
     acr_tags_command = [
         "az",
         "acr",

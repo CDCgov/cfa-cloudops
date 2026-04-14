@@ -8,6 +8,8 @@ import time
 from typing import Callable, List, Optional, Tuple
 
 import duckdb
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.web import WebSiteManagementClient
 
 from .auth import (
     DefaultCredentialHandler,
@@ -22,6 +24,105 @@ FUNCTION_APPS_CSV_PATH = "az://input-test/data/cfa_predict_function_apps.csv"
 
 
 class FunctionAppClient:
+    @classmethod
+    def get_configuration(
+        cls,
+        function_app_name: str,
+        resource_group: Optional[str] = None,
+        subscription_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        resource_group = resource_group or os.getenv("AZURE_RESOURCE_GROUP")
+        if resource_group is None:
+            raise ValueError(
+                "Resource group must be provided either as an argument or through the AZURE_RESOURCE_GROUP environment variable."
+            )
+        subscription_id = subscription_id or os.getenv("AZURE_SUBSCRIPTION_ID")
+        if subscription_id is None:
+            raise ValueError(
+                "Subscription ID must be provided either as an argument or through the AZURE_SUBSCRIPTION_ID environment variable."
+            )
+        credential = DefaultAzureCredential()
+        web_mgmt_client = WebSiteManagementClient(credential, subscription_id)
+        function_app_config = web_mgmt_client.web_apps.get_configuration(
+            resource_group, function_app_name
+        )
+        return function_app_config
+
+    @classmethod
+    def get_tags(
+        cls,
+        function_app_name: str,
+        resource_group: Optional[str] = None,
+        subscription_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        return cls.get_configuration(
+            function_app_name, resource_group, subscription_id
+        ).additional_properties.get("tags", [])
+
+    @classmethod
+    def get_health_check_flag(
+        cls,
+        function_app_name: str,
+        resource_group: Optional[str] = None,
+        subscription_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        return (
+            cls.get_configuration(
+                function_app_name, resource_group, subscription_id
+            ).health_check_path
+            is not None
+        )
+
+    @classmethod
+    def list_functions(
+        cls,
+        function_app_name: str,
+        resource_group: Optional[str] = None,
+        subscription_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        resource_group = resource_group or os.getenv("AZURE_RESOURCE_GROUP")
+        if resource_group is None:
+            raise ValueError(
+                "Resource group must be provided either as an argument or through the AZURE_RESOURCE_GROUP environment variable."
+            )
+        subscription_id = subscription_id or os.getenv("AZURE_SUBSCRIPTION_ID")
+        if subscription_id is None:
+            raise ValueError(
+                "Subscription ID must be provided either as an argument or through the AZURE_SUBSCRIPTION_ID environment variable."
+            )
+        credential = DefaultAzureCredential()
+        web_mgmt_client = WebSiteManagementClient(credential, subscription_id)
+        function_list = []
+        for function in web_mgmt_client.web_apps.list_functions(
+            resource_group, function_app_name
+        ):
+            function_list.append(function.as_dict())
+        return function_list
+
+    @classmethod
+    def get_function_details(
+        cls,
+        function_app_name: str,
+        function_name: str,
+        resource_group: Optional[str] = None,
+        subscription_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        resource_group = resource_group or os.getenv("AZURE_RESOURCE_GROUP")
+        if resource_group is None:
+            raise ValueError(
+                "Resource group must be provided either as an argument or through the AZURE_RESOURCE_GROUP environment variable."
+            )
+        subscription_id = subscription_id or os.getenv("AZURE_SUBSCRIPTION_ID")
+        if subscription_id is None:
+            raise ValueError(
+                "Subscription ID must be provided either as an argument or through the AZURE_SUBSCRIPTION_ID environment variable."
+            )
+        credential = DefaultAzureCredential()
+        web_mgmt_client = WebSiteManagementClient(credential, subscription_id)
+        return web_mgmt_client.web_apps.get_function(
+            resource_group, function_app_name, function_name
+        )
+
     def __init__(
         self,
         function_app_name: Optional[str] = None,
