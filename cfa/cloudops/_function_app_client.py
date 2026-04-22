@@ -287,7 +287,7 @@ class FunctionAppClient:
             )
             return True
         except subprocess.CalledProcessError as e:
-            logger.info(
+            logger.error(
                 f"FunctionAppClient._clone_deployment_slot(): Error cloning deployment slot.{e}"
             )
             return False
@@ -390,7 +390,7 @@ class FunctionAppClient:
             )
             return True
         except subprocess.CalledProcessError as e:
-            logger.info(
+            logger.error(
                 f"FunctionAppClient.log_into_portal(): Error logging into Azure Portal.{e}"
             )
             return False
@@ -423,7 +423,7 @@ class FunctionAppClient:
             )
             return True
         except subprocess.CalledProcessError as e:
-            logger.info(
+            logger.error(
                 f"FunctionAppClient.enable_health_check(): Error updating health check {e}"
             )
             return False
@@ -457,7 +457,7 @@ class FunctionAppClient:
             )
             return True
         except subprocess.CalledProcessError as e:
-            logger.info(
+            logger.error(
                 f"FunctionAppClient.update_app_settings(): Error updating app settings for Function App {e}"
             )
             return False
@@ -662,7 +662,7 @@ class FunctionAppClient:
             return True
 
         except subprocess.CalledProcessError as e:
-            logger.info(
+            logger.error(
                 f"FunctionAppClient._publish_function(): Error publishing Function App: {e}"
             )
             if os.path.exists(f"{parent_path}/{self.function_app_name}"):
@@ -690,7 +690,7 @@ class FunctionAppClient:
             )
             return True
         except subprocess.CalledProcessError as e:
-            logger.info(
+            logger.error(
                 f"FunctionAppClient._restart_function(): Error restarting Function App {e}"
             )
             return False
