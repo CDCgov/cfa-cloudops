@@ -195,7 +195,7 @@ class FunctionAppClient:
         if keyvault is None:
             dotenv_path = dotenv_path or ".env"
         if keyvault is None and force_keyvault:
-            logger.info(
+            logger.error(
                 "Keyvault information not found but force_keyvault set to True."
             )
             raise ValueError("Keyvault information is required but not found.")
@@ -716,7 +716,7 @@ class FunctionAppClient:
 
                 code = '''
                     def my_function():
-                        logger.info(f"I reached here {2+2}")
+                        print(f"I reached here {2+2}")
                         return 2+2
                 '''
             function_app_name='cfapredictafmprdfunc01'
@@ -725,14 +725,14 @@ class FunctionAppClient:
             function_app_client.deploy_function(cron_schedule, code)
         """
         if not self._log_into_portal():
-            logger.info(
+            logger.error(
                 "FunctionAppClient.deploy_function(): Deployment aborted due to login failure."
             )
             return False
         if not self.function_app_name:
             function_name = self._find_available_function_app()
             if not function_name:
-                logger.info(
+                logger.error(
                     "FunctionAppClient.deploy_function(): Deployment aborted because no function apps are available. Please provision additional function apps."
                 )
                 return False
@@ -743,16 +743,16 @@ class FunctionAppClient:
             dependencies,
             environment_variables,
         ):
-            logger.info(
+            logger.error(
                 "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
             )
             return False
         if not self._allocate_function_app():
-            logger.info(
+            logger.error(
                 "FunctionAppClient.deploy_function(): Unable to assign function app to user provided application."
             )
         if not self._restart_function():
-            logger.info(
+            logger.error(
                 "FunctionAppClient.deploy_function(): Deployment was completed however Function App restart operation failed."
             )
             return False
