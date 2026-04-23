@@ -362,6 +362,9 @@ class CloudClient:
                                     set -euo pipefail &&
                                     mkdir -p /mnt/batch/tasks/startup/wd/node-metrics
                                     chmod +x ./start-metrics.sh
+
+                                    ./start-metrics.sh benchmark 0 output
+
                                     nohup ./start-metrics.sh {monitoring_interval_seconds} output \
                                         >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
                                         2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
