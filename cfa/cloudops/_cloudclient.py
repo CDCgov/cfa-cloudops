@@ -237,6 +237,9 @@ class CloudClient:
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
             replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
+            enable_node_monitoring (bool): Whether to enable node profiling
+            monitoring_script_url (str): sas token blob url to profiler script
+            monitoring_interval_seconds (int): Interval at which monitoring script gathers profiling data on node
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -354,30 +357,32 @@ class CloudClient:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
-            else:
-                start_task_command = rf"""/bin/bash -c 'set -euo pipefail mkdir
-                                       -p /mnt/batch/tasks/startup/wd/node-metrics chmod +x ./start-metrics.sh
-                                        nohup ./start-metrics.sh {monitoring_interval_seconds} \
-                                        >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
-                                        2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &'
-                                    """
 
-                pool_config.start_task = models.StartTask(
-                    command_line=start_task_command,
-                    wait_for_success=True,
-                    resource_files=[
-                        models.ResourceFile(
-                            http_url=monitoring_script_url,
-                            file_path="start-metrics.sh",
-                        )
-                    ],
-                    user_identity=models.UserIdentity(
-                        auto_user=models.AutoUserSpecification(
-                            scope=models.AutoUserScope.pool,
-                            elevation_level=models.ElevationLevel.admin,
-                        )
-                    ),
-                )
+            start_task_command = rf"""/bin/bash -c '
+                                    set -euo pipefail &&
+                                    mkdir -p /mnt/batch/tasks/startup/wd/node-metrics
+                                    chmod +x ./start-metrics.sh
+                                    nohup ./start-metrics.sh {monitoring_interval_seconds} output \
+                                        >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
+                                        2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
+                                    '"""
+
+            pool_config.start_task = models.StartTask(
+                command_line=start_task_command,
+                wait_for_success=True,
+                resource_files=[
+                    models.ResourceFile(
+                        http_url=monitoring_script_url,
+                        file_path="start-metrics.sh",
+                    )
+                ],
+                user_identity=models.UserIdentity(
+                    auto_user=models.AutoUserSpecification(
+                        scope=models.AutoUserScope.pool,
+                        elevation_level=models.ElevationLevel.admin,
+                    )
+                ),
+            )
 
         # Configure scaling settings
         if autoscale:
