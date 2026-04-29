@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 import os
+import shlex
 import time
 import uuid
 from pathlib import Path
@@ -82,9 +83,12 @@ def _generate_command_for_saving_logs(
     _folder = f"{save_logs_rel_path}/{logs_folder}/"
     stdout_file = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
     stderr_file = f"{_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
+    folder_quoted = shlex.quote(_folder)
+    stdout_quoted = shlex.quote(stdout_file)
+    stderr_quoted = shlex.quote(stderr_file)
     logger.debug(f"Stdout will be saved to: '{stdout_file}'")
     logger.debug(f"Stderr will be saved to: '{stderr_file}'")
-    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} > >(tee {stdout_file}) 2> >(tee {stderr_file} >&2)" """
+    return f"""/bin/bash -c "mkdir -p {folder_quoted}; {command_line} > >(tee {stdout_quoted}) 2> >(tee {stderr_quoted} >&2)" """
 
 
 def _generate_mount_string(mounts):
