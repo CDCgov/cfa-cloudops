@@ -84,7 +84,7 @@ def _generate_command_for_saving_logs(
     stderr_file = f"{_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
     logger.debug(f"Stdout will be saved to: '{stdout_file}'")
     logger.debug(f"Stderr will be saved to: '{stderr_file}'")
-    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} > {stdout_file} 2> {stderr_file}" """
+    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} > >(tee {stdout_file}) 2> >(tee {stderr_file})" """
 
 
 def _generate_mount_string(mounts):
