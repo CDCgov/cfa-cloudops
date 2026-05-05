@@ -20,6 +20,12 @@ from azure.batch.models import (
     TaskConstraints,
 )
 
+from cfa.cloudops.task import (
+    get_container_settings,
+    get_task_config,
+    output_task_files_to_blob,
+)
+
 logger = logging.getLogger(__name__)
 
 AZ_MOUNT_DIR = "$AZ_BATCH_NODE_MOUNTS_DIR"
@@ -79,7 +85,10 @@ def _generate_command_for_saving_logs(
     s_time = t.strftime("%Y%m%d_%H%M%S")
     if not save_logs_rel_path.startswith("/"):
         save_logs_rel_path = "/" + save_logs_rel_path
-    _folder = f"{save_logs_rel_path}/{logs_folder}/"
+    if not save_logs_rel_path.endswith("/"):
+        _folder = f"{save_logs_rel_path}/{logs_folder}"
+    else:
+        _folder = f"{save_logs_rel_path}{logs_folder}"
     stdout_file = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
     stderr_file = f"{_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
     logger.debug(f"Stdout will be saved to: '{stdout_file}'")
@@ -1192,6 +1201,8 @@ def add_task(
     save_logs_rel_path: str | None = None,
     logs_folder: str = "stdout_stderr",
     name_suffix: str = "",
+    blob_container: str | None = None,
+    blob_storage_account: str | None = None,
     mounts: list[dict] | None = None,
     depends_on: str | list[str] | None = None,
     depends_on_range: tuple | None = None,
@@ -1219,6 +1230,10 @@ def add_task(
         logs_folder (str): Name of the folder to create for saving logs. Defaults to
             "stdout_stderr".
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
+        blob_container (str, optional): Name of Azure blob storage container where the logs
+            should be uploaded.
+        blob_storage_account (str, optional): Name of Azure blob storage account where the logs
+            should be uploaded. If blob_container is specified, it should exist in the storage account.
         mounts (list[dict], optional): List of mount configurations as dicts
             of {"source": <container_name>, "target": <relative_mount_path>).
         depends_on (str | list[str], optional): Task ID(s) that this task depends on.
@@ -1309,24 +1324,17 @@ def add_task(
         logger.debug(f"Generated string-based task ID: '{task_id}'")
 
     if save_logs_rel_path is not None:
-        if save_logs_rel_path == "ERROR!":
-            logger.warning("could not find rel path")
-            print(
-                "could not find rel path. Stdout and stderr will not be saved to blob storage."
-            )
-            full_cmd = cmd_str
-        else:
-            logger.debug(
-                f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
-            )
-            full_cmd = _generate_command_for_saving_logs(
-                command_line=cmd_str,
-                job_name=job_name,
-                task_id=task_id,
-                save_logs_rel_path=save_logs_rel_path,
-                logs_folder=logs_folder,
-            )
-            logger.debug(f"Modified command for log capture: '{full_cmd}'")
+        logger.debug(
+            f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
+        )
+        full_cmd = _generate_command_for_saving_logs(
+            command_line=cmd_str,
+            job_name=job_name,
+            task_id=task_id,
+            save_logs_rel_path=save_logs_rel_path,
+            logs_folder=logs_folder,
+        )
+        logger.debug(f"Modified command for log capture: '{full_cmd}'")
     else:
         logger.debug("No log saving configured - using command as-is")
         full_cmd = cmd_str
@@ -1352,14 +1360,26 @@ def add_task(
 
     # Create the task parameter
     logger.debug("Creating task parameter object")
-    task_param = batch_models.TaskAddParameter(
-        id=task_id,
-        command_line=command_line,
-        container_settings=batch_models.TaskContainerSettings(
-            image_name=full_container_name,
-            container_run_options=container_run_options,
-            working_directory="containerImageDefault",
-        ),
+    output_files = None
+    if blob_container and blob_storage_account:
+        output_file = output_task_files_to_blob(
+            file_pattern="../std*.txt",
+            blob_container=blob_container,
+            blob_account=blob_storage_account,
+            path=job_name,
+            upload_condition="taskCompletion",
+        )
+        output_files = [output_file]
+    container_settings = get_container_settings(
+        container_image_name=full_container_name,
+        additional_options=container_run_options,
+        working_directory="containerImageDefault",
+    )
+    new_task = get_task_config(
+        task_id=task_id,
+        base_call=command_line,
+        output_files=output_files,
+        container_settings=container_settings,
         user_identity=user_identity,
         constraints=task_constraints,
         depends_on=task_deps,
@@ -1369,7 +1389,7 @@ def add_task(
 
     # Add the task to the job
     logger.debug(f"Submitting task '{task_id}' to Azure Batch service")
-    batch_client.task.add(job_id=job_name, task=task_param)
+    batch_client.task.add(job_id=job_name, task=new_task)
     logger.debug(f"Task '{task_id}' successfully added to job '{job_name}'")
     return task_id
 
