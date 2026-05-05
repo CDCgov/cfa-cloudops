@@ -780,6 +780,7 @@ class CloudClient:
         command_line: str,
         mount_pairs: list[dict] | None = None,
         name_suffix: str = "",
+        blob_container: str | None = None,
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
@@ -800,6 +801,7 @@ class CloudClient:
                         {"source": "logscontainer", "target": "/mnt/logs"}
                     ]
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
+            blob_container (str, optional): Name of Azure blob storage container where the logs should be uploaded.
             depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
@@ -838,16 +840,7 @@ class CloudClient:
             logger.debug(f"Using provided container name: {container_name}.")
 
         if self.save_logs_to_blob:
-            logger.debug("Configuring log saving to blob storage.")
-            rel_mnt_path = batch_helpers.get_rel_mnt_path(
-                blob_name=self.save_logs_to_blob,
-                pool_name=pool_name,
-                resource_group_name=self.cred.azure_resource_group_name,
-                account_name=self.cred.azure_batch_account,
-                batch_mgmt_client=self.batch_mgmt_client,
-            )
-            if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
+            rel_mnt_path = "/"
             logger.debug(f"Relative mount path for logs set to: {rel_mnt_path}")
         else:
             rel_mnt_path = None
@@ -871,6 +864,7 @@ class CloudClient:
             ]
 
         logger.debug("Adding tasks to job.")
+
         tid = batch_helpers.add_task(
             job_name=job_name,
             task_id_base=job_name,
@@ -878,6 +872,8 @@ class CloudClient:
             save_logs_rel_path=rel_mnt_path,
             logs_folder=self.logs_folder,
             name_suffix=name_suffix,
+            blob_container=blob_container,
+            blob_storage_account=self.cred.azure_blob_storage_account,
             mounts=self.mounts,
             depends_on=depends_on,
             depends_on_range=depends_on_range,
