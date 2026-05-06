@@ -1323,7 +1323,6 @@ def add_task(
             command_line=cmd_str,
             job_name=job_name,
             task_id=task_id,
-            save_logs_rel_path=save_logs_rel_path,
             logs_folder=logs_folder,
         )
         logger.debug(f"Modified command for log capture: '{full_cmd}'")
