@@ -69,7 +69,6 @@ def _generate_command_for_saving_logs(
     command_line: str,
     job_name: str,
     task_id: str,
-    save_logs_rel_path: str,
     logs_folder: str = "logs",
 ) -> str:
     """Generate a command line that saves stdout and stderr to log files.
@@ -78,22 +77,15 @@ def _generate_command_for_saving_logs(
         command_line (str): Original command line to execute.
         job_name (str): Name/ID of the job.
         task_id (str): ID of the task.
-        save_logs_rel_path (str): Relative path where logs should be saved.
-        logs_folder (str): Subfolder name within the save_logs_rel_path to store logs. Defaults to "logs".
+        logs_folder (str): Subfolder name to store logs. Defaults to "logs".
     """
     t = datetime.datetime.now(zi("America/New_York"))
     s_time = t.strftime("%Y%m%d_%H%M%S")
-    if not save_logs_rel_path.startswith("/"):
-        save_logs_rel_path = "/" + save_logs_rel_path
-    if not save_logs_rel_path.endswith("/"):
-        _folder = f"{save_logs_rel_path}/{logs_folder}"
-    else:
-        _folder = f"{save_logs_rel_path}{logs_folder}"
-    stdout_file = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
-    stderr_file = f"{_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
+    stdout_file = f"/{logs_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
+    stderr_file = f"/{logs_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
     logger.debug(f"Stdout will be saved to: '{stdout_file}'")
     logger.debug(f"Stderr will be saved to: '{stderr_file}'")
-    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} > >(tee {stdout_file}) 2> >(tee {stderr_file})" """
+    return f"""/bin/bash -c "mkdir -p /{logs_folder}; {command_line} > >(tee {stdout_file}) 2> >(tee {stderr_file})" """
 
 
 def _generate_mount_string(mounts):
@@ -1325,7 +1317,7 @@ def add_task(
 
     if save_logs_rel_path is not None:
         logger.debug(
-            f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
+            f"Configuring log saving to blob container: '{save_logs_rel_path}' in folder: '{logs_folder}'"
         )
         full_cmd = _generate_command_for_saving_logs(
             command_line=cmd_str,
@@ -1399,6 +1391,8 @@ def add_task_collection(
     task_id_base: str,
     tasks: list[dict],
     name_suffix: str = "",
+    blob_container: str | None = None,
+    blob_storage_account: str | None = None,
     batch_client: object | None = None,
     task_id_max: int = 0,
     task_id_ints: bool = False,
@@ -1432,6 +1426,10 @@ def add_task_collection(
                 no timeout is set.
             - full_container_name (str, optional): Full container image name to use for the task.
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
+        blob_container (str, optional): Name of Azure blob storage container where the logs
+            should be uploaded.
+        blob_storage_account (str, optional): Name of Azure blob storage account where the logs
+            should be uploaded. If blob_container is specified, it should exist in the storage account.
         batch_client (object): Azure Batch service client instance for API calls.
         task_id_max (int): Current maximum task ID number for generating unique task IDs.
             Defaults to 0.
@@ -1501,6 +1499,18 @@ def add_task_collection(
     )
 
     logger.debug("Creating task collection")
+
+    output_files = None
+    if blob_container and blob_storage_account:
+        output_file = output_task_files_to_blob(
+            file_pattern="../std*.txt",
+            blob_container=blob_container,
+            blob_account=blob_storage_account,
+            path=job_name,
+            upload_condition="taskCompletion",
+        )
+        output_files = [output_file]
+
     tasks_to_add = []
     for n, task in enumerate(tasks):
         if task_id_ints:
@@ -1519,7 +1529,6 @@ def add_task_collection(
                 command_line=command_line,
                 job_name=job_name,
                 task_id=task_id,
-                save_logs_rel_path=save_logs_rel_path,
                 logs_folder=logs_folder,
             )
         else:
@@ -1543,14 +1552,16 @@ def add_task_collection(
         container_name = f"{job_name}_{str(task_id_max + 1)}"
         container_run_options = f"--name={container_name} --rm " + mount_str
 
-        new_task = batch_models.TaskAddParameter(
-            id=task_id,
-            command_line=full_command,
-            container_settings=batch_models.TaskContainerSettings(
-                image_name=task["full_container_name"],
-                container_run_options=container_run_options,
-                working_directory="containerImageDefault",
-            ),
+        container_settings = get_container_settings(
+            container_image_name=task["full_container_name"],
+            additional_options=container_run_options,
+            working_directory="containerImageDefault",
+        )
+        new_task = get_task_config(
+            task_id=task_id,
+            base_call=full_command,
+            output_files=output_files,
+            container_settings=container_settings,
             user_identity=user_identity,
             constraints=task_constraints,
             depends_on=task_deps,
@@ -1563,6 +1574,7 @@ def add_task_collection(
     logger.debug(
         f"Adding '{len(tasks_to_add)}' to job '{job_name}' i Azure Batch service"
     )
+
     result = batch_client.task.add_collection(job_id=job_name, value=tasks_to_add)
     logger.debug(f"Successfully added {len(tasks_to_add)}' tasks job '{job_name}'")
     return result
