@@ -1357,7 +1357,7 @@ def add_task(
             file_pattern="../std*.txt",
             blob_container=blob_container,
             blob_account=blob_storage_account,
-            path=job_name,
+            path=f"{logs_folder}/{job_name}",
             upload_condition="taskCompletion",
         )
         output_files = [output_file]
@@ -1505,7 +1505,7 @@ def add_task_collection(
             file_pattern="../std*.txt",
             blob_container=blob_container,
             blob_account=blob_storage_account,
-            path=job_name,
+            path=f"stdout_stderr/{job_name}",
             upload_condition="taskCompletion",
         )
         output_files = [output_file]
