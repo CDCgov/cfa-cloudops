@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.3.23
+## v0.4.0
 - Modified `cfa.cloudops.batch_helpers._generate_command_for_saving_logs` to copy data from standard input to standard output and standard error files
 
 ## v0.3.22
