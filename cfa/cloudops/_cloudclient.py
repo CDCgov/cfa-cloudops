@@ -780,7 +780,6 @@ class CloudClient:
         command_line: str,
         mount_pairs: list[dict] | None = None,
         name_suffix: str = "",
-        blob_container: str | None = None,
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
@@ -801,7 +800,6 @@ class CloudClient:
                         {"source": "logscontainer", "target": "/mnt/logs"}
                     ]
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
-            blob_container (str, optional): Name of Azure blob storage container where the logs should be uploaded.
             depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
@@ -872,7 +870,7 @@ class CloudClient:
             save_logs_rel_path=rel_mnt_path,
             logs_folder=self.logs_folder,
             name_suffix=name_suffix,
-            blob_container=blob_container,
+            blob_container=self.save_logs_to_blob,
             blob_storage_account=self.cred.azure_blob_storage_account,
             mounts=self.mounts,
             depends_on=depends_on,
