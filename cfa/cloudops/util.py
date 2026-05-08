@@ -7,8 +7,10 @@ import logging
 import subprocess
 from collections.abc import MutableSequence
 
+from azure.identity import DefaultAzureCredential
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.batch.models import SupportedSku
+from azure.mgmt.subscription import SubscriptionClient
 
 from .config import get_config_val
 
@@ -278,3 +280,25 @@ def lookup_available_vm_skus_for_batch(
     )
 
     return result
+
+
+def get_subscriptions():
+    """Get a list of Azure subscriptions available to the current user.
+
+    Returns:
+        list: A list of subscription IDs.
+    """
+    try:
+        credential = DefaultAzureCredential()
+        subscription_client = SubscriptionClient(credential)
+        subscriptions = subscription_client.subscriptions.list()
+        return [sub.display_name for sub in subscriptions]
+    except Exception:
+        print("Could not find a subscription.")
+        return []
+
+
+def check_ext_env() -> bool:
+    if "EXT-EDAV-CFA-PRD" in get_subscriptions():
+        return True
+    return False
