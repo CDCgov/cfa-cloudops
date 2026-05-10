@@ -1,0 +1,2 @@
+cfa-cloudops @ git+https://github.com/CDCgov/cfa-cloudops.git
+langchain-openai

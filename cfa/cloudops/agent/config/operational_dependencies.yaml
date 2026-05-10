@@ -1,0 +1,36 @@
+operations:
+  create_blob_container:
+    requires: []
+    method: create_blob_container
+
+  upload_files:
+    requires: [create_blob_container]
+    method: upload_files
+
+  create_pool:
+    requires: []
+    method: create_pool
+
+  create_job:
+    requires: [create_pool]
+    method: create_job
+
+  add_task:
+    requires: [create_job, upload_files]
+    method: add_task
+
+  monitor_job:
+    requires: [add_task]
+    method: monitor_job
+
+  check_job_status:
+    requires: [create_job]
+    method: check_job_status
+
+  delete_job:
+    requires: [monitor_job]
+    method: delete_job
+
+  delete_pool:
+    requires: [delete_job]
+    method: delete_pool
