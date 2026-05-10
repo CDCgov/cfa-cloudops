@@ -1353,11 +1353,12 @@ def add_task(
     logger.debug("Creating task parameter object")
     output_files = None
     if blob_container and blob_storage_account:
+        formatted_date = datetime.date.today().strftime("%Y-%m-%d")
         output_file = output_task_files_to_blob(
             file_pattern="../std*.txt",
             blob_container=blob_container,
             blob_account=blob_storage_account,
-            path=f"{logs_folder}/{job_name}",
+            path=f"{logs_folder}/{formatted_date}",
             upload_condition="taskCompletion",
         )
         output_files = [output_file]
@@ -1501,11 +1502,12 @@ def add_task_collection(
 
     output_files = None
     if blob_container and blob_storage_account:
+        formatted_date = datetime.date.today().strftime("%Y-%m-%d")
         output_file = output_task_files_to_blob(
             file_pattern="../std*.txt",
             blob_container=blob_container,
             blob_account=blob_storage_account,
-            path=f"stdout_stderr/{job_name}",
+            path=f"stdout_stderr/{formatted_date}",
             upload_condition="taskCompletion",
         )
         output_files = [output_file]
