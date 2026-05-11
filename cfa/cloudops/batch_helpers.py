@@ -1358,7 +1358,7 @@ def add_task(
             file_pattern="../std*.txt",
             blob_container=blob_container,
             blob_account=blob_storage_account,
-            path=f"{logs_folder}/{formatted_date}",
+            path=f"{logs_folder}/{formatted_date}/{task_id}",
             upload_condition="taskCompletion",
         )
         output_files = [output_file]
