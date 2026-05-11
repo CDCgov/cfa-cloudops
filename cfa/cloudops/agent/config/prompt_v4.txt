@@ -17,7 +17,7 @@ MOUNT RULES
   - /mnt/input-test/2025/01/01
   - /mnt//input-test
 - VALID target example:
-  - /mnt/input-test
+  - input-test
 - Subdirectories belong in the command, NOT in mount targets.
 - If command uses /mnt/<name>, create_pool.mounts MUST include:
   source: <name>

@@ -9,10 +9,10 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-# class TimedeltaSpec(StrictModel):
-#    days: int | None = None
-#    hours: int | None = None
-#    minutes: int | None = None
+class TimedeltaSpec(StrictModel):
+    days: int | None = None
+    hours: int | None = None
+    minutes: int | None = None
 
 
 class AddTaskArgs(StrictModel):
@@ -45,13 +45,13 @@ class CreateJobArgs(StrictModel):
     logs_folder: str | None = None
 
 
-# class CreateJobScheduleArgs(StrictModel):
-#    job_schedule_name: str
-#    pool_name: str
-#    command: str
-#    timeout: int = 30
-#    start_window: TimedeltaSpec = None,
-#    recurrence_interval: TimedeltaSpec = None
+class CreateJobScheduleArgs(StrictModel):
+    job_schedule_name: str
+    pool_name: str
+    command: str
+    timeout: int = 30
+    start_window: TimedeltaSpec = (None,)
+    recurrence_interval: TimedeltaSpec = None
 
 
 class DeleteJobArgs(StrictModel):
@@ -98,11 +98,11 @@ class CreatePoolStep(StrictModel):
     args: CreatePoolArgs
 
 
-# class CreateJobScheduleStep(StrictModel):
-#    id: str
-#    method: Literal["create_job_schedule"]
-#    depends_on: list[str] = Field(default_factory=list)
-#    args: CreateJobScheduleArgs
+class CreateJobScheduleStep(StrictModel):
+    id: str
+    method: Literal["create_job_schedule"]
+    depends_on: list[str] = Field(default_factory=list)
+    args: CreateJobScheduleArgs
 
 
 class CreateJobStep(StrictModel):
@@ -156,7 +156,7 @@ WorkflowStep = Union[
     DeleteJobStep,
     DeletePoolStep,
     MonitorJobStep,
-    # CreateJobScheduleStep,
+    CreateJobScheduleStep,
     UploadFilesStep,
 ]
 

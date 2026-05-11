@@ -21,6 +21,12 @@ inference using daily partition stored in input-test folder of CFAAzureBatchPrd
 storage account. Use the measles-script:v1 container for this job.
 """
 
+goal_3 = """
+Create a new blob container named 'my-test-container' in cfaazurebatchprd storage account and mount it as my_input folder in
+a new pool. Then run a job that contains 5 tasks using the latest python Docker image. All 5 tasks should run in parallel.
+Each task should run the command "python -c \"print('hello');\". When all tasks stop executing, delete the job and pool.
+"""
+
 
 def create_plan(goal):
     plan = generate_workflow(goal)
@@ -44,7 +50,8 @@ def run_plan(goal_id: str):
 
 
 if __name__ == "__main__":
-    goal_id = create_plan(goal_1)
+    goal_id = create_plan(goal_3)
+    # goal_id = '578a5d4b'
     choice = input("\nProceed with execution? (Y/N): ").lower()
     if choice == "y":
         run_plan(goal_id)

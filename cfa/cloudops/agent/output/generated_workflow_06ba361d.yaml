@@ -1,0 +1,109 @@
+goal: Create a new blob container named 'my-test-container' in cfaazurebatchprd storage
+  account and mount it as my_input folder in a new pool. Then run a job that contains
+  5 tasks using the latest python Docker image. All 5 tasks should run in parallel.
+  Each task should run the command "python -c \"print('hello');\"." When all tasks
+  stop executing, delete the job and pool.
+workflow:
+- id: create_blob_container
+  method: create_blob_container
+  depends_on: []
+  args:
+    job_name: my-test-container
+- id: create_pool
+  method: create_pool
+  depends_on:
+  - create_blob_container
+  args:
+    pool_name: my-test-pool
+    mounts:
+    - source: my-test-container
+      target: my_input
+    container_image_name: python:latest
+    autoscale: false
+    max_autoscale_nodes: 5
+- id: create_job
+  method: create_job
+  depends_on:
+  - create_pool
+  args:
+    job_name: my-test-job
+    pool_name: my-test-pool
+    save_logs_to_blob: null
+    logs_folder: null
+- id: add_task_1
+  method: add_task
+  depends_on:
+  - create_job
+  args:
+    job_name: my-test-job
+    command_line: python -c "print('hello');"
+    name_suffix: task1
+    depends_on: null
+    run_dependent_tasks_on_fail: false
+    container_image_name: python:latest
+- id: add_task_2
+  method: add_task
+  depends_on:
+  - create_job
+  args:
+    job_name: my-test-job
+    command_line: python -c "print('hello');"
+    name_suffix: task2
+    depends_on: null
+    run_dependent_tasks_on_fail: false
+    container_image_name: python:latest
+- id: add_task_3
+  method: add_task
+  depends_on:
+  - create_job
+  args:
+    job_name: my-test-job
+    command_line: python -c "print('hello');"
+    name_suffix: task3
+    depends_on: null
+    run_dependent_tasks_on_fail: false
+    container_image_name: python:latest
+- id: add_task_4
+  method: add_task
+  depends_on:
+  - create_job
+  args:
+    job_name: my-test-job
+    command_line: python -c "print('hello');"
+    name_suffix: task4
+    depends_on: null
+    run_dependent_tasks_on_fail: false
+    container_image_name: python:latest
+- id: add_task_5
+  method: add_task
+  depends_on:
+  - create_job
+  args:
+    job_name: my-test-job
+    command_line: python -c "print('hello');"
+    name_suffix: task5
+    depends_on: null
+    run_dependent_tasks_on_fail: false
+    container_image_name: python:latest
+- id: check_job_status
+  method: check_job_status
+  depends_on:
+  - add_task_1
+  - add_task_2
+  - add_task_3
+  - add_task_4
+  - add_task_5
+  args:
+    job_name: my-test-job
+- id: delete_job
+  method: delete_job
+  depends_on:
+  - check_job_status
+  args:
+    job_name: my-test-job
+- id: delete_pool
+  method: delete_pool
+  depends_on:
+  - delete_job
+  args:
+    pool_name: my-test-pool

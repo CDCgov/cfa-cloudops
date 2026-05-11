@@ -15,6 +15,10 @@ operations:
     requires: [create_pool]
     method: create_job
 
+  create_job_schedule:
+    requires: [create_pool]
+    method: create_job_schedule
+
   add_task:
     requires: [create_job, upload_files]
     method: add_task
