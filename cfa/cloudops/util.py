@@ -299,6 +299,4 @@ def get_subscriptions():
 
 
 def check_ext_env() -> bool:
-    if "EXT-EDAV-CFA-PRD" in get_subscriptions():
-        return True
-    return False
+    return any("EXT-EDAV-CFA" in i for i in get_subscriptions())
