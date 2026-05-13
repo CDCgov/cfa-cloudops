@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.3.23
+- added function to check environment
+
 ## v0.3.22
 - added support for deployment slots in  `FunctionAppClient` module
 
