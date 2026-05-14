@@ -5,7 +5,7 @@ Miscellaneous utilities for interacting with Azure.
 import datetime
 import json
 import logging
-import subprocess
+import subprocess as sp
 from collections.abc import MutableSequence
 from getpass import getpass
 from zoneinfo import ZoneInfo
@@ -51,7 +51,7 @@ def lookup_service_principal(display_name: str) -> list:
         command = [f"az ad sp list --display-name {display_name}"]
         logger.debug(f"Executing Azure CLI command: {command[0]}")
 
-        result = subprocess.check_output(
+        result = sp.check_output(
             command, shell=True, universal_newlines=True, text=True
         )
         logger.debug(
@@ -314,7 +314,13 @@ def get_user() -> str:
     try:
         return getpass.getuser()
     except Exception:
-        return "unknown_user"
+        try:
+            user = sp.run(
+                "whoami", shell=True, text=True, capture_output=True
+            ).stdout.strip()
+            return user
+        except Exception:
+            return "unknown_user"
 
 
 def get_date_time():
