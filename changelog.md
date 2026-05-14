@@ -10,8 +10,11 @@ The versioning pattern is `major.minor.patch`.
 ## v0.4.0
 - remove upper limits on non-problem dependencies
 
+## v0.3.23
+- added function to check environment
+
 ## v0.3.22
-- Added/updated node profiling option to `create_pool` function in `_cloudclient.py`
+- added support for deployment slots in  `FunctionAppClient` module
 
 ## v0.3.21
 - added metadata lookup methods for Azure Function Apps to the `FunctionAppClient` module
