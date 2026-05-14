@@ -637,7 +637,7 @@ class CloudClient:
             constraints=job_constraints,
             metadata=[
                 MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run),
-                MetadataItem(name="user", value=get_user()),
+                MetadataItem(name="owner", value=get_user()),
                 MetadataItem(name="datetime_created", value=get_date_time()),
             ],
         )
