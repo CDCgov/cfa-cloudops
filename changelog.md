@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.4.1
+- add owner and created datetime tags to pools and jobs by default
+
 ## v0.4.0
 - remove upper limits on non-problem dependencies
 
