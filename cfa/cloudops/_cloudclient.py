@@ -38,6 +38,7 @@ from .client import (
     get_compute_management_client,
 )
 from .job import create_job, create_job_schedule
+from .util import get_date_time, get_user
 
 logger = logging.getLogger(__name__)
 
@@ -635,7 +636,9 @@ class CloudClient:
             on_task_failure=OnTaskFailure.perform_exit_options_job_action,
             constraints=job_constraints,
             metadata=[
-                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run)
+                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run),
+                MetadataItem(name="user", value=get_user()),
+                MetadataItem(name="datetime_created", value=get_date_time()),
             ],
         )
 

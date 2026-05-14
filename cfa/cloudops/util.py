@@ -2,10 +2,13 @@
 Miscellaneous utilities for interacting with Azure.
 """
 
+import datetime
 import json
 import logging
 import subprocess
 from collections.abc import MutableSequence
+from getpass import getpass
+from zoneinfo import ZoneInfo
 
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.batch import BatchManagementClient
@@ -300,3 +303,30 @@ def get_subscriptions():
 
 def check_ext_env() -> bool:
     return any("EXT-EDAV-CFA" in i for i in get_subscriptions())
+
+
+def get_user() -> str:
+    """Get the current system user
+
+    Returns:
+        str: the current system user
+    """
+    try:
+        return getpass.getuser()
+    except Exception:
+        return "unknown_user"
+
+
+def get_date_time():
+    """Get the current date and time as a string.
+
+    Returns:
+        str: The current date and time in ISO format.
+    """
+    try:
+        datetime_str = datetime.datetime.now(
+            tz=ZoneInfo("America/New_York")
+        ).isoformat()
+    except Exception:
+        datetime_str = "unknown_datetime"
+    return datetime_str
