@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.4.0
+- remove upper limits on non-problem dependencies
+
 ## v0.3.22
 - Added/updated node profiling option to `create_pool` function in `_cloudclient.py`
 
