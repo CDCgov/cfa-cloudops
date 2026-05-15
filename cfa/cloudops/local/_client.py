@@ -312,7 +312,7 @@ class CloudClient:
 
         # check pool exists:
         if not os.path.exists(f"tmp/pools/{pool_name}.txt"):
-            logger.info(f"Pool {pool_name} does not exist.")
+            logger.error(f"Pool {pool_name} does not exist.")
             return None
         self.save_logs_to_blob = save_logs_to_blob
 
