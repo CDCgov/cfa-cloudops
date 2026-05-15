@@ -22,7 +22,7 @@ dependencies = [
     "msrestazure>=0.6.4.post1",
     "azure-keyvault>=4.2.0",
     "azure-mgmt-compute>=36.0.0",
-    "azure-batch>=14.2.0",
+    "azure-batch>=14.2.0,<15.0.0",
     # azure-mgmt-resource<25.0.0: 25.x introduces breaking changes to resource management APIs not yet supported by cfa.cloudops.
     "azure-mgmt-resource>=24.0.0,<25.0.0",
     "azure-mgmt-appcontainers>=4.0.0",
