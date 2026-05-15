@@ -188,6 +188,7 @@ def create_job():
         "-m",
         "--mark_complete",
         action="store_true",
+        default=True,
         help="Mark job as complete after it finishes",
     )
     parser.add_argument(

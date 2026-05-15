@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.4.2
+## v0.5.0
 - mark job complete when all tasks run by default.
 
 ## v0.4.1
