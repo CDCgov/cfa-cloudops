@@ -276,7 +276,7 @@ def monitor_tasks(
                         _download_task_file(
                             batch_client, job_name, task.id, "stderr.txt"
                         )
-                        logger.info(f"\nOutput saved from task {task.id}")
+                        logger.info(f"Output saved from task {task.id}")
                         previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
             print(
