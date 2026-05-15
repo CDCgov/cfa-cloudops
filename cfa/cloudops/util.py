@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.batch.models import SupportedSku
-from azure.mgmt.subscription import SubscriptionClient
+from azure.mgmt.resouce import SubscriptionClient
 
 from .config import get_config_val
 
