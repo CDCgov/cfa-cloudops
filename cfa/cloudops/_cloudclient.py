@@ -171,7 +171,6 @@ class CloudClient:
             logger.debug("Successfully found subscriptions.")
         except Exception as e:
             logger.exception(f"Error checking credentials: {e}")
-            logger.error(f"An error occurred: {e}")
 
     def create_pool(
         self,
