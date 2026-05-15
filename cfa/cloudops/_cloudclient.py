@@ -948,7 +948,6 @@ class CloudClient:
             )
             self.task_id_max += len(tasks)
             logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
-            logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
             return result
         except Exception as ce:
             logger.error(f"Failed to add task collection to job: {str(ce)}")
