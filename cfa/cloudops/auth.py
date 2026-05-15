@@ -1043,7 +1043,6 @@ def load_keyvault_vars(
                 )
             except Exception as e:
                 logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
-                print("Error loading secret: ", e)
         else:
             if key in os.environ:
                 logger.debug(
@@ -1059,7 +1058,6 @@ def load_keyvault_vars(
                     )
                 except Exception as e:
                     logger.warning(f"Could not load secret '{key}' from Key Vault: {e}")
-                    print(f"Error loading secret: {e}")
 
 
 def get_keyvault_vars(

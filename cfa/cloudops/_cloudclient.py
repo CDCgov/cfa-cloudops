@@ -163,15 +163,15 @@ class CloudClient:
             # List subscriptions
             sub_list = [sub for sub in subscription_client.subscriptions.list()]
             for subscription in sub_list:
-                print("Found subscription via credential.")
-                print(f"Subscription ID: {subscription.subscription_id}")
-                print(f"Subscription Name: {subscription.display_name}")
-                print(f"State: {subscription.state}")
-                print("-" * 30)
+                logger.info("Found subscription via credential.")
+                logger.info(f"Subscription ID: {subscription.subscription_id}")
+                logger.info(f"Subscription Name: {subscription.display_name}")
+                logger.info(f"State: {subscription.state}")
+                logger.info("-" * 30)
             logger.debug("Successfully found subscriptions.")
         except Exception as e:
             logger.exception(f"Error checking credentials: {e}")
-            print(f"An error occurred: {e}")
+            logger.error(f"An error occurred: {e}")
 
     def create_pool(
         self,
@@ -283,12 +283,12 @@ class CloudClient:
         pool_exists = any(p.name == pool_name for p in existing_pools)
 
         if pool_exists:
-            print(f"Pool with name {pool_name} already exists.")
+            logger.info(f"Pool with name {pool_name} already exists.")
             if not replace_existing_pool:
-                print("Skipping pool creation.")
+                logger.info("Skipping pool creation.")
                 return
             elif replace_existing_pool:
-                print("Replacing existing pool.")
+                logger.info("Replacing existing pool.")
             self.pool_name = pool_name
 
         logger.debug(f"Creating new pool: {pool_name}")
@@ -466,13 +466,11 @@ class CloudClient:
             )
             logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
-            print("* " * 50)
             if pool_exists:
-                print(f"Replaced existing pool: {pool_name}")
+                logger.info(f"Replaced existing pool: {pool_name}")
             else:
-                print(f"Created pool: {pool_name}")
-            print("**Please use smaller VMs for dev/testing.**")
-            print("* " * 50)
+                logger.info(f"Created pool: {pool_name}")
+
             logger.info(f"Pool '{pool_name}' created successfully.")
         except Exception as e:
             error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
@@ -892,7 +890,7 @@ class CloudClient:
             timeout=timeout,
         )
         self.task_id_max += 1
-        print(f"Added task {tid} to job {job_name}.")
+        logger.info(f"Added task {tid} to job {job_name}.")
         logger.info(f"Task '{tid}' added to job '{job_name}'.")
         return tid
 
@@ -950,7 +948,7 @@ class CloudClient:
                 task_id_ints=self.task_id_ints,
             )
             self.task_id_max += len(tasks)
-            print(f"Added {len(tasks)} tasks to job {job_name}.")
+            logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
             logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
             return result
         except Exception as ce:
@@ -2327,7 +2325,6 @@ class CloudClient:
             logger.error(
                 f"Failed to retrieve secret '{secret_name}' from Key Vault '{keyvault}': {e}"
             )
-            print(f"Error retrieving secret '{secret_name}': {e}")
             return None
 
     def list_acr_tags(self, registry_name: str, repo_name: str) -> list[str]:
