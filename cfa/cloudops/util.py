@@ -3,11 +3,11 @@ Miscellaneous utilities for interacting with Azure.
 """
 
 import datetime
+import getpass
 import json
 import logging
 import subprocess as sp
 from collections.abc import MutableSequence
-from getpass import getpass
 from zoneinfo import ZoneInfo
 
 from azure.identity import DefaultAzureCredential
