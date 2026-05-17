@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agentic AI Workflow for CFA Cloud Operations</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h2>Agentic AI Workflow for CFA Cloud Operations</h2>
+    <p>Specify a goal</p>
+    <form method="POST" action="/plan">
+        <textarea name="text" rows="4" cols="50"
+            placeholder="Enter text here"></textarea><br><br>
+        <button type="submit">Analyze</button>
+    </form>
+
+    {% if workflow %}
+        <h3>Generated Workflow:</h3>
+        <p><strong>Goal ID:</strong> {{ goal_id }}</p>
+        <form method="POST" action="/execute">
+            <textarea name="workflow_yaml" rows="15" cols="80"
+                style="font-family: monospace;">{{ workflow }}
+            </textarea>
+
+            <br><br>
+            <button type="submit">Run Updated Workflow</button>
+        </form>
+    {% endif %}
+
+    {% if workflow_status %}
+    <h3>Execution Results (Dry Run):</h3>
+    <pre>{{ workflow_status }}</pre>
+    {% endif %}
+
+</body>
+</html>

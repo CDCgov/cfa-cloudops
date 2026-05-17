@@ -10,7 +10,14 @@ from cfa.cloudops import CloudClient
 def _timedelta_from_yaml(value: dict | None):
     if value is None:
         return None
-    return dt.timedelta(**value)
+    normalized = {}
+    time_parts = ["minutes", "hours", "days"]
+    for part in time_parts:
+        if value[part] and value[part] != "NoneType":
+            normalized[part] = value[part]
+        else:
+            normalized[part] = 0
+    return dt.timedelta(**normalized)
 
 
 SPECIAL_ARG_CONVERTERS = {
@@ -85,3 +92,28 @@ class WorkflowExecutor:
                 results[step_id] = method(**args)
 
         return results
+
+    def execute_plan(self, spec: str):
+        spec_yaml = yaml.load(spec, Loader=yaml.SafeLoader)
+        workflow = spec_yaml["workflow"]
+        self.validate_methods(workflow)
+        ordered_ids = self.validate_dependencies(workflow)
+
+        by_id = {step["id"]: step for step in workflow}
+        results = {}
+        log_entries = []
+
+        for step_id in ordered_ids:
+            step = by_id[step_id]
+            method = getattr(self.client, step["method"])
+            args = self.normalize_args(step.get("args", {}))
+
+            log_entries.append(f"Running step: {step_id}")
+            if self.dry_run:
+                log_entries.append(
+                    f'Running method:\n\t"{step["method"]}" with args: {args}'
+                )
+            else:
+                results[step_id] = method(**args)
+
+        return results, log_entries

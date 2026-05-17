@@ -66,6 +66,7 @@ SCHEDULING RULES
 
   TIMEDELTA RULES
   - Use mappings like {{“days”: 1}}, {{“hours”: 2}}, or {{“minutes”: 30}}.
+  - Replace None with 0
 
 FINAL SELF-CHECK (MANDATORY)
 
