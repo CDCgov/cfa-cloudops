@@ -3,7 +3,7 @@ import inspect
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
-from typing import Optional
+from typing import Optional, Literal
 
 import networkx as nx
 import pandas as pd
