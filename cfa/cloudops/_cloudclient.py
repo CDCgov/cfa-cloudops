@@ -860,7 +860,6 @@ class CloudClient:
             job_name=job_name,
             task_id_base=job_name,
             command_line=command_line,
-            save_logs_rel_path=self.save_logs_to_blob,
             logs_folder=self.logs_folder,
             name_suffix=name_suffix,
             blob_container=self.save_logs_to_blob,
