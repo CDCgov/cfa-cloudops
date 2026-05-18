@@ -216,7 +216,7 @@ class CloudClient:
         save_logs_to_blob: str | None = None,
         logs_folder: str | None = None,
         task_retries: int = 0,
-        mark_complete_after_tasks_run: bool = False,
+        mark_complete_after_tasks_run: bool = True,
         task_id_ints: bool = False,
         timeout: int | None = None,
         exist_ok=False,
@@ -246,7 +246,7 @@ class CloudClient:
                 0-100. Default is 0 (no retries).
             mark_complete_after_tasks_run (bool, optional): Whether to automatically mark
                 the job as complete after all tasks finish. When True, the job will be marked
-                complete without requiring explicit job termination. Default is False.
+                complete without requiring explicit job termination. Default is True.
             task_id_ints (bool, optional): Whether to use integer task IDs instead of string
                 IDs. When True, tasks added to this job should use integer IDs for better
                 performance with large numbers of tasks. Default is False (use string IDs).

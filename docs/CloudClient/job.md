@@ -13,7 +13,7 @@ The `CloudClient` class has a method called `create_job` which should be used fo
 - save_logs_to_blob: the name of the blob container to use if you want to save logs to the blob container. Optional.
 - logs_folder: the folder to save logs to if save_logs_to_blob is used. Default is 'stdout_stderr'.
 - task_retries: number of retries for the tasks if they fail. Default is 0.
-- mark_complete_after_tasks_run: whether to automatically mark the job as complete after all tasks finish. Default is False.
+- mark_complete_after_tasks_run: whether to automatically mark the job as complete after all tasks finish. Default is True.
 - task_id_ints: whether to use integers for task IDs. Default is False.
 - timeout: maximum time in minutes that the job can run before being terminated. If omitted, jobs can run indefinitely.
 - exist_ok: whether to allow the job creation if a job with the same name already exists. Default is False.
