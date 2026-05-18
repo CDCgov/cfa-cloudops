@@ -840,22 +840,6 @@ class CloudClient:
             container_name = container_image_name
             logger.debug(f"Using provided container name: {container_name}.")
 
-        if self.save_logs_to_blob:
-            logger.debug("Configuring log saving to blob storage.")
-            rel_mnt_path = batch_helpers.get_rel_mnt_path(
-                blob_name=self.save_logs_to_blob,
-                pool_name=pool_name,
-                resource_group_name=self.cred.azure_resource_group_name,
-                account_name=self.cred.azure_batch_account,
-                batch_mgmt_client=self.batch_mgmt_client,
-            )
-            if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
-            logger.debug(f"Relative mount path for logs set to: {rel_mnt_path}")
-        else:
-            rel_mnt_path = None
-            logger.debug("No log saving to blob storage configured.")
-
         # get all mounts from pool info
         if mount_pairs is None:
             self.mounts = batch_helpers.get_pool_mounts(
@@ -874,13 +858,15 @@ class CloudClient:
             ]
 
         logger.debug("Adding tasks to job.")
+
         tid = batch_helpers.add_task(
             job_name=job_name,
             task_id_base=job_name,
             command_line=command_line,
-            save_logs_rel_path=rel_mnt_path,
             logs_folder=self.logs_folder,
             name_suffix=name_suffix,
+            blob_container=self.save_logs_to_blob,
+            blob_storage_account=self.cred.azure_blob_storage_account,
             mounts=self.mounts,
             depends_on=depends_on,
             depends_on_range=depends_on_range,
