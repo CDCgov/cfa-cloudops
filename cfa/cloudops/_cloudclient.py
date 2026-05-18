@@ -812,7 +812,7 @@ class CloudClient:
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
         job_info = self.batch_service_client.job.get(job_name)
-        pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+        pool_name = job_info.execution_info.pool_id
         logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
         if container_image_name is None:
@@ -923,7 +923,7 @@ class CloudClient:
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
         job_info = self.batch_service_client.job.get(job_name)
-        pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+        pool_name = job_info.execution_info.pool_id
         logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
         for task in tasks:

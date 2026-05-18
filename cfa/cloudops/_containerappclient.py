@@ -145,7 +145,7 @@ class ContainerAppClient:
                 job_info = i
         logger.info(f"Retrieved command info for job '{job_name}'.")
         logger.debug("Extracting container information.")
-        c_info = job_info.__dict__["template"].__dict__["containers"]
+        c_info = job_info.template.containers
         container_dicts = []
         logger.debug("Building container info list.")
         for c in c_info:
@@ -263,7 +263,7 @@ class ContainerAppClient:
                         f"Job {job_name} found, preparing to start with overrides."
                     )
                     job_info = i
-            for c in job_info.__dict__["template"].__dict__["containers"]:
+            for c in job_info.template.containers:
                 image = c.image
                 name = c.name
                 resources = c.resources
