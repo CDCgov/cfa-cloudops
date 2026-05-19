@@ -3,7 +3,7 @@ import inspect
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 import networkx as nx
 import pandas as pd
@@ -364,14 +364,14 @@ class CloudClient:
             if enable_node_monitoring not in {"monitor", "benchmark", "both"}:
                 raise ValueError(
                     "enable_node_monitoring's value must be either monitor, benchmark, or both"
-                ) 
+                )
 
             if not monitoring_script_url:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
 
-            start_task_command = rf"""/bin/bash -c '
+            start_task_command = r"""/bin/bash -c '
                                     set -euo pipefail &&
                                     mkdir -p /mnt/batch/tasks/startup/wd/node-metrics
                                     chmod +x ./start-metrics.sh
