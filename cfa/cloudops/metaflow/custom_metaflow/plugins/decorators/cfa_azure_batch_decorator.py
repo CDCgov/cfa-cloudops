@@ -15,7 +15,7 @@ from azure.batch.models import (
 )
 from metaflow.decorators import StepDecorator
 
-from cfa.cloudops import batch_helpers, helpers
+from cfa.cloudops import batch_helpers
 from cfa.cloudops.auth import SPCredentialHandler
 from cfa.cloudops.client import get_batch_management_client
 from cfa.cloudops.defaults import (
@@ -175,19 +175,6 @@ class CFAAzureBatchDecorator(StepDecorator):
         if save_logs_to_blob:
             logs_folder = "stdout_stderr"
 
-        if save_logs_to_blob:
-            rel_mnt_path = batch_helpers.get_rel_mnt_path(
-                blob_name=save_logs_to_blob,
-                pool_name=self.pool_name,
-                resource_group_name=self.cred.azure_resource_group_name,
-                account_name=self.cred.azure_batch_account,
-                batch_mgmt_client=self.batch_mgmt_client,
-            )
-            if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
-        else:
-            rel_mnt_path = None
-
         # get all mounts from pool info
         mounts = batch_helpers.get_pool_mounts(
             self.pool_name,
@@ -199,7 +186,6 @@ class CFAAzureBatchDecorator(StepDecorator):
             job_name=job_name,
             task_id_base=job_name,
             command_line=command_line,
-            save_logs_rel_path=rel_mnt_path,
             logs_folder=logs_folder,
             name_suffix=name_suffix,
             mounts=mounts,

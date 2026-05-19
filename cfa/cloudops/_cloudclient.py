@@ -38,6 +38,7 @@ from .client import (
     get_compute_management_client,
 )
 from .job import create_job, create_job_schedule
+from .util import get_date_time, get_user
 
 logger = logging.getLogger(__name__)
 
@@ -507,7 +508,7 @@ class CloudClient:
         save_logs_to_blob: str | None = None,
         logs_folder: str | None = None,
         task_retries: int = 0,
-        mark_complete_after_tasks_run: bool = False,
+        mark_complete_after_tasks_run: bool = True,
         task_id_ints: bool = False,
         timeout: int | None = None,
         exist_ok: bool = False,
@@ -537,7 +538,7 @@ class CloudClient:
                 0-100. Default is 0 (no retries).
             mark_complete_after_tasks_run (bool, optional): Whether to automatically mark
                 the job as complete after all tasks finish. When True, the job will be marked
-                complete without requiring explicit job termination. Default is False.
+                complete without requiring explicit job termination. Default is True.
             task_id_ints (bool, optional): Whether to use integer task IDs instead of string
                 IDs. When True, tasks added to this job should use integer IDs for better
                 performance with large numbers of tasks. Default is False (use string IDs).
@@ -658,7 +659,9 @@ class CloudClient:
             on_task_failure=OnTaskFailure.perform_exit_options_job_action,
             constraints=job_constraints,
             metadata=[
-                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run)
+                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run),
+                MetadataItem(name="owner", value=get_user()),
+                MetadataItem(name="datetime_created", value=get_date_time()),
             ],
         )
 
@@ -860,22 +863,6 @@ class CloudClient:
             container_name = container_image_name
             logger.debug(f"Using provided container name: {container_name}.")
 
-        if self.save_logs_to_blob:
-            logger.debug("Configuring log saving to blob storage.")
-            rel_mnt_path = batch_helpers.get_rel_mnt_path(
-                blob_name=self.save_logs_to_blob,
-                pool_name=pool_name,
-                resource_group_name=self.cred.azure_resource_group_name,
-                account_name=self.cred.azure_batch_account,
-                batch_mgmt_client=self.batch_mgmt_client,
-            )
-            if rel_mnt_path != "ERROR!":
-                rel_mnt_path = "/" + helpers.format_rel_path(rel_path=rel_mnt_path)
-            logger.debug(f"Relative mount path for logs set to: {rel_mnt_path}")
-        else:
-            rel_mnt_path = None
-            logger.debug("No log saving to blob storage configured.")
-
         # get all mounts from pool info
         if mount_pairs is None:
             self.mounts = batch_helpers.get_pool_mounts(
@@ -894,13 +881,15 @@ class CloudClient:
             ]
 
         logger.debug("Adding tasks to job.")
+
         tid = batch_helpers.add_task(
             job_name=job_name,
             task_id_base=job_name,
             command_line=command_line,
-            save_logs_rel_path=rel_mnt_path,
             logs_folder=self.logs_folder,
             name_suffix=name_suffix,
+            blob_container=self.save_logs_to_blob,
+            blob_storage_account=self.cred.azure_blob_storage_account,
             mounts=self.mounts,
             depends_on=depends_on,
             depends_on_range=depends_on_range,

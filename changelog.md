@@ -7,8 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.5.1
+- Modified `cfa.cloudops.batch_helpers._generate_command_for_saving_logs` to copy data from standard input to standard output and standard error files
+
+## v0.5.0
+- mark job complete when all tasks run by default.
+
+## v0.4.1
+- add owner and created datetime tags to pools and jobs by default
+
+## v0.4.0
+- remove upper limits on non-problem dependencies
+
+## v0.3.23
+- added function to check environment
+
 ## v0.3.22
-- Added/updated node profiling option to `create_pool` function in `_cloudclient.py`
+- added support for deployment slots in  `FunctionAppClient` module
 
 ## v0.3.21
 - added metadata lookup methods for Azure Function Apps to the `FunctionAppClient` module

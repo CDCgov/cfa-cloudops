@@ -2,13 +2,18 @@
 Miscellaneous utilities for interacting with Azure.
 """
 
+import datetime
+import getpass
 import json
 import logging
-import subprocess
+import subprocess as sp
 from collections.abc import MutableSequence
+from zoneinfo import ZoneInfo
 
+from azure.identity import DefaultAzureCredential
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.batch.models import SupportedSku
+from azure.mgmt.resource import SubscriptionClient
 
 from .config import get_config_val
 
@@ -46,7 +51,7 @@ def lookup_service_principal(display_name: str) -> list:
         command = [f"az ad sp list --display-name {display_name}"]
         logger.debug(f"Executing Azure CLI command: {command[0]}")
 
-        result = subprocess.check_output(
+        result = sp.check_output(
             command, shell=True, universal_newlines=True, text=True
         )
         logger.debug(
@@ -278,3 +283,56 @@ def lookup_available_vm_skus_for_batch(
     )
 
     return result
+
+
+def get_subscriptions():
+    """Get a list of Azure subscriptions available to the current user.
+
+    Returns:
+        list: A list of subscription IDs.
+    """
+    try:
+        credential = DefaultAzureCredential()
+        subscription_client = SubscriptionClient(credential)
+        subscriptions = subscription_client.subscriptions.list()
+        return [sub.display_name for sub in subscriptions]
+    except Exception:
+        print("Could not find a subscription.")
+        return []
+
+
+def check_ext_env() -> bool:
+    return any("EXT-EDAV-CFA" in i for i in get_subscriptions())
+
+
+def get_user() -> str:
+    """Get the current system user
+
+    Returns:
+        str: the current system user
+    """
+    try:
+        return getpass.getuser()
+    except Exception:
+        try:
+            user = sp.run(
+                "whoami", shell=True, text=True, capture_output=True
+            ).stdout.strip()
+            return user
+        except Exception:
+            return "unknown_user"
+
+
+def get_date_time():
+    """Get the current date and time as a string.
+
+    Returns:
+        str: The current date and time in ISO format.
+    """
+    try:
+        datetime_str = datetime.datetime.now(
+            tz=ZoneInfo("America/New_York")
+        ).isoformat()
+    except Exception:
+        datetime_str = "unknown_datetime"
+    return datetime_str
