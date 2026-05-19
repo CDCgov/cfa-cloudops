@@ -238,9 +238,15 @@ class CloudClient:
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
             replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
-            enable_node_monitoring (bool): Whether to enable node profiling
+            enable_node_monitoring (str, optional): Controls node-level monitoring behavior.
+                Allowed values:
+                    - "monitor": run continuous resource monitoring only
+                    - "benchmark": run CPU benchmark only (no monitoring loop)
+                    - "both": run benchmark once at startup, then start monitoring
+                If None, node monitoring is disabled.
             monitoring_script_url (str): sas token blob url to profiler script
             monitoring_interval_seconds (int): Interval at which monitoring script gathers profiling data on node
+            benchmark_runtime_seconds (int): Total seconds cpu benchmark will run for on node
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
