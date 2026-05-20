@@ -3,7 +3,7 @@ import inspect
 import logging
 import os
 from graphlib import CycleError, TopologicalSorter
-from typing import Optional
+from typing import Literal, Optional
 
 import networkx as nx
 import pandas as pd
@@ -188,9 +188,10 @@ class CloudClient:
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
         replace_existing_pool: bool = False,
-        enable_node_monitoring: bool = False,
+        enable_node_monitoring: Literal["monitor", "benchmark", "both"] | None = None,
         monitoring_script_url: str | None = None,
         monitoring_interval_seconds: int = 15,
+        benchmark_runtime_seconds: int = 60,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -238,9 +239,15 @@ class CloudClient:
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
             replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
-            enable_node_monitoring (bool): Whether to enable node profiling
+            enable_node_monitoring (str, optional): Controls node-level monitoring behavior.
+                Allowed values:
+                    - "monitor": run continuous resource monitoring only
+                    - "benchmark": run CPU benchmark only (no monitoring loop)
+                    - "both": run benchmark once at startup, then start monitoring
+                If None, node monitoring is disabled.
             monitoring_script_url (str): sas token blob url to profiler script
             monitoring_interval_seconds (int): Interval at which monitoring script gathers profiling data on node
+            benchmark_runtime_seconds (int): Total seconds cpu benchmark will run for on node
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -354,19 +361,35 @@ class CloudClient:
 
         # Attach node monitoring Start Task
         if enable_node_monitoring:
+            if enable_node_monitoring not in {"monitor", "benchmark", "both"}:
+                raise ValueError(
+                    "enable_node_monitoring's value must be either monitor, benchmark, or both"
+                )
+
             if not monitoring_script_url:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
 
-            start_task_command = rf"""/bin/bash -c '
+            start_task_command = r"""/bin/bash -c '
                                     set -euo pipefail &&
                                     mkdir -p /mnt/batch/tasks/startup/wd/node-metrics
                                     chmod +x ./start-metrics.sh
-                                    nohup ./start-metrics.sh {monitoring_interval_seconds} output \
-                                        >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
-                                        2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
-                                    '"""
+
+                                   """
+
+            if enable_node_monitoring in {"monitor", "both"}:
+                start_task_command += rf"""
+                                        ./start-metrics.sh benchmark 0 {benchmark_runtime_seconds} output
+                                        """
+
+            if enable_node_monitoring in {"benchmark", "both"}:
+                start_task_command += rf"""
+                                        nohup ./start-metrics.sh monitor {monitoring_interval_seconds} 0 output \
+                                            >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
+                                            2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
+                                        """
+            start_task_command += "'"
 
             pool_config.start_task = models.StartTask(
                 command_line=start_task_command,
