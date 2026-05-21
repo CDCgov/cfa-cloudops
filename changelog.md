@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.5.2
+- updated `cfa.cloudops._cloudclient.create_pool` node monitoring to be more configurable by user.
+
+## v0.5.1
+- Modified `cfa.cloudops.batch_helpers._generate_command_for_saving_logs` to copy data from standard input to standard output and standard error files
+
+## v0.5.0
+- mark job complete when all tasks run by default.
+
+## v0.4.1
+- add owner and created datetime tags to pools and jobs by default
+
+## v0.4.0
+- remove upper limits on non-problem dependencies
+
+## v0.3.23
+- added function to check environment
+
 ## v0.3.22
 - added support for deployment slots in  `FunctionAppClient` module
 

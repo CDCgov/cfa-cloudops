@@ -99,7 +99,6 @@ def test_add_task():
         command_line=command_line,
         depends_on=["task-base--0"],
         run_dependent_tasks_on_fail=True,
-        save_logs_rel_path="/logs/task-logs/",
     )
     added_task = mock_batch_client.task.add.call_args[1]["task"]
     assert added_task.id == "task-base--1"
@@ -112,7 +111,6 @@ def test_add_task():
         command_line=command_line,
         depends_on=["task-base--0"],
         run_dependent_tasks_on_fail=True,
-        save_logs_rel_path="ERROR!",
         mounts=[{"source": "my-source", "target": "/mnt/data"}],
     )
     added_task = mock_batch_client.task.add.call_args[1]["task"]
