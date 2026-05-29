@@ -889,7 +889,6 @@ class CloudClient:
             timeout=timeout,
         )
         self.task_id_max += 1
-        logger.info(f"Added task {tid} to job {job_name}.")
         logger.info(f"Task '{tid}' added to job '{job_name}'.")
         return tid
 
