@@ -111,7 +111,7 @@ sequenceDiagram
             WFExecutor->>CC: call_operation(operation, params)
             activate CC
 
-            alt Operation Type
+            par Pool Operations
                 Note over CC: Pool Operations
                 CC->>Azure: create_pool_request()
                 activate Azure
@@ -124,8 +124,7 @@ sequenceDiagram
                 StateTrack-->>CC: OK
                 deactivate StateTrack
 
-                OR
-
+            and Job Operations
                 Note over CC: Job Operations
                 CC->>Azure: create_job_request()
                 activate Azure
@@ -138,8 +137,7 @@ sequenceDiagram
                 StateTrack-->>CC: OK
                 deactivate StateTrack
 
-                OR
-
+            and Task Operations
                 Note over CC: Task Operations
                 CC->>Azure: add_task_request()
                 activate Azure
