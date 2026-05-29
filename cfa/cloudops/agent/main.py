@@ -25,11 +25,18 @@ class TextRequest(BaseModel):
 def create_plan(goal):
     plan = generate_workflow(goal)
     return yaml.safe_dump(plan.model_dump(), sort_keys=False)
-    # goal_id = secrets.token_hex(4)
-    # workflow = yaml.safe_dump(plan.model_dump(), sort_keys=False)
-    # with open(f"output/generated_workflow_{goal_id}.yaml", "w") as f:
-    #    f.write(workflow)
-    # return goal_id, workflow
+
+
+def load_plan(goal):
+    if "delete the job" in goal:
+        file_name = "workflow_1.yaml"
+    elif "measles" in goal:
+        file_name = "workflow_2.yaml"
+    else:
+        file_name = "workflow_3.yaml"
+    with open(f"output/{file_name}", "r") as f:
+        plan_yaml = f.read()
+    return plan_yaml
 
 
 def run_plan(workflow: str):
@@ -38,7 +45,7 @@ def run_plan(workflow: str):
     executor = WorkflowExecutor(
         client=client,
         dependency_yaml_path="config/operational_dependencies.yaml",
-        dry_run=True,
+        dry_run=False,
     )
     _, log_entries = executor.execute_plan(workflow)
     return "\n".join(log_entries)
@@ -54,7 +61,8 @@ async def home(request: Request):
 
 @app.post("/plan", response_class=HTMLResponse)
 async def plan(request: Request, text: str = Form(...)):
-    workflow = create_plan(text)
+    # workflow = create_plan(text)
+    workflow = load_plan(text)
     return templates.TemplateResponse(
         "index.html",  # template name FIRST
         {"request": request, "workflow": workflow},

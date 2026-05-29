@@ -1,0 +1,32 @@
+goal: Schedule a job that runs daily at 9 PM except weekends and computes the Measles
+  inference using daily partition stored in input-test folder of CFAAzureBatchPrd
+  storage account. Use the measles-script:v1 container for this job.
+workflow:
+- id: create_pool_1
+  method: create_pool
+  depends_on: []
+  args:
+    pool_name: measles-inference-pool
+    mounts:
+    - source: input-test
+      target: /mnt/input-test
+    container_image_name: measles-script:v1
+    autoscale: true
+    max_autoscale_nodes: 5
+- id: create_job_schedule_1
+  method: create_job_schedule
+  depends_on:
+  - create_pool_1
+  args:
+    job_schedule_name: measles-inference-daily
+    pool_name: measles-inference-pool
+    command: python /app/infer.py --input /mnt/input-test/$(date +%Y-%m-%d)
+    timeout: 3600
+    start_window:
+      days: 0
+      hours: 0
+      minutes: 5
+    recurrence_interval:
+      days: 1
+      hours: 0
+      minutes: 0

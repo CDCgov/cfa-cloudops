@@ -170,7 +170,7 @@ llm = ChatOpenAI(model="gpt-4.1", temperature=0)
 
 structured_llm = llm.with_structured_output(WorkflowPlan)
 
-with open("config/prompt_v4.txt", "r") as f:
+with open("config/cloudclient_prompt.txt", "r") as f:
     prompt_template = f.read()
 
 prompt = ChatPromptTemplate.from_messages(
