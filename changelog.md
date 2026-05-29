@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.5.1
+- switch most print statemtns to the logger
+
 ## v0.5.0
 - mark job complete when all tasks run by default.
 
