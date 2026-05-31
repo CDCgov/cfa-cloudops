@@ -1,9 +1,8 @@
 goal: Create a new blob container named 'my-test-container' in cfaazurebatchprd storage
   account and mount it as my_input folder in a new pool. Then run a job that contains
   5 tasks using the latest python Docker image. All 5 tasks should run in parallel.
-  First task run the command "python -c \"print('hello');\"."
-  The second, third, fourth and fifth tasks should run the same command but replace
-  the word 'hello' with 'world', 'how', 'are' and 'you?' respectively.
+  Each task should run the command "python -c \"print('hello');\"." When all tasks
+  stop executing, delete the job and pool.
 workflow:
 - id: create_blob_container
   method: create_blob_container
@@ -48,7 +47,7 @@ workflow:
   - create_job
   args:
     job_name: my-test-job
-    command_line: python -c "print('world');"
+    command_line: python -c "print('hello');"
     name_suffix: task2
     depends_on: null
     run_dependent_tasks_on_fail: false
@@ -59,7 +58,7 @@ workflow:
   - create_job
   args:
     job_name: my-test-job
-    command_line: python -c "print('how');"
+    command_line: python -c "print('hello');"
     name_suffix: task3
     depends_on: null
     run_dependent_tasks_on_fail: false
@@ -70,7 +69,7 @@ workflow:
   - create_job
   args:
     job_name: my-test-job
-    command_line: python -c "print('are');"
+    command_line: python -c "print('hello');"
     name_suffix: task4
     depends_on: null
     run_dependent_tasks_on_fail: false
@@ -81,7 +80,7 @@ workflow:
   - create_job
   args:
     job_name: my-test-job
-    command_line: python -c "print('you?');"
+    command_line: python -c "print('hello');"
     name_suffix: task5
     depends_on: null
     run_dependent_tasks_on_fail: false
@@ -96,3 +95,15 @@ workflow:
   - add_task_5
   args:
     job_name: my-test-job
+- id: delete_job
+  method: delete_job
+  depends_on:
+  - check_job_status
+  args:
+    job_name: my-test-job
+- id: delete_pool
+  method: delete_pool
+  depends_on:
+  - delete_job
+  args:
+    pool_name: my-test-pool
