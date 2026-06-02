@@ -348,7 +348,7 @@ class CloudClient:
             "large_amd",
             "xlarge_amd",
         ]
-        if vm_size in valid_vm_sizes:
+        if vm_size.lower() in valid_vm_sizes:
             vm_size = get_vm_size(vm_size)
         logger.info(f"Using VM size: {vm_size}")
 
