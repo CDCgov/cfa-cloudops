@@ -107,7 +107,7 @@ default_vm_configuration = models.VirtualMachineConfiguration(
 )
 
 
-default_vm_size = "standard_d4s_v3"  # 4 core D-series VM
+default_vm_size = "standard_d4ds_v5"  # 4 core D-series VM
 
 default_autoscale_evaluation_interval = "PT5M"
 

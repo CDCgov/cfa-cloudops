@@ -208,7 +208,7 @@ class CloudClient:
                     how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
-            vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
+            vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4ds_v5").
                 Defaults to the value from defaults module.
                 VM size can also be given in the form "xsmall", "small", "medium", "large", or "xlarge" for convenience,
                 which will be mapped to specific Azure VM sizes. The sizes map to the following Azure VM sizes:
@@ -262,7 +262,7 @@ class CloudClient:
                 client.create_pool(
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
-                    vm_size="Standard_D4s_v3",
+                    vm_size="Standard_D4ds_v5",
                     mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
@@ -336,7 +336,18 @@ class CloudClient:
         logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
-        valid_vm_sizes = ["xsmall", "small", "medium", "large", "xlarge"]
+        valid_vm_sizes = [
+            "xsmall",
+            "small",
+            "medium",
+            "large",
+            "xlarge",
+            "xsmall_amd",
+            "small_amd",
+            "medium_amd",
+            "large_amd",
+            "xlarge_amd",
+        ]
         if vm_size in valid_vm_sizes:
             vm_size = get_vm_size(vm_size)
         logger.info(f"Using VM size: {vm_size}")
