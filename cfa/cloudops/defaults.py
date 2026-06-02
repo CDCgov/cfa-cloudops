@@ -7,6 +7,8 @@ import os
 
 from azure.mgmt.batch import models
 
+from .util import get_date_time, get_user
+
 logger = logging.getLogger(__name__)
 
 
@@ -134,6 +136,10 @@ default_pool_config_dict = dict(
             evaluation_interval=default_autoscale_evaluation_interval,
         )
     ),
+    metadata=[
+        models.MetadataItem(name="owner", value=get_user()),
+        models.MetadataItem(name="datetime_created", value=get_date_time()),
+    ],
 )
 
 default_kv_keys = [

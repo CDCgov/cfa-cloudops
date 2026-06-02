@@ -2,15 +2,18 @@
 Miscellaneous utilities for interacting with Azure.
 """
 
+import datetime
+import getpass
 import json
 import logging
-import subprocess
+import subprocess as sp
 from collections.abc import MutableSequence
+from zoneinfo import ZoneInfo
 
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.batch.models import SupportedSku
-from azure.mgmt.subscription import SubscriptionClient
+from azure.mgmt.resource import SubscriptionClient
 
 from .config import get_config_val
 
@@ -48,7 +51,7 @@ def lookup_service_principal(display_name: str) -> list:
         command = [f"az ad sp list --display-name {display_name}"]
         logger.debug(f"Executing Azure CLI command: {command[0]}")
 
-        result = subprocess.check_output(
+        result = sp.check_output(
             command, shell=True, universal_newlines=True, text=True
         )
         logger.debug(
@@ -300,3 +303,36 @@ def get_subscriptions():
 
 def check_ext_env() -> bool:
     return any("EXT-EDAV-CFA" in i for i in get_subscriptions())
+
+
+def get_user() -> str:
+    """Get the current system user
+
+    Returns:
+        str: the current system user
+    """
+    try:
+        return getpass.getuser()
+    except Exception:
+        try:
+            user = sp.run(
+                "whoami", shell=True, text=True, capture_output=True
+            ).stdout.strip()
+            return user
+        except Exception:
+            return "unknown_user"
+
+
+def get_date_time():
+    """Get the current date and time as a string.
+
+    Returns:
+        str: The current date and time in ISO format.
+    """
+    try:
+        datetime_str = datetime.datetime.now(
+            tz=ZoneInfo("America/New_York")
+        ).isoformat()
+    except Exception:
+        datetime_str = "unknown_datetime"
+    return datetime_str
