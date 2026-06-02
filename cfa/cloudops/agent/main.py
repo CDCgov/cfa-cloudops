@@ -28,7 +28,7 @@ def create_plan(goal):
 
 
 def load_plan(goal):
-    if "delete the job" in goal:
+    if "hello" in goal:
         file_name = "workflow_1.yaml"
     elif "measles" in goal:
         file_name = "workflow_2.yaml"
