@@ -7,7 +7,6 @@ import os
 from dataclasses import dataclass
 from functools import cached_property, partial
 
-from azure.batch import models
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.core.pipeline import PipelineContext, PipelineRequest
 from azure.core.pipeline.policies import BearerTokenCredentialPolicy
@@ -18,6 +17,7 @@ from azure.identity import (
     ManagedIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
+from azure.mgmt.batch import models as batch_mgmt_models
 from azure.mgmt.resource import SubscriptionClient
 from dotenv import load_dotenv
 from msrest.authentication import BasicTokenAuthentication
@@ -384,7 +384,7 @@ class CredentialHandler:
         logger.debug(
             "All required attributes present for ComputeNodeIdentityReference. Creating..."
         )
-        comp_id_ref = models.ComputeNodeIdentityReference(
+        comp_id_ref = batch_mgmt_models.ComputeNodeIdentityReference(
             resource_id=self.azure_user_assigned_identity
         )
         logger.debug("Created ComputeNodeIdentityReference.")
@@ -417,7 +417,7 @@ class CredentialHandler:
                 "azure_container_registry_domain",
                 "azure_user_assigned_identity",
             ],
-            goal=("Azure Container Registry `ContainerRegistry` instance"),
+            goal="Azure Container Registry ContainerRegistry instance",
         )
         logger.debug(
             "All required attributes present for Azure Container Registry. Validating endpoint..."
@@ -429,7 +429,7 @@ class CredentialHandler:
         logger.debug(
             "Azure Container Registry endpoint is valid. Creating ContainerRegistry instance..."
         )
-        cont_reg = models.ContainerRegistry(
+        cont_reg = batch_mgmt_models.ContainerRegistry(
             user_name=self.azure_container_registry_account,
             registry_server=self.azure_container_registry_endpoint,
             identity_reference=self.compute_node_identity_reference,
@@ -964,7 +964,7 @@ def get_service_principal_credentials(
 
 def get_compute_node_identity_reference(
     credential_handler: CredentialHandler = None,
-) -> models.ComputeNodeIdentityReference:
+) -> batch_mgmt_models.ComputeNodeIdentityReference:
     """Get a valid ComputeNodeIdentityReference using credentials from a CredentialHandler.
 
     Uses credentials obtained via a CredentialHandler: either a user-provided one
@@ -989,12 +989,11 @@ def get_compute_node_identity_reference(
         >>> identity_ref = get_compute_node_identity_reference(handler)
     """
     logger.debug("Getting ComputeNodeIdentityReference from CredentialHandler.")
-    ch = credential_handler
-    if ch is None:
+    if credential_handler is None:
         logger.debug("No CredentialHandler provided, using EnvCredentialHandler.")
-        ch = EnvCredentialHandler()
+        credential_handler = EnvCredentialHandler()
     logger.debug("Retrieving compute_node_identity_reference from CredentialHandler.")
-    return ch.compute_node_identity_reference
+    return credential_handler.compute_node_identity_reference
 
 
 def get_secret_client(keyvault: str, credential: object) -> SecretClient:
