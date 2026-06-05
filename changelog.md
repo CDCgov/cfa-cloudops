@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.5.3
+- switch most print statements to the logger
+
 ## v0.5.2
 - updated `cfa.cloudops._cloudclient.create_pool` node monitoring to be more configurable by user.
 

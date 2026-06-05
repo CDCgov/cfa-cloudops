@@ -103,10 +103,8 @@ def create_storage_container_if_not_exists(
         )
         container_client.create_container()
         logger.info(f"Container '{blob_storage_container_name}' created.")
-        print("Container [{}] created.".format(blob_storage_container_name))
     else:
         logger.info(f"Container '{blob_storage_container_name}' already exists.")
-        print("Container [{}] already exists.".format(blob_storage_container_name))
 
 
 def upload_to_storage_container(
@@ -203,7 +201,6 @@ def upload_to_storage_container(
     logger.info(
         f"Uploaded {n_total_files} file(s) to container '{blob_storage_container_name}'."
     )
-    print("Uploaded {} files to blob storage container".format(n_total_files))
 
 
 def download_from_storage_container(
@@ -263,7 +260,6 @@ def download_from_storage_container(
 
     for i_file, file_path in enumerate(file_paths):
         if i_file % (1 + int(n_total_files / 10)) == 0:
-            print(f"Downloading file {i_file} of {n_total_files}")
             logger.debug(f"Download progress: {i_file}/{n_total_files} files completed")
 
         local_file_path = os.path.join(local_root_dir, file_path)
@@ -285,7 +281,6 @@ def download_from_storage_container(
     logger.info(
         f"Downloaded {n_total_files} file(s) from container '{blob_storage_container_name}'."
     )
-    print(f"Downloaded {n_total_files} files from blob storage container")
 
 
 def get_node_mount_config(
@@ -695,7 +690,7 @@ async def _async_download_blob_folder(
         f"Found {len(matching_blobs)} matching blobs, total size: {total_size} bytes"
     )
 
-    print(f"Total size of files to download: {total_size / gb:.2f} GB")
+    logger.info(f"Total size of files to download: {total_size / gb:.2f} GB")
     if total_size > 2 * gb and check_size:
         print("Warning: Total size of files to download is greater than 2 GB.")
         cont = input("Continue? [Y/n]: ")
