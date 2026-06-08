@@ -34,7 +34,6 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
         logger.debug("CloudClient created successfully")
     except Exception as e:
         logger.error(f"Failed to create CloudClient object: {e}")
-        print("could not create CloudClient object.")
         return None
 
     # check pool included in exp_toml and exists in azure
@@ -49,7 +48,7 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
             batch_mgmt_client=client.batch_mgmt_client,
         ):
             logger.error(f"Pool '{pool_name}' does not exist in the Azure environment")
-            print(
+            logger.error(
                 f"pool name {exp_toml['job']['pool_name']} does not exist in the Azure environment."
             )
             return None
@@ -58,8 +57,8 @@ def run_experiment(exp_config: str, dotenv_path: str | None = None, **kwargs):
         logger.error(
             "Missing required 'pool_name' key in job section of experiment config"
         )
-        print("could not find 'pool_name' key in 'setup' section of exp toml.")
-        print("please specify a pool name to use.")
+        logger.error("could not find 'pool_name' key in 'setup' section of exp toml.")
+        logger.error("please specify a pool name to use.")
         return None
 
     # upload files if the section exists
@@ -213,7 +212,6 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs) -> Non
         logger.debug("CloudClient created successfully")
     except Exception as e:
         logger.error(f"Failed to create CloudClient object: {e}")
-        print("could not create AzureClient object.")
         return None
 
     # check pool included in task_toml and exists in azure
@@ -228,15 +226,17 @@ def run_tasks(task_config: str, dotenv_path: str | None = None, **kwargs) -> Non
             batch_mgmt_client=client.batch_mgmt_client,
         ):
             logger.error(f"Pool '{pool_name}' does not exist in the Azure environment")
-            print(
+            logger.error(
                 f"pool name {task_toml['job']['pool_name']} does not exist in the Azure environment."
             )
             return None
         logger.debug(f"Pool '{pool_name}' validated successfully")
     else:
         logger.error("Missing required 'pool_name' key in job section of task config")
-        print("could not find 'pool_name' key in 'setup' section of task config toml.")
-        print("please specify a pool name to use.")
+        logger.error(
+            "could not find 'pool_name' key in 'setup' section of task config toml."
+        )
+        logger.error("please specify a pool name to use.")
         return None
 
     # upload files if the section exists
