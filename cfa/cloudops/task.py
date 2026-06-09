@@ -7,18 +7,7 @@ import logging
 from pathlib import Path
 
 import azure.batch.models as batchmodels
-from azure.batch.models import (
-    ComputeNodeIdentityReference,
-    ContainerRegistry,
-    ContainerWorkingDirectory,
-    OutputFile,
-    OutputFileBlobContainerDestination,
-    OutputFileDestination,
-    OutputFileUploadOptions,
-    TaskAddParameter,
-    TaskContainerSettings,
-    UserIdentity,
-)
+import azure.mgmt.batch.models as batch_mgmt_models
 
 from .auth import get_compute_node_identity_reference
 from .defaults import default_azure_blob_storage_endpoint_subdomain
@@ -68,12 +57,12 @@ def create_bind_mount_string(
 def get_container_settings(
     container_image_name: str,
     az_mount_dir: str = "$AZ_BATCH_NODE_MOUNTS_DIR",
-    working_directory: str | ContainerWorkingDirectory = None,
+    working_directory: str | batchmodels.ContainerWorkingDirectory = None,
     mount_pairs: list[dict] = None,
     additional_options: str = "",
-    registry: ContainerRegistry = None,
+    registry: batchmodels.ContainerRegistry = None,
     **kwargs,
-) -> TaskContainerSettings:
+) -> batchmodels.TaskContainerSettings:
     """Create a valid set of container settings with bind mounts for an OCI container.
 
     Creates container settings with bind mounts specified in mount_pairs,
@@ -146,7 +135,7 @@ def get_container_settings(
 
     logger.debug(f"Final container run options: '{ctr_r_opts}'")
 
-    container_settings = TaskContainerSettings(
+    container_settings = batchmodels.TaskContainerSettings(
         image_name=container_image_name,
         working_directory=working_directory,
         container_run_options=ctr_r_opts,
@@ -168,9 +157,9 @@ def output_task_files_to_blob(
     path: str = None,
     upload_condition: str = "taskCompletion",
     blob_endpoint_subdomain: str = default_azure_blob_storage_endpoint_subdomain,
-    compute_node_identity_reference: ComputeNodeIdentityReference = None,
+    compute_node_identity_reference: batch_mgmt_models.ComputeNodeIdentityReference = None,
     **kwargs,
-) -> OutputFile:
+) -> batchmodels.OutputFile:
     """Get a properly configured OutputFile object for uploading files from a Batch task to Blob storage.
 
     Args:
@@ -235,7 +224,9 @@ def output_task_files_to_blob(
     logger.debug(
         f"Validating compute node identity reference type: {type(compute_node_identity_reference)}"
     )
-    if not isinstance(compute_node_identity_reference, ComputeNodeIdentityReference):
+    if not isinstance(
+        compute_node_identity_reference, batch_mgmt_models.ComputeNodeIdentityReference
+    ):
         error_msg = (
             "compute_node_identity_reference "
             "must be an instance of "
@@ -254,20 +245,22 @@ def output_task_files_to_blob(
     )
     logger.debug(f"Constructed container URL: '{container_url}'")
 
-    container = OutputFileBlobContainerDestination(
+    container = batchmodels.OutputFileBlobContainerDestination(
         container_url=container_url,
         path=path,
         identity_reference=compute_node_identity_reference,
     )
     logger.debug(f"Created OutputFileBlobContainerDestination with path: '{path}'")
 
-    destination = OutputFileDestination(container=container)
+    destination = batchmodels.OutputFileDestination(container=container)
     logger.debug("Created OutputFileDestination wrapper")
 
-    upload_options = OutputFileUploadOptions(upload_condition=upload_condition)
+    upload_options = batchmodels.OutputFileUploadOptions(
+        upload_condition=upload_condition
+    )
     logger.debug(f"Created upload options with condition: '{upload_condition}'")
 
-    output_file = OutputFile(
+    output_file = batchmodels.OutputFile(
         file_pattern=file_pattern,
         destination=destination,
         upload_options=upload_options,
@@ -284,17 +277,17 @@ def output_task_files_to_blob(
 def get_task_config(
     task_id: str,
     base_call: str,
-    container_settings: TaskContainerSettings = None,
-    user_identity: UserIdentity = None,
+    container_settings: batchmodels.TaskContainerSettings = None,
+    user_identity: batchmodels.UserIdentity = None,
     log_blob_container: str = None,
     log_blob_account: str = None,
     log_subdir: str = None,
     log_file_pattern: str = "../std*.txt",
     log_upload_condition: str = "taskCompletion",
-    log_compute_node_identity_reference: ComputeNodeIdentityReference = None,
-    output_files: list[OutputFile] | OutputFile = None,
+    log_compute_node_identity_reference: batch_mgmt_models.ComputeNodeIdentityReference = None,
+    output_files: list[batchmodels.OutputFile] | batchmodels.OutputFile = None,
     **kwargs,
-) -> TaskAddParameter:
+) -> batchmodels.TaskAddParameter:
     """Create a batch task with a given base call and set of container settings.
 
     If the ``user_identity`` is not set, set it up automatically with sufficient
@@ -382,7 +375,7 @@ def get_task_config(
         logger.debug(
             "No user identity provided, creating automatic admin user identity"
         )
-        user_identity = UserIdentity(
+        user_identity = batchmodels.UserIdentity(
             auto_user=batchmodels.AutoUserSpecification(
                 scope=batchmodels.AutoUserScope.pool,
                 elevation_level=batchmodels.ElevationLevel.admin,
@@ -442,7 +435,7 @@ def get_task_config(
     if kwargs:
         logger.debug(f"Additional TaskAddParameter kwargs: {list(kwargs.keys())}")
 
-    task_config = TaskAddParameter(
+    task_config = batchmodels.TaskAddParameter(
         id=task_id,
         command_line=base_call,
         container_settings=container_settings,

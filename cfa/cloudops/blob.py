@@ -334,7 +334,7 @@ def get_node_mount_config(
 
     Example:
         >>> from azure.mgmt.batch import models
-        >>> identity_ref = models.ComputeNodeIdentityReference(
+        >>> identity_ref = azure.batch.models.ComputeNodeIdentityReference(
         ...     resource_id="/subscriptions/.../resourceGroups/.../providers/..."
         ... )
         >>> mount_configs = get_node_mount_config(

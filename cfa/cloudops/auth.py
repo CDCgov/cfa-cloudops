@@ -369,7 +369,7 @@ class CredentialHandler:
         CredentialHandler's user-assigned identity.
 
         Returns:
-            models.ComputeNodeIdentityReference: The identity reference.
+            azure.mgmt.batch.models.ComputeNodeIdentityReference: The identity reference.
 
         Example:
             >>> handler = CredentialHandler()
@@ -977,7 +977,7 @@ def get_compute_node_identity_reference(
             local environment variables (see its documentation for details).
 
     Returns:
-        models.ComputeNodeIdentityReference: A ComputeNodeIdentityReference created
+        azure.mgmt.batch.models.ComputeNodeIdentityReference: A ComputeNodeIdentityReference created
             according to the specified configuration.
 
     Example:
