@@ -277,7 +277,7 @@ def monitor_tasks(
                         _download_task_file(
                             batch_client, job_name, task.id, "stderr.txt"
                         )
-                        print(f"\nOutput saved from task {task.id}")
+                        logger.info(f"Output saved from task {task.id}")
                         previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
             print(
@@ -341,8 +341,6 @@ def monitor_tasks(
 
     runtime = end_time - start_time
     logger.info(f"Monitoring ended: {end_time}. Total elapsed time: {runtime}.")
-    print("\n")
-    print("-" * 50)
     return {
         "completed": completed,
         "elapsed time": runtime,
@@ -442,8 +440,7 @@ def download_job_stats(
             writer.writerow(fields)
             logger.debug(f"Wrote task {item.id} statistics to CSV")
 
-    logger.debug(f"Job statistics download completed. File saved as: {file_name}.csv")
-    print(f"Downloaded job statistics report to {file_name}.csv.")
+    logger.info(f"Job statistics download completed. File saved as: {file_name}.csv")
 
 
 def check_job_exists(job_name: str, batch_client: object):
@@ -1055,9 +1052,7 @@ def get_rel_mnt_path(
             )
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
-    logger.error(f"could not find blob {blob_name} mounted to pool.")
-    logger.info(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
-    print(f"could not find blob {blob_name} mounted to pool.")
+    logger.error(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
     return "ERROR!"
 
 
@@ -1154,11 +1149,9 @@ def get_pool_mounts(
             batch_mgmt_client=batch_mgmt_client,
         )
     except Exception:
-        logger.error("could not retrieve pool information.")
-        logger.info(
+        logger.error(
             f"Could not retrieve pool info for pool '{pool_name}' in resource group '{resource_group_name}'."
         )
-        print(f"could not retrieve pool info for {pool_name}.")
         return None
 
     mounts = []

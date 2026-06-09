@@ -165,7 +165,7 @@ class CloudClient:
             docker_env = docker.from_env(timeout=8)
             docker_env.ping()
         except Exception:
-            print("can't find docker daemon")
+            logger.error("can't find docker daemon")
             return None
         # check if image exists
         try:
@@ -173,9 +173,9 @@ class CloudClient:
         except docker.errors.NotFound:
             try:
                 image = docker_env.images.pull(container_image_name)
-                print(f"Successfully pulled image: {image.tags[0]}")
+                logger.info(f"Successfully pulled image: {image.tags[0]}")
             except docker.errors.APIError as e:
-                print(f"Error pulling image: {e}")
+                logger.error(f"Error pulling image: {e}")
                 return None
 
         try:
@@ -312,7 +312,7 @@ class CloudClient:
 
         # check pool exists:
         if not os.path.exists(f"tmp/pools/{pool_name}.txt"):
-            print(f"Pool {pool_name} does not exist.")
+            logger.error(f"Pool {pool_name} does not exist.")
             return None
         self.save_logs_to_blob = save_logs_to_blob
 
