@@ -1337,6 +1337,7 @@ def add_task(
 
     logger.debug("Creating mount configuration string.")
     mount_str = _generate_mount_string(mounts)
+    logger.debug(f"Resolved task mounts for job '{job_name}': {mounts}")
 
     if task_id_ints:
         task_id = str(task_id_max + 1)
@@ -1361,6 +1362,9 @@ def add_task(
     container_run_options = f"--name={container_name} --rm " + mount_str
     logger.debug(
         f"Container settings: image='{full_container_name}', run_options='{container_run_options}'"
+    )
+    logger.info(
+        f"Task '{task_id if 'task_id' in locals() else task_id_base}' container run options: {container_run_options}"
     )
 
     # Create the task parameter
@@ -1544,13 +1548,25 @@ def add_task_collection(
 
         mounts = task.get("mounts", [])
         mount_str = _generate_mount_string(mounts)
+        logger.debug(f"Resolved task collection mounts for task '{task_id}': {mounts}")
 
         # if full container name is none, pull info from job
         container_name = f"{job_name}_{str(task_id_max + 1)}"
         container_run_options = f"--name={container_name} --rm " + mount_str
+        logger.info(
+            f"Task collection entry '{task_id}' container run options: {container_run_options}"
+        )
+
+        container_image_name = task.get("full_container_name") or task.get(
+            "container_image_name"
+        )
+        if container_image_name is None:
+            raise ValueError(
+                "Each task in add_task_collection must include either 'full_container_name' or 'container_image_name'."
+            )
 
         container_settings = get_container_settings(
-            container_image_name=task["full_container_name"],
+            container_image_name=container_image_name,
             additional_options=container_run_options,
             working_directory="containerImageDefault",
         )

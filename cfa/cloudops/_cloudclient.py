@@ -832,7 +832,26 @@ class CloudClient:
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
         job_info = self.batch_service_client.job.get(job_name)
-        pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+        pool_name = None
+        execution_info = getattr(job_info, "execution_info", None)
+        pool_info = getattr(job_info, "pool_info", None)
+
+        if execution_info is not None:
+            pool_name = getattr(execution_info, "pool_id", None)
+        if pool_name is None and pool_info is not None:
+            pool_name = getattr(pool_info, "pool_id", None)
+        if pool_name is None:
+            job_dict = job_info.as_dict()
+            exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
+            if isinstance(exec_dict, dict):
+                pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
+            if pool_name is None:
+                pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
+                if isinstance(pool_dict, dict):
+                    pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
+
+        if pool_name is None:
+            raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
         logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
         if container_image_name is None:
@@ -928,7 +947,26 @@ class CloudClient:
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
         job_info = self.batch_service_client.job.get(job_name)
-        pool_name = job_info.as_dict()["execution_info"]["pool_id"]
+        pool_name = None
+        execution_info = getattr(job_info, "execution_info", None)
+        pool_info = getattr(job_info, "pool_info", None)
+
+        if execution_info is not None:
+            pool_name = getattr(execution_info, "pool_id", None)
+        if pool_name is None and pool_info is not None:
+            pool_name = getattr(pool_info, "pool_id", None)
+        if pool_name is None:
+            job_dict = job_info.as_dict()
+            exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
+            if isinstance(exec_dict, dict):
+                pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
+            if pool_name is None:
+                pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
+                if isinstance(pool_dict, dict):
+                    pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
+
+        if pool_name is None:
+            raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
         logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
         for task in tasks:
