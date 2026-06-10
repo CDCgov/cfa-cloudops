@@ -28,7 +28,7 @@ from cfa.cloudops.task import (
 
 logger = logging.getLogger(__name__)
 
-AZ_MOUNT_DIR = "$AZ_BATCH_NODE_MOUNTS_DIR"
+AZ_MOUNT_DIR = "/mnt/batch/tasks/fsmounts"
 NO_EXIT_OPTIONS = ExitOptions(
     dependency_action=DependencyAction.satisfy, job_action=JobAction.none
 )
@@ -1039,13 +1039,39 @@ def get_rel_mnt_path(
         )
         return "ERROR!"
 
-    mc = pool_info.mount_configuration or []
+    mc = getattr(pool_info, "mount_configuration", None)
+    if mc is None and hasattr(pool_info, "as_dict"):
+        pool_dict = pool_info.as_dict()
+        mc = (
+            pool_dict.get("mount_configuration")
+            or pool_dict.get("mountConfiguration")
+            or pool_dict.get("properties", {}).get("mountConfiguration")
+            or []
+        )
+    mc = mc or []
     logger.debug(f"Searching through {len(mc)} mount configurations")
 
     for m in mc:
-        abfs = m.azure_blob_file_system_configuration
-        if abfs is not None and abfs.container_name == blob_name:
-            rel_mnt_path = abfs.relative_mount_path
+        abfs = getattr(m, "azure_blob_file_system_configuration", None)
+        if abfs is None and isinstance(m, dict):
+            abfs = m.get("azure_blob_file_system_configuration") or m.get(
+                "azureBlobFileSystemConfiguration"
+            )
+
+        if abfs is None:
+            continue
+
+        container_name = (
+            getattr(abfs, "container_name", None)
+            if not isinstance(abfs, dict)
+            else abfs.get("container_name") or abfs.get("containerName")
+        )
+        if container_name == blob_name:
+            rel_mnt_path = (
+                getattr(abfs, "relative_mount_path", None)
+                if not isinstance(abfs, dict)
+                else abfs.get("relative_mount_path") or abfs.get("relativeMountPath")
+            )
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
     logger.error(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
@@ -1152,15 +1178,36 @@ def get_pool_mounts(
 
     mounts = []
     try:
-        mc = pool_info.mount_configuration or []
+        mc = getattr(pool_info, "mount_configuration", None)
+        if mc is None and hasattr(pool_info, "as_dict"):
+            pool_dict = pool_info.as_dict()
+            mc = (
+                pool_dict.get("mount_configuration")
+                or pool_dict.get("mountConfiguration")
+                or pool_dict.get("properties", {}).get("mountConfiguration")
+                or []
+            )
+        mc = mc or []
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
-            abfs = m.azure_blob_file_system_configuration
+            abfs = getattr(m, "azure_blob_file_system_configuration", None)
+            if abfs is None and isinstance(m, dict):
+                abfs = m.get("azure_blob_file_system_configuration") or m.get(
+                    "azureBlobFileSystemConfiguration"
+                )
+
             if abfs is not None:
+                rel_mount_path = (
+                    getattr(abfs, "relative_mount_path", None)
+                    if not isinstance(abfs, dict)
+                    else abfs.get("relative_mount_path")
+                    or abfs.get("relativeMountPath")
+                )
+
                 mount_info = {
-                    "source": abfs.relative_mount_path,
-                    "target": abfs.relative_mount_path,
+                    "source": rel_mount_path,
+                    "target": rel_mount_path,
                 }
                 mounts.append(mount_info)
                 logger.debug(f"Added mount: {mount_info}")

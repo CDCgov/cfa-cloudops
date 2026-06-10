@@ -56,7 +56,7 @@ def create_bind_mount_string(
 
 def get_container_settings(
     container_image_name: str,
-    az_mount_dir: str = "$AZ_BATCH_NODE_MOUNTS_DIR",
+    az_mount_dir: str = "/mnt/batch/tasks/fsmounts",
     working_directory: str | batchmodels.ContainerWorkingDirectory = None,
     mount_pairs: list[dict] = None,
     additional_options: str = "",
