@@ -1039,17 +1039,13 @@ def get_rel_mnt_path(
         )
         return "ERROR!"
 
-    mc = pool_info.as_dict().get("properties", {}).get("mountConfiguration", [])
+    mc = pool_info.mount_configuration or []
     logger.debug(f"Searching through {len(mc)} mount configurations")
 
     for m in mc:
-        if (
-            m.get("azureBlobFileSystemConfiguration", {}).get("containerName")
-            == blob_name
-        ):
-            rel_mnt_path = m.get("azureBlobFileSystemConfiguration", {}).get(
-                "relativeMountPath"
-            )
+        abfs = m.azure_blob_file_system_configuration
+        if abfs is not None and abfs.container_name == blob_name:
+            rel_mnt_path = abfs.relative_mount_path
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
     logger.error(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
@@ -1156,20 +1152,18 @@ def get_pool_mounts(
 
     mounts = []
     try:
-        mc = pool_info.as_dict().get("mountConfiguration", {})
+        mc = pool_info.mount_configuration or []
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
-            mount_info = {
-                "source": m.get("azureBlobFileSystemConfiguration", {}).get(
-                    "relativeMountPath"
-                ),
-                "target": m.get("azureBlobFileSystemConfiguration", {}).get(
-                    "relativeMountPath"
-                ),
-            }
-            mounts.append(mount_info)
-            logger.debug(f"Added mount: {mount_info}")
+            abfs = m.azure_blob_file_system_configuration
+            if abfs is not None:
+                mount_info = {
+                    "source": abfs.relative_mount_path,
+                    "target": abfs.relative_mount_path,
+                }
+                mounts.append(mount_info)
+                logger.debug(f"Added mount: {mount_info}")
 
         logger.debug(f"Successfully retrieved {len(mounts)} mount configurations")
     except Exception as e:
