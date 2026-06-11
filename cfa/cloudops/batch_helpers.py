@@ -1237,7 +1237,6 @@ def add_task(
     task_id_max: int = 0,
     task_id_ints: bool = False,
     timeout: int | None = None,
-    user_assigned_identity: str = None,
 ) -> str:
     """Add a task to an Azure Batch job with comprehensive configuration options.
 
@@ -1274,7 +1273,6 @@ def add_task(
             Defaults to False.
         timeout (int, optional): Maximum wall clock time for the task in minutes. If None,
             no timeout is set.
-        user_assigned_identity (str, optional): The ARM resource ID of the user-assigned managed identity to run the task with.
 
     Returns:
         str: The generated task ID for the newly created task.
@@ -1378,7 +1376,6 @@ def add_task(
             blob_account=blob_storage_account,
             path=f"{logs_folder}/{formatted_date}/{task_id}",
             upload_condition="taskCompletion",
-            user_assigned_identity=user_assigned_identity,
         )
         output_files = [output_file]
     container_settings = get_container_settings(
@@ -1415,7 +1412,6 @@ def add_task_collection(
     batch_client: object | None = None,
     task_id_max: int = 0,
     task_id_ints: bool = False,
-    user_assigned_identity: str | None = None,
 ) -> batch_models.TaskAddCollectionResult:
     """Add a list of tasks to an Azure Batch job with comprehensive configuration options.
 
@@ -1451,7 +1447,6 @@ def add_task_collection(
             Defaults to 0.
         task_id_ints (bool): If True, use integer task IDs instead of string-based IDs.
             Defaults to False.
-        user_assigned_identity (str, optional): The ARM resource ID of the user-assigned managed identity to run the task with.
 
     Returns:
         TaskAddCollectionResult: The result of task collection operation
@@ -1523,7 +1518,6 @@ def add_task_collection(
             blob_account=blob_storage_account,
             path=f"stdout_stderr/{formatted_date}",
             upload_condition="taskCompletion",
-            user_assigned_identity=user_assigned_identity,
         )
         output_files = [output_file]
 
