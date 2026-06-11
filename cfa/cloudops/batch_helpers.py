@@ -1365,9 +1365,7 @@ def add_task(
     logger.debug(
         f"Container settings: image='{full_container_name}', run_options='{container_run_options}'"
     )
-    logger.debug(
-        f"Task '{task_id}' container run options: {container_run_options}"
-    )
+    logger.debug(f"Task '{task_id}' container run options: {container_run_options}")
 
     # Create the task parameter
     logger.debug("Creating task parameter object")

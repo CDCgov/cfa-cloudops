@@ -156,7 +156,7 @@ def output_task_files_to_blob(
     upload_condition: str = "taskCompletion",
     blob_endpoint_subdomain: str = default_azure_blob_storage_endpoint_subdomain,
     compute_node_identity_reference: batchmodels.ComputeNodeIdentityReference = None,
-    user_assigned_identity=None,
+    user_assigned_identity: str | None = None,
     **kwargs,
 ) -> batchmodels.OutputFile:
     """Get a properly configured OutputFile object for uploading files from a Batch task to Blob storage.
@@ -185,7 +185,8 @@ def output_task_files_to_blob(
             default_azure_blob_storage_endpoint_subdomain.
         compute_node_identity_reference: ComputeNodeIdentityReference to use when
             constructing a OutputFileBlobContainerDestination object for logging.
-            If None (default), attempt to create compute node identity reference..
+            If None (default), attempt to create compute node identity reference.
+        user_assigned_identity: Resource ID of a user-assigned identity to use for the compute node identity reference if
         **kwargs: Additional keyword arguments passed to the OutputFile constructor.
 
     Returns:
@@ -215,6 +216,13 @@ def output_task_files_to_blob(
 
     if compute_node_identity_reference is None:
         logger.debug("No compute node identity reference provided, obtaining default")
+        if user_assigned_identity is None:
+            logger.debug(
+                "No user-assigned identity provided, cannot create compute node identity reference"
+            )
+            raise ValueError(
+                "user_assigned_identity must be provided if compute_node_identity_reference is not provided"
+            )
         compute_node_identity_reference = batchmodels.ComputeNodeIdentityReference(
             resource_id=user_assigned_identity
         )
