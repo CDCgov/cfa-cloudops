@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v0.5.5
+## v0.6.0
 - updated `cfa.cloudops.batch_helpers` to use v19.0.0 of `azure-mgmt-batch>` Python package.
 
 ## v0.5.4
