@@ -992,6 +992,7 @@ class CloudClient:
                 batch_client=self.batch_service_client,
                 task_id_max=self.task_id_max,
                 task_id_ints=self.task_id_ints,
+                user_assigned_identity=self.cred.azure_user_assigned_identity,
             )
             self.task_id_max += len(tasks)
             logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
