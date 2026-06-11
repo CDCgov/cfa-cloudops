@@ -1365,8 +1365,8 @@ def add_task(
     logger.debug(
         f"Container settings: image='{full_container_name}', run_options='{container_run_options}'"
     )
-    logger.info(
-        f"Task '{task_id if 'task_id' in locals() else task_id_base}' container run options: {container_run_options}"
+    logger.debug(
+        f"Task '{task_id}' container run options: {container_run_options}"
     )
 
     # Create the task parameter
