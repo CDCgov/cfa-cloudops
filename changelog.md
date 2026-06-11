@@ -8,8 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.6.0
-- updated `cfa.cloudops.batch_helpers` to use v19.0.0 of `azure-mgmt-batch>` Python package.
-
+- Updated Azure Batch integration code to support `azure-mgmt-batch` v19.0.0.
 ## v0.5.4
 - add ipykernel dependency
 
