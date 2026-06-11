@@ -1556,7 +1556,7 @@ def add_task_collection(
         # if full container name is none, pull info from job
         container_name = f"{job_name}_{str(task_id_max + 1)}"
         container_run_options = f"--name={container_name} --rm " + mount_str
-        logger.info(
+        logger.debug(
             f"Task collection entry '{task_id}' container run options: {container_run_options}"
         )
 
