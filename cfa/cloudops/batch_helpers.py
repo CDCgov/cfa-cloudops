@@ -1274,7 +1274,7 @@ def add_task(
             Defaults to False.
         timeout (int, optional): Maximum wall clock time for the task in minutes. If None,
             no timeout is set.
-        user_assigned_identity (str, optional): The client ID of the user-assigned managed identity to run the task with.
+        user_assigned_identity (str, optional): The ARM resource ID of the user-assigned managed identity to run the task with.
 
     Returns:
         str: The generated task ID for the newly created task.
