@@ -7,9 +7,7 @@ import logging
 from pathlib import Path
 
 import azure.batch.models as batchmodels
-import azure.mgmt.batch.models as batch_mgmt_models
 
-from .auth import get_compute_node_identity_reference
 from .defaults import default_azure_blob_storage_endpoint_subdomain
 from .endpoints import construct_blob_container_endpoint
 from .util import ensure_listlike
@@ -157,7 +155,8 @@ def output_task_files_to_blob(
     path: str = None,
     upload_condition: str = "taskCompletion",
     blob_endpoint_subdomain: str = default_azure_blob_storage_endpoint_subdomain,
-    compute_node_identity_reference: batch_mgmt_models.ComputeNodeIdentityReference = None,
+    compute_node_identity_reference: batchmodels.ComputeNodeIdentityReference = None,
+    user_assigned_identity=None,
     **kwargs,
 ) -> batchmodels.OutputFile:
     """Get a properly configured OutputFile object for uploading files from a Batch task to Blob storage.
@@ -186,7 +185,7 @@ def output_task_files_to_blob(
             default_azure_blob_storage_endpoint_subdomain.
         compute_node_identity_reference: ComputeNodeIdentityReference to use when
             constructing a OutputFileBlobContainerDestination object for logging.
-            If None (default), attempt to obtain one via get_compute_node_identity_reference.
+            If None (default), attempt to create compute node identity reference..
         **kwargs: Additional keyword arguments passed to the OutputFile constructor.
 
     Returns:
@@ -216,7 +215,9 @@ def output_task_files_to_blob(
 
     if compute_node_identity_reference is None:
         logger.debug("No compute node identity reference provided, obtaining default")
-        compute_node_identity_reference = get_compute_node_identity_reference()
+        compute_node_identity_reference = batchmodels.ComputeNodeIdentityReference(
+            resource_id=user_assigned_identity
+        )
         logger.debug("Successfully obtained default compute node identity reference")
     else:
         logger.debug("Using provided compute node identity reference")
@@ -225,7 +226,7 @@ def output_task_files_to_blob(
         f"Validating compute node identity reference type: {type(compute_node_identity_reference)}"
     )
     if not isinstance(
-        compute_node_identity_reference, batch_mgmt_models.ComputeNodeIdentityReference
+        compute_node_identity_reference, batchmodels.ComputeNodeIdentityReference
     ):
         error_msg = (
             "compute_node_identity_reference "
@@ -288,7 +289,7 @@ def get_task_config(
     log_subdir: str = None,
     log_file_pattern: str = "../std*.txt",
     log_upload_condition: str = "taskCompletion",
-    log_compute_node_identity_reference: batch_mgmt_models.ComputeNodeIdentityReference = None,
+    log_compute_node_identity_reference: batchmodels.ComputeNodeIdentityReference = None,
     output_files: list[batchmodels.OutputFile] | batchmodels.OutputFile = None,
     **kwargs,
 ) -> batchmodels.TaskAddParameter:
@@ -326,7 +327,7 @@ def get_task_config(
             Passed as the ``upload_condition`` argument to OutputFileUploadOptions.
         log_compute_node_identity_reference: ComputeNodeIdentityReference to use when
             constructing a OutputFileBlobContainerDestination object for logging.
-            If None (default), attempt to obtain one via get_compute_node_identity_reference.
+            If None (default), attempt to create one using the user-assigned identity.
             Ignored if ``log_blob_container`` is None.
         output_files: OutputFile object or list of such objects specifying additional
             output files for the task beyond those auto-constructed for persisting logs

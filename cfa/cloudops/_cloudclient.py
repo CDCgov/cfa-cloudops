@@ -915,6 +915,7 @@ class CloudClient:
             task_id_max=self.task_id_max,
             task_id_ints=self.task_id_ints,
             timeout=timeout,
+            user_assigned_identity=self.cred.azure_user_assigned_identity,
         )
         self.task_id_max += 1
         logger.info(f"Task '{tid}' added to job '{job_name}'.")
