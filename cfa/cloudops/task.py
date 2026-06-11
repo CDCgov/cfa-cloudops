@@ -254,10 +254,6 @@ def output_task_files_to_blob(
     )
     logger.debug(f"Constructed container URL: '{container_url}'")
 
-    # identity_ref = batchmodels.BatchNodeIdentityReference(
-    #    resource_id=compute_node_identity_reference.resource_id
-    # )
-
     container = batchmodels.OutputFileBlobContainerDestination(
         container_url=container_url,
         path=path,
