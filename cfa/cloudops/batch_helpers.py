@@ -1237,8 +1237,7 @@ def add_task(
     task_id_max: int = 0,
     task_id_ints: bool = False,
     timeout: int | None = None,
-    user_assigned_identity: str = None,
-) -> str:
+    user_assigned_identity: str | None = None,
     """Add a task to an Azure Batch job with comprehensive configuration options.
 
     Creates and adds a task to the specified job with support for dependencies,
