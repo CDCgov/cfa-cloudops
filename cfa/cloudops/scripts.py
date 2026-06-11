@@ -1225,7 +1225,7 @@ def test():
     except ImportError as exc:
         raise RuntimeError(
             "pytest is not installed. Run `uv run test` from the project root, "
-            "or install the dev dependencies first with `uv sync --group dev`."
+            "or install the dev dependencies first with `uv sync`."
         ) from exc
 
     raise SystemExit(pytest.main(sys.argv[1:]))

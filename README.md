@@ -36,7 +36,7 @@ pip install git+https://github.com/CDCgov/cfa-cloudops.git
 View the documentation [here](docs/index.md) for more help getting started with the package.
 There is also an example [repo](https://github.com/cdcent/cfa-cloudops-example) with example function calls and a script that checks for proper credential set up.
 
-To build documentation locally, clone this repo, navigate to the root of this repo, then run `uv run --group dev mkdocs serve`.
+To build documentation locally, clone this repo, navigate to the root of this repo, then run `uv run mkdocs serve`.
 
 To run tests with `uv`, use the project test command:
 
