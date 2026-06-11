@@ -185,9 +185,11 @@ def output_task_files_to_blob(
             default_azure_blob_storage_endpoint_subdomain.
         compute_node_identity_reference: ComputeNodeIdentityReference to use when
             constructing a OutputFileBlobContainerDestination object for logging.
-            If None (default), attempt to create compute node identity reference.
-        user_assigned_identity: Resource ID of a user-assigned identity to use for the compute node identity reference
-        **kwargs: Additional keyword arguments passed to the OutputFile constructor.
+            If None (default), a compute node identity reference will be created from
+            ``user_assigned_identity``; if neither is provided, a ValueError is raised.
+        user_assigned_identity: ARM resource ID of a user-assigned identity to use when
+            creating a compute node identity reference (required if
+            ``compute_node_identity_reference`` is not provided).
 
     Returns:
         OutputFile: An OutputFile object that can be used in constructing a
