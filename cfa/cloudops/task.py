@@ -455,5 +455,9 @@ def get_task_config(
 def get_batch_compute_id(
     compute_id: batch_mgmt_models.ComputeNodeIdentityReference,
 ) -> batchmodels.ComputeNodeIdentityReference:
-    new_id = getattr(compute_id, "resource_id")
-    return batchmodels.ComputeNodeIdentityReference(resource_id=new_id)
+    resource_id = getattr(compute_id, "resource_id", None)
+    if not resource_id:
+        raise ValueError(
+            "compute_id must be an azure.mgmt.batch.models.ComputeNodeIdentityReference with a non-empty 'resource_id'."
+        )
+    return batchmodels.ComputeNodeIdentityReference(resource_id=resource_id)
