@@ -1204,6 +1204,8 @@ def get_pool_mounts(
                     else abfs.get("relative_mount_path")
                     or abfs.get("relativeMountPath")
                 )
+                if not rel_mount_path:
+                    continue
 
                 mount_info = {
                     "source": rel_mount_path,
