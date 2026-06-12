@@ -352,16 +352,16 @@ wheels = [
 
 [[package]]
 name = "azure-mgmt-batch"
-version = "18.0.0"
+version = "19.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "azure-common" },
     { name = "azure-mgmt-core" },
     { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/de/134bcd314ec6d5b1b5b286cbc32c5c1a390e41cdf1b3f1f68627a55ab7aa/azure_mgmt_batch-18.0.0.tar.gz", hash = "sha256:305eb51fb3f73b20927ef47b3b6f93e9e32dc939876c045f970bd386c07ba79c", size = 146711, upload-time = "2024-09-25T05:57:10.797Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/6d/64c2db0ec6f57b72119ff5c6c288a8ece818788d35b4bea296a2bacb4aff/azure_mgmt_batch-19.0.0.tar.gz", hash = "sha256:275483fa3940933c73c22a42b59d1b5b053191d8f01f6c2c09af0eef52f31a5c", size = 137229, upload-time = "2026-03-12T01:00:08.9Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/9f/7da4532346ab2a3b3c1866e9838c08b02551de4c9fb0047b9adcd9344d2a/azure_mgmt_batch-18.0.0-py3-none-any.whl", hash = "sha256:e78588f68a45b66f2b27f14c6753c35dff42a8a66fd7e1688b0cb3dbe1fb4ffb", size = 172903, upload-time = "2024-09-25T05:57:12.761Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/3f/86d803f7f58ab6c0592a114d9a003037e83882104354ad9446229169f575/azure_mgmt_batch-19.0.0-py3-none-any.whl", hash = "sha256:5d25a905e4600134f210cfea0a52dd63fff96fd872d7479164ba86e051d47e45", size = 126811, upload-time = "2026-03-12T01:00:10.371Z" },
 ]
 
 [[package]]
@@ -476,7 +476,7 @@ wheels = [
 
 [[package]]
 name = "cfa-cloudops"
-version = "0.5.4"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -532,7 +532,7 @@ requires-dist = [
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-keyvault", specifier = ">=4.2.0" },
     { name = "azure-mgmt-appcontainers", specifier = ">=4.0.0" },
-    { name = "azure-mgmt-batch", specifier = ">=18.0.0,<19.0.0" },
+    { name = "azure-mgmt-batch", specifier = ">=19.0.0" },
     { name = "azure-mgmt-compute", specifier = ">=36.0.0" },
     { name = "azure-mgmt-resource", specifier = ">=24.0.0,<25.0.0" },
     { name = "azure-mgmt-web", specifier = ">=10.1.0" },
@@ -544,7 +544,7 @@ requires-dist = [
     { name = "msrest", specifier = ">=0.7.1" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "pandas", specifier = ">=2.3.2" },
-    { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "toml", specifier = ">=0.10.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -2504,11 +2504,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.2.1"
+version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
 ]
 
 [[package]]
