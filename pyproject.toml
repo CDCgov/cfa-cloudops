@@ -22,7 +22,7 @@ dependencies = [
     # azure-mgmt-resource<25.0.0: 25.x introduces breaking changes to resource management APIs not yet supported by cfa.cloudops.
     "azure-mgmt-resource>=24.0.0,<25.0.0",
     "azure-mgmt-appcontainers>=4.0.0",
-    "python-dotenv>=1.1.1",
+    "python-dotenv>=1.2.2",
     "docker>=7.1.0",
     "pyyaml>=6.0.2",
     "griddler @ git+https://github.com/CDCgov/pygriddler.git",
