@@ -28,7 +28,7 @@ from cfa.cloudops.task import (
 
 logger = logging.getLogger(__name__)
 
-AZ_MOUNT_DIR = "$AZ_BATCH_NODE_MOUNTS_DIR"
+AZ_MOUNT_DIR = "/mnt/batch/tasks/fsmounts"
 NO_EXIT_OPTIONS = ExitOptions(
     dependency_action=DependencyAction.satisfy, job_action=JobAction.none
 )
@@ -1039,16 +1039,38 @@ def get_rel_mnt_path(
         )
         return "ERROR!"
 
-    mc = pool_info.as_dict().get("mount_configuration", {})
+    mc = getattr(pool_info, "mount_configuration", None)
+    if mc is None and hasattr(pool_info, "as_dict"):
+        pool_dict = pool_info.as_dict()
+        mc = (
+            pool_dict.get("mount_configuration")
+            or pool_dict.get("mountConfiguration")
+            or pool_dict.get("properties", {}).get("mountConfiguration")
+            or []
+        )
+    mc = mc or []
     logger.debug(f"Searching through {len(mc)} mount configurations")
 
     for m in mc:
-        if (
-            m.get("azure_blob_file_system_configuration", {}).get("container_name")
-            == blob_name
-        ):
-            rel_mnt_path = m.get("azure_blob_file_system_configuration", {}).get(
-                "relative_mount_path"
+        abfs = getattr(m, "azure_blob_file_system_configuration", None)
+        if abfs is None and isinstance(m, dict):
+            abfs = m.get("azure_blob_file_system_configuration") or m.get(
+                "azureBlobFileSystemConfiguration"
+            )
+
+        if abfs is None:
+            continue
+
+        container_name = (
+            getattr(abfs, "container_name", None)
+            if not isinstance(abfs, dict)
+            else abfs.get("container_name") or abfs.get("containerName")
+        )
+        if container_name == blob_name:
+            rel_mnt_path = (
+                getattr(abfs, "relative_mount_path", None)
+                if not isinstance(abfs, dict)
+                else abfs.get("relative_mount_path") or abfs.get("relativeMountPath")
             )
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
@@ -1156,20 +1178,41 @@ def get_pool_mounts(
 
     mounts = []
     try:
-        mc = pool_info.as_dict().get("mount_configuration", {})
+        mc = getattr(pool_info, "mount_configuration", None)
+        if mc is None and hasattr(pool_info, "as_dict"):
+            pool_dict = pool_info.as_dict()
+            mc = (
+                pool_dict.get("mount_configuration")
+                or pool_dict.get("mountConfiguration")
+                or pool_dict.get("properties", {}).get("mountConfiguration")
+                or []
+            )
+        mc = mc or []
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
-            mount_info = {
-                "source": m.get("azure_blob_file_system_configuration", {}).get(
-                    "relative_mount_path"
-                ),
-                "target": m.get("azure_blob_file_system_configuration", {}).get(
-                    "relative_mount_path"
-                ),
-            }
-            mounts.append(mount_info)
-            logger.debug(f"Added mount: {mount_info}")
+            abfs = getattr(m, "azure_blob_file_system_configuration", None)
+            if abfs is None and isinstance(m, dict):
+                abfs = m.get("azure_blob_file_system_configuration") or m.get(
+                    "azureBlobFileSystemConfiguration"
+                )
+
+            if abfs is not None:
+                rel_mount_path = (
+                    getattr(abfs, "relative_mount_path", None)
+                    if not isinstance(abfs, dict)
+                    else abfs.get("relative_mount_path")
+                    or abfs.get("relativeMountPath")
+                )
+                if not rel_mount_path:
+                    continue
+
+                mount_info = {
+                    "source": rel_mount_path,
+                    "target": rel_mount_path,
+                }
+                mounts.append(mount_info)
+                logger.debug(f"Added mount: {mount_info}")
 
         logger.debug(f"Successfully retrieved {len(mounts)} mount configurations")
     except Exception as e:
@@ -1296,6 +1339,7 @@ def add_task(
 
     logger.debug("Creating mount configuration string.")
     mount_str = _generate_mount_string(mounts)
+    logger.debug(f"Resolved task mounts for job '{job_name}': {mounts}")
 
     if task_id_ints:
         task_id = str(task_id_max + 1)
@@ -1321,6 +1365,7 @@ def add_task(
     logger.debug(
         f"Container settings: image='{full_container_name}', run_options='{container_run_options}'"
     )
+    logger.debug(f"Task '{task_id}' container run options: {container_run_options}")
 
     # Create the task parameter
     logger.debug("Creating task parameter object")
@@ -1443,7 +1488,6 @@ def add_task_collection(
                     },
                 ],
                 batch_client=batch_client,
-
             )
 
     Note:
@@ -1503,13 +1547,25 @@ def add_task_collection(
 
         mounts = task.get("mounts", [])
         mount_str = _generate_mount_string(mounts)
+        logger.debug(f"Resolved task collection mounts for task '{task_id}': {mounts}")
 
         # if full container name is none, pull info from job
         container_name = f"{job_name}_{str(task_id_max + 1)}"
         container_run_options = f"--name={container_name} --rm " + mount_str
+        logger.debug(
+            f"Task collection entry '{task_id}' container run options: {container_run_options}"
+        )
+
+        container_image_name = task.get("full_container_name") or task.get(
+            "container_image_name"
+        )
+        if container_image_name is None:
+            raise ValueError(
+                "Each task in add_task_collection must include either 'full_container_name' or 'container_image_name'."
+            )
 
         container_settings = get_container_settings(
-            container_image_name=task["full_container_name"],
+            container_image_name=container_image_name,
             additional_options=container_run_options,
             working_directory="containerImageDefault",
         )
