@@ -31,6 +31,7 @@ dependencies = [
     "networkx>=3.4.2",
     "anyio>=4.10.0",
     "duckdb>=1.4.4",
+    "ipykernel>=7.3.0"
 ]
 
 [build-system]
