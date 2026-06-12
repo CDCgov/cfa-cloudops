@@ -49,10 +49,10 @@ def remaining_task_autoscale_formula(
     // Note that both comments and line breaks are acceptable in formula strings.
 
     // Get pending tasks for the past 15 minutes.
-    $samples = $ActiveTasks.GetSamplePercent(TimeInterval_Minute * {task_sample_interval_minutes});
+    $samples = $PendingTasks.GetSamplePercent(TimeInterval_Minute * {task_sample_interval_minutes});
     // If we have fewer than 70 percent data points, we use the last sample point, otherwise we use the maximum of last sample point and the history average.
-    $tasks = $samples < 70 ? max(0, $ActiveTasks.GetSample(1)) :
-    max( $ActiveTasks.GetSample(1), avg($ActiveTasks.GetSample(TimeInterval_Minute * {task_sample_interval_minutes})));
+    $tasks = $samples < 70 ? max(0, $PendingTasks.GetSample(1)) :
+    max( $PendingTasks.GetSample(1), avg($PendingTasks.GetSample(TimeInterval_Minute * {task_sample_interval_minutes})));
     // If number of pending tasks is not 0, set targetVM to pending tasks, otherwise half of current dedicated.
     $targetVMs = $tasks > 0 ? $tasks : max(0, $TargetDedicatedNodes / 2);
     // The pool size is capped at {max_number_vms}, if target VM value is more than that, set it to {max_number_vms}.
