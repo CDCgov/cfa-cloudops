@@ -352,16 +352,16 @@ wheels = [
 
 [[package]]
 name = "azure-mgmt-batch"
-version = "18.0.0"
+version = "19.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "azure-common" },
     { name = "azure-mgmt-core" },
     { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/de/134bcd314ec6d5b1b5b286cbc32c5c1a390e41cdf1b3f1f68627a55ab7aa/azure_mgmt_batch-18.0.0.tar.gz", hash = "sha256:305eb51fb3f73b20927ef47b3b6f93e9e32dc939876c045f970bd386c07ba79c", size = 146711, upload-time = "2024-09-25T05:57:10.797Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/6d/64c2db0ec6f57b72119ff5c6c288a8ece818788d35b4bea296a2bacb4aff/azure_mgmt_batch-19.0.0.tar.gz", hash = "sha256:275483fa3940933c73c22a42b59d1b5b053191d8f01f6c2c09af0eef52f31a5c", size = 137229, upload-time = "2026-03-12T01:00:08.9Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/9f/7da4532346ab2a3b3c1866e9838c08b02551de4c9fb0047b9adcd9344d2a/azure_mgmt_batch-18.0.0-py3-none-any.whl", hash = "sha256:e78588f68a45b66f2b27f14c6753c35dff42a8a66fd7e1688b0cb3dbe1fb4ffb", size = 172903, upload-time = "2024-09-25T05:57:12.761Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/3f/86d803f7f58ab6c0592a114d9a003037e83882104354ad9446229169f575/azure_mgmt_batch-19.0.0-py3-none-any.whl", hash = "sha256:5d25a905e4600134f210cfea0a52dd63fff96fd872d7479164ba86e051d47e45", size = 126811, upload-time = "2026-03-12T01:00:10.371Z" },
 ]
 
 [[package]]
@@ -476,7 +476,7 @@ wheels = [
 
 [[package]]
 name = "cfa-cloudops"
-version = "0.5.4"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -532,7 +532,7 @@ requires-dist = [
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-keyvault", specifier = ">=4.2.0" },
     { name = "azure-mgmt-appcontainers", specifier = ">=4.0.0" },
-    { name = "azure-mgmt-batch", specifier = ">=18.0.0,<19.0.0" },
+    { name = "azure-mgmt-batch", specifier = ">=19.0.0" },
     { name = "azure-mgmt-compute", specifier = ">=36.0.0" },
     { name = "azure-mgmt-resource", specifier = ">=24.0.0,<25.0.0" },
     { name = "azure-mgmt-web", specifier = ">=10.1.0" },
