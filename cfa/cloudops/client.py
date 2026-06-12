@@ -4,7 +4,7 @@ Helper functions for setting up valid Azure clients.
 
 import logging
 
-from azure.batch import BatchServiceClient
+from azure.batch import BatchClient
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 from azure.storage.blob import BlobServiceClient
@@ -142,21 +142,23 @@ def get_compute_management_client(
 
 def get_batch_service_client(
     credential_handler: CredentialHandler = None, **kwargs
-) -> BatchServiceClient:
+) -> BatchClient:
     """Get an Azure batch service client using credentials from a CredentialHandler.
 
     Uses credentials obtained via a CredentialHandler: either a user-provided one
     or a default based on environment variables.
+
+    Requires azure-batch>=15.0.0 (uses the new BatchClient from azure-core).
 
     Args:
         credential_handler: Credential handler for connecting and authenticating to
             Azure resources. If None, create a blank EnvCredentialHandler, which
             attempts to obtain needed credentials using information available in
             local environment variables (see its documentation for details).
-        **kwargs: Additional keyword arguments passed to the BatchServiceClient constructor.
+        **kwargs: Additional keyword arguments passed to the BatchClient constructor.
 
     Returns:
-        BatchServiceClient: A client instantiated according to the specified configuration.
+        BatchClient: A client instantiated according to the specified configuration.
 
     Example:
         >>> # Using default environment-based credentials
@@ -167,7 +169,7 @@ def get_batch_service_client(
         >>> client = get_batch_service_client(credential_handler=handler)
     """
     logger.debug(
-        f"Creating BatchServiceClient with credential handler: {type(credential_handler).__name__ if credential_handler else 'None'}"
+        f"Creating BatchClient with credential handler: {type(credential_handler).__name__ if credential_handler else 'None'}"
     )
 
     ch = credential_handler
@@ -178,32 +180,33 @@ def get_batch_service_client(
     logger.debug(f"Selected authentication method: '{ch.method}'")
     logger.debug(f"Using batch endpoint: {ch.azure_batch_endpoint}")
 
+    # BatchClient (15.0.0+) uses endpoint and credential parameters
     if ch.method == "sp":
-        logger.info("Using service principal credentials for BatchServiceClient")
-        logger.debug("Creating BatchServiceClient with service principal credentials")
-        client = BatchServiceClient(
-            credentials=ch.batch_service_principal_credentials,
-            batch_url=ch.azure_batch_endpoint,
+        logger.info("Using service principal credentials for BatchClient")
+        logger.debug("Creating BatchClient with service principal credentials")
+        client = BatchClient(
+            endpoint=ch.azure_batch_endpoint,
+            credential=ch.client_secret_credential,
             **kwargs,
         )
     elif ch.method == "default":
-        logger.info("Using default credentials for BatchServiceClient")
-        logger.debug("Creating BatchServiceClient with default credentials")
-        client = BatchServiceClient(
-            credentials=ch.batch_service_principal_credentials,
-            batch_url=ch.azure_batch_endpoint,
+        logger.info("Using default credentials for BatchClient")
+        logger.debug("Creating BatchClient with default credentials")
+        client = BatchClient(
+            endpoint=ch.azure_batch_endpoint,
+            credential=ch.client_secret_sp_credential,
             **kwargs,
         )
     else:
-        logger.info("Using user credentials for BatchServiceClient")
-        logger.debug("Creating BatchServiceClient with user credentials")
-        client = BatchServiceClient(
-            credentials=ch.batch_service_principal_credentials,
-            batch_url=ch.azure_batch_endpoint,
+        logger.info("Using user credentials for BatchClient")
+        logger.debug("Creating BatchClient with user credentials")
+        client = BatchClient(
+            endpoint=ch.azure_batch_endpoint,
+            credential=ch.user_credential,
             **kwargs,
         )
 
-    logger.debug("BatchServiceClient created successfully")
+    logger.debug("BatchClient created successfully")
     return client
 
 

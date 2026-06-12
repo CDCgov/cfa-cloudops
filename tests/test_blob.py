@@ -61,7 +61,7 @@ def mock_async_container_client():
 
 @pytest.fixture
 def mock_compute_node():
-    return models.ComputeNodeIdentityReference(resource_id="mock-resource-id")
+    return models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id")
 
 
 @pytest.fixture
@@ -148,9 +148,9 @@ def test_get_node_mount_config_errors(mock_compute_node):
         "Must provide exactly as many `mount_names` as `storage_containers` to mount"
     )
     bad_compute_nodes = [
-        models.ComputeNodeIdentityReference(resource_id="mock-resource-id-1"),
-        models.ComputeNodeIdentityReference(resource_id="mock-resource-id-2"),
-        models.ComputeNodeIdentityReference(resource_id="mock-resource-id-23"),
+        models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id-1"),
+        models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id-2"),
+        models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id-23"),
     ]
     with pytest.raises(ValueError) as excinfo:
         get_node_mount_config(
