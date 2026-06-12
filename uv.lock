@@ -352,16 +352,16 @@ wheels = [
 
 [[package]]
 name = "azure-mgmt-batch"
-version = "18.0.0"
+version = "19.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "azure-common" },
     { name = "azure-mgmt-core" },
     { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/de/134bcd314ec6d5b1b5b286cbc32c5c1a390e41cdf1b3f1f68627a55ab7aa/azure_mgmt_batch-18.0.0.tar.gz", hash = "sha256:305eb51fb3f73b20927ef47b3b6f93e9e32dc939876c045f970bd386c07ba79c", size = 146711, upload-time = "2024-09-25T05:57:10.797Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/6d/64c2db0ec6f57b72119ff5c6c288a8ece818788d35b4bea296a2bacb4aff/azure_mgmt_batch-19.0.0.tar.gz", hash = "sha256:275483fa3940933c73c22a42b59d1b5b053191d8f01f6c2c09af0eef52f31a5c", size = 137229, upload-time = "2026-03-12T01:00:08.9Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/9f/7da4532346ab2a3b3c1866e9838c08b02551de4c9fb0047b9adcd9344d2a/azure_mgmt_batch-18.0.0-py3-none-any.whl", hash = "sha256:e78588f68a45b66f2b27f14c6753c35dff42a8a66fd7e1688b0cb3dbe1fb4ffb", size = 172903, upload-time = "2024-09-25T05:57:12.761Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/3f/86d803f7f58ab6c0592a114d9a003037e83882104354ad9446229169f575/azure_mgmt_batch-19.0.0-py3-none-any.whl", hash = "sha256:5d25a905e4600134f210cfea0a52dd63fff96fd872d7479164ba86e051d47e45", size = 126811, upload-time = "2026-03-12T01:00:10.371Z" },
 ]
 
 [[package]]
@@ -476,7 +476,7 @@ wheels = [
 
 [[package]]
 name = "cfa-cloudops"
-version = "0.5.4"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -532,7 +532,7 @@ requires-dist = [
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-keyvault", specifier = ">=4.2.0" },
     { name = "azure-mgmt-appcontainers", specifier = ">=4.0.0" },
-    { name = "azure-mgmt-batch", specifier = ">=18.0.0,<19.0.0" },
+    { name = "azure-mgmt-batch", specifier = ">=19.0.0" },
     { name = "azure-mgmt-compute", specifier = ">=36.0.0" },
     { name = "azure-mgmt-resource", specifier = ">=24.0.0,<25.0.0" },
     { name = "azure-mgmt-web", specifier = ">=10.1.0" },
@@ -562,7 +562,7 @@ dev = [
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.30.0" },
     { name = "msrestazure", specifier = ">=0.6.4.post1" },
     { name = "polars", specifier = ">=1.33.1" },
-    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
@@ -2434,7 +2434,7 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "9.0.2"
+version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -2445,9 +2445,9 @@ dependencies = [
     { name = "pygments" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/db/7ef3487e0fb0049ddb5ce41d3a49c235bf9ad299b6a25d5780a89f19230f/pytest-9.0.2.tar.gz", hash = "sha256:75186651a92bd89611d1d9fc20f0b4345fd827c41ccd5c299a868a05d70edf11", size = 1568901, upload-time = "2025-12-06T21:30:51.014Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl", hash = "sha256:711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b", size = 374801, upload-time = "2025-12-06T21:30:49.154Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9", size = 375249, upload-time = "2026-04-07T17:16:16.13Z" },
 ]
 
 [[package]]
