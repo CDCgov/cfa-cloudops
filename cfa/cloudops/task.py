@@ -272,15 +272,13 @@ def output_task_files_to_blob(
     destination = OutputFileDestination(container=container)
     logger.debug("Created BatchOutputFileDestination wrapper")
 
-    upload_configuration = OutputFileUploadConfiguration(
-        upload_condition=upload_condition
-    )
+    upload_options = OutputFileUploadConfiguration(upload_condition=upload_condition)
     logger.debug(f"Created upload options with condition: '{upload_condition}'")
 
     output_file = OutputFile(
         file_pattern=file_pattern,
         destination=destination,
-        upload_configuration=upload_configuration,
+        upload_options=upload_options,
         **kwargs,
     )
 
