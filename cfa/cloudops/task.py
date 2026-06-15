@@ -72,10 +72,10 @@ def create_bind_mount_string(
 def get_container_settings(
     container_image_name: str,
     az_mount_dir: str = "/mnt/batch/tasks/fsmounts",
-    working_directory: str | batchmodels.BatchContainerWorkingDirectory | None = None,
+    working_directory: str | batchmodels.ContainerWorkingDirectory | None = None,
     mount_pairs: list[dict] = None,
     additional_options: str = "",
-    registry: batchmodels.BatchContainerRegistry = None,
+    registry: batchmodels.ContainerRegistryReference = None,
     **kwargs,
 ) -> BatchTaskContainerSettings:
     """Create a valid set of container settings with bind mounts for an OCI container.
@@ -91,14 +91,14 @@ def get_container_settings(
             as the working_directory parameter to the BatchTaskContainerSettings constructor.
             If None (the default), then defer to the Azure batch default (note that this
             will _not_ typically be the same as the container image's own WORKDIR).
-            Otherwise specify it with a BatchContainerWorkingDirectory instance or use the string
+            Otherwise specify it with a ContainerWorkingDirectory instance or use the string
             "containerImageDefault" to use the container's own WORKDIR. See the
             documentation for BatchTaskContainerSettings for more details.
         mount_pairs: Pairs of 'source' and 'target' directories to mount when the
             container is run, as a list of dictionaries with 'source' and 'target' keys.
         additional_options: Additional flags and options to pass to the container
             run command, as a string. Defaults to "".
-        registry: BatchContainerRegistry instance specifying a private container registry
+        registry: ContainerRegistryReference instance specifying a private container registry
             from which to fetch task containers. Defaults to None.
         **kwargs: Additional keyword arguments passed to the BatchTaskContainerSettings constructor.
 
