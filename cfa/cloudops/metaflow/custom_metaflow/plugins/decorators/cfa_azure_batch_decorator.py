@@ -130,7 +130,7 @@ class CFAAzureBatchDecorator(StepDecorator):
             constraints=job_constraints,
             metadata=[
                 batch_models.BatchMetadataItem(
-                    name="mark_complete", value=mark_complete_after_tasks_run
+                    name="mark_complete", value=str(mark_complete_after_tasks_run)
                 )
             ],
         )

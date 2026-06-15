@@ -33,7 +33,7 @@ def mock_job():
             max_task_retry_count=0,
             max_wall_clock_time=None,
         ),
-        metadata=[BatchMetadataItem(name="mark_complete", value=False)],
+        metadata=[BatchMetadataItem(name="mark_complete", value="False")],
     )
 
 

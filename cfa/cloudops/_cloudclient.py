@@ -654,7 +654,7 @@ class CloudClient:
             constraints=job_constraints,
             metadata=[
                 BatchMetadataItem(
-                    name="mark_complete", value=mark_complete_after_tasks_run
+                    name="mark_complete", value=str(mark_complete_after_tasks_run)
                 ),
                 BatchMetadataItem(name="owner", value=get_user()),
                 BatchMetadataItem(name="datetime_created", value=get_date_time()),
