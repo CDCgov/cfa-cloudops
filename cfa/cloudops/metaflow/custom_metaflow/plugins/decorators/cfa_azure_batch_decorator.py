@@ -126,7 +126,7 @@ class CFAAzureBatchDecorator(StepDecorator):
             pool_info=batch_models.BatchPoolInfo(pool_id=self.pool_name),
             uses_task_dependencies=uses_deps,
             on_all_tasks_complete=on_all_tasks_complete,
-            on_task_failure=batch_models.BatchTaskFailureAction.PERFORM_EXIT_OPTIONS_JOB_ACTION,
+            on_task_failure=batch_models.BatchTaskFailureMode.PERFORM_EXIT_OPTIONS_JOB_ACTION,
             constraints=job_constraints,
             metadata=[
                 batch_models.BatchMetadataItem(

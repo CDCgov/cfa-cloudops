@@ -12,12 +12,16 @@ import azure.batch.models as batch_models
 import griddler
 import yaml
 from azure.batch.models import (
-    BatchDependencyAction,
-    BatchExitCodeMapping,
-    BatchExitConditions,
-    BatchExitOptions,
-    BatchJobAction,
+    AutoUserScope,
+    AutoUserSpecification,
+    BatchJobActionKind,
     BatchTaskConstraints,
+    DependencyAction,
+    ElevationLevel,
+    ExitCodeMapping,
+    ExitConditions,
+    ExitOptions,
+    UserIdentity,
 )
 
 from cfa.cloudops.task import (
@@ -29,25 +33,25 @@ from cfa.cloudops.task import (
 logger = logging.getLogger(__name__)
 
 AZ_MOUNT_DIR = "/mnt/batch/tasks/fsmounts"
-NO_EXIT_OPTIONS = BatchExitOptions(
-    dependency_action=BatchDependencyAction.satisfy, job_action=BatchJobAction.none
+NO_EXIT_OPTIONS = ExitOptions(
+    dependency_action=DependencyAction.SATISFY, job_action=BatchJobActionKind.NONE
 )
-NO_EXIT_CONDITIONS = BatchExitConditions(
+NO_EXIT_CONDITIONS = ExitConditions(
     exit_codes=[
-        BatchExitCodeMapping(code=0, exit_options=NO_EXIT_OPTIONS),
-        BatchExitCodeMapping(code=1, exit_options=NO_EXIT_OPTIONS),
+        ExitCodeMapping(code=0, exit_options=NO_EXIT_OPTIONS),
+        ExitCodeMapping(code=1, exit_options=NO_EXIT_OPTIONS),
     ],
     pre_processing_error=NO_EXIT_OPTIONS,
     file_upload_error=NO_EXIT_OPTIONS,
     default=NO_EXIT_OPTIONS,
 )
-TERMMINATE_EXIT_OPTIONS = BatchExitOptions(
-    dependency_action=BatchDependencyAction.block, job_action=BatchJobAction.none
+TERMMINATE_EXIT_OPTIONS = ExitOptions(
+    dependency_action=DependencyAction.BLOCK, job_action=BatchJobActionKind.NONE
 )
-TERMMINATE_EXIT_CONDITIONS = BatchExitConditions(
+TERMMINATE_EXIT_CONDITIONS = ExitConditions(
     exit_codes=[
-        BatchExitCodeMapping(code=0, exit_options=NO_EXIT_OPTIONS),
-        BatchExitCodeMapping(code=1, exit_options=TERMMINATE_EXIT_OPTIONS),
+        ExitCodeMapping(code=0, exit_options=NO_EXIT_OPTIONS),
+        ExitCodeMapping(code=1, exit_options=TERMMINATE_EXIT_OPTIONS),
     ],
     pre_processing_error=TERMMINATE_EXIT_OPTIONS,
     file_upload_error=TERMMINATE_EXIT_OPTIONS,
@@ -55,7 +59,7 @@ TERMMINATE_EXIT_CONDITIONS = BatchExitConditions(
 )
 
 
-def _generate_exit_conditions(run_dependent_tasks_on_fail: bool) -> BatchExitConditions:
+def _generate_exit_conditions(run_dependent_tasks_on_fail: bool) -> ExitConditions:
     if run_dependent_tasks_on_fail:
         logger.debug("Configured to run dependent tasks on failure")
         exit_conditions = NO_EXIT_CONDITIONS
@@ -106,10 +110,10 @@ def _generate_task_dependencies(depends_on, depends_on_range):
     task_deps = None
     if depends_on is not None:
         depends_on = [depends_on] if isinstance(depends_on, str) else depends_on
-        task_deps = batch_models.TaskDependencies(task_ids=depends_on)
+        task_deps = batch_models.BatchTaskDependencies(task_ids=depends_on)
 
     if depends_on_range is not None:
-        task_deps = batch_models.TaskDependencies(
+        task_deps = batch_models.BatchTaskDependencies(
             task_id_ranges=[
                 batch_models.TaskIdRange(
                     start=int(depends_on_range[0]),
@@ -247,21 +251,21 @@ def monitor_tasks(
             incomplete_tasks = [
                 task
                 for task in tasks
-                if task.state != batch_models.BatchTaskState.completed
+                if task.state != batch_models.BatchTaskState.COMPLETED
             ]
             incompletions = len(incomplete_tasks)
 
             completed_tasks = [
                 task
                 for task in tasks
-                if task.state == batch_models.BatchTaskState.completed
+                if task.state == batch_models.BatchTaskState.COMPLETED
             ]
             completions = len(completed_tasks)
 
             running_tasks = [
                 task
                 for task in tasks
-                if task.state == batch_models.BatchTaskState.running
+                if task.state == batch_models.BatchTaskState.RUNNING
             ]
             running = len(running_tasks)
 
@@ -533,7 +537,7 @@ def get_completed_tasks(job_name: str, batch_client: object):
     total_tasks = len(tasks)
 
     completed_tasks = [
-        task for task in tasks if task.state == batch_models.BatchTaskState.completed
+        task for task in tasks if task.state == batch_models.BatchTaskState.COMPLETED
     ]
     num_c_tasks = len(completed_tasks)
 
@@ -574,7 +578,7 @@ def check_job_complete(job_name: str, batch_client: object) -> bool:
     """
     logger.debug(f"Checking completion status for job: {job_name}")
     job = batch_client.jobs.get(job_name)
-    is_complete = job.state == batch_models.BatchJobState.completed
+    is_complete = job.state == batch_models.BatchJobState.COMPLETED
     logger.debug(
         f"Job {job_name} completion status: {is_complete} (state: {job.state})"
     )
@@ -1331,10 +1335,10 @@ def add_task(
 
     # Add a task to the job
     logger.debug("Creating user identity with admin privileges")
-    user_identity = batch_models.BatchUserIdentity(
-        auto_user=batch_models.BatchAutoUserSpecification(
-            scope=batch_models.BatchAutoUserScope.pool,
-            elevation_level=batch_models.BatchElevationLevel.admin,
+    user_identity = UserIdentity(
+        auto_user=AutoUserSpecification(
+            scope=AutoUserScope.POOL,
+            elevation_level=ElevationLevel.ADMIN,
         )
     )
 
@@ -1405,7 +1409,7 @@ def add_task(
 
     # Add the task to the job
     logger.debug(f"Submitting task '{task_id}' to Azure Batch service")
-    batch_client.jobs.tasks.create_task(job_name, new_task)
+    batch_client.create_task(job_name, new_task)
     logger.debug(f"Task '{task_id}' successfully added to job '{job_name}'")
     return task_id
 
@@ -1420,7 +1424,7 @@ def add_task_collection(
     batch_client: object | None = None,
     task_id_max: int = 0,
     task_id_ints: bool = False,
-) -> batch_models.TaskAddCollectionResult:
+) -> batch_models.BatchCreateTaskCollectionResult:
     """Add a list of tasks to an Azure Batch job with comprehensive configuration options.
 
     Creates and adds a list of tasks to the specified job with support for dependencies,
@@ -1508,10 +1512,10 @@ def add_task_collection(
 
     # Add a task to the job
     logger.debug("Creating user identity with admin privileges")
-    user_identity = batch_models.BatchUserIdentity(
-        auto_user=batch_models.BatchAutoUserSpecification(
-            scope=batch_models.BatchAutoUserScope.pool,
-            elevation_level=batch_models.BatchElevationLevel.admin,
+    user_identity = UserIdentity(
+        auto_user=AutoUserSpecification(
+            scope=AutoUserScope.POOL,
+            elevation_level=ElevationLevel.ADMIN,
         )
     )
 
@@ -1590,12 +1594,10 @@ def add_task_collection(
 
     # Add the task list to job
     logger.debug(
-        f"Adding '{len(tasks_to_add)}' to job '{job_name}' i Azure Batch service"
+        f"Adding '{len(tasks_to_add)}' to job '{job_name}' in Azure Batch service"
     )
 
-    result = batch_client.jobs.tasks.create_task_collection(
-        job_name, value=tasks_to_add
-    )
+    result = batch_client.create_task_collection(job_name, value=tasks_to_add)
     logger.debug(f"Successfully added {len(tasks_to_add)}' tasks job '{job_name}'")
     return result
 

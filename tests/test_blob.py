@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import anyio
 import pytest
-from azure.batch import models
 from azure.mgmt.batch import models as mgmt_models
 from shared_fixtures import FAKE_BLOBS, MockLogger
 
@@ -61,7 +60,7 @@ def mock_async_container_client():
 
 @pytest.fixture
 def mock_compute_node():
-    return models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id")
+    return mgmt_models.ComputeNodeIdentityReference(resource_id="mock-resource-id")
 
 
 @pytest.fixture
@@ -148,9 +147,9 @@ def test_get_node_mount_config_errors(mock_compute_node):
         "Must provide exactly as many `mount_names` as `storage_containers` to mount"
     )
     bad_compute_nodes = [
-        models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id-1"),
-        models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id-2"),
-        models.BatchComputeNodeIdentityReference(resource_id="mock-resource-id-23"),
+        mgmt_models.ComputeNodeIdentityReference(resource_id="mock-resource-id-1"),
+        mgmt_models.ComputeNodeIdentityReference(resource_id="mock-resource-id-2"),
+        mgmt_models.ComputeNodeIdentityReference(resource_id="mock-resource-id-23"),
     ]
     with pytest.raises(ValueError) as excinfo:
         get_node_mount_config(
@@ -284,25 +283,29 @@ def test_async_download_blob_folder():
 
 def test_upload_to_storage_container(mocker, mock_blob_service_client):
     mocker.patch("builtins.open", mocker.mock_open(read_data="Some data"))
-    with patch.object(builtins, "print", return_value=True) as mock_print:
+    with patch("cfa.cloudops.blob.logger") as mock_logger:
         upload_to_storage_container(
             file_paths="/testdata/myfile.txt",
             blob_storage_container_name="my-blob-storage-container",
             blob_service_client=mock_blob_service_client,
             tags={"env": "test_upload_to_storage_container", "owner": "xop5"},
         )
-        mock_print.assert_called_with("Uploaded 1 files to blob storage container")
+        mock_logger.info.assert_called_with(
+            "Uploaded 1 file(s) to container 'my-blob-storage-container'."
+        )
 
 
 def test_download_from_storage_container(mocker, mock_blob_service_client):
     mocker.patch("builtins.open", mocker.mock_open(read_data="Some data"))
-    with patch.object(builtins, "print", return_value=True) as mock_print:
+    with patch("cfa.cloudops.blob.logger") as mock_logger:
         download_from_storage_container(
             file_paths="/testdata/myfile.txt",
             blob_storage_container_name="my-blob-storage-container",
             blob_service_client=mock_blob_service_client,
         )
-        mock_print.assert_called_with("Downloaded 1 files from blob storage container")
+        mock_logger.info.assert_called_with(
+            "Downloaded 1 file(s) from container 'my-blob-storage-container'."
+        )
 
 
 def test_create_storage_container_if_not_exists(mock_blob_service_client):
@@ -310,21 +313,21 @@ def test_create_storage_container_if_not_exists(mock_blob_service_client):
     mock_container_client.exists.return_value = False
     mock_container_client.create_container = MagicMock()
     mock_blob_service_client.get_container_client.return_value = mock_container_client
-    with patch.object(builtins, "print", return_value=True) as mock_print:
+    with patch("cfa.cloudops.blob.logger") as mock_logger:
         create_storage_container_if_not_exists(
             blob_storage_container_name="my-container",
             blob_service_client=mock_blob_service_client,
         )
         mock_container_client.create_container.assert_called_once()
-        mock_print.assert_called_with("Container [my-container] created.")
+        mock_logger.info.assert_called_with("Container 'my-container' created.")
     mock_container_client.exists.return_value = True
-    with patch.object(builtins, "print", return_value=True) as mock_print:
+    with patch("cfa.cloudops.blob.logger") as mock_logger:
         create_storage_container_if_not_exists(
             blob_storage_container_name="my-container",
             blob_service_client=mock_blob_service_client,
         )
         mock_container_client.create_container.assert_called_once()
-        mock_print.assert_called_with("Container [my-container] already exists.")
+        mock_logger.info.assert_called_with("Container 'my-container' already exists.")
 
 
 def test_update_blob_protection(mock_blob_service_client, mock_logging):

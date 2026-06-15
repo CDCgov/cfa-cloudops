@@ -7,8 +7,8 @@ from azure.batch.models import (
     BatchAllTasksCompleteMode,
     BatchJobConstraints,
     BatchMetadataItem,
-    BatchTaskFailureAction,
 )
+from azure.core.exceptions import HttpResponseError
 
 from cfa.cloudops.job import create_job, create_job_schedule
 
@@ -18,10 +18,8 @@ def mock_batch_client():
     mock_client = MagicMock(spec=BatchClient)
     mock_client.pools = MagicMock()
     mock_client.pools.exists = MagicMock(return_value=True)
-    mock_client.jobs = MagicMock()
-    mock_client.jobs.create_job = MagicMock(return_value=None)
-    mock_client.jobs.job_schedules = MagicMock()
-    mock_client.jobs.job_schedules.create_job_schedule = MagicMock(return_value=None)
+    mock_client.create_job = MagicMock(return_value=None)
+    mock_client.create_job_schedule = MagicMock(return_value=None)
     return mock_client
 
 
@@ -31,9 +29,7 @@ def mock_job():
     return models.BatchJobCreateOptions(
         id="my-job",
         pool_info=models.BatchPoolInfo(pool_id="my-pool"),
-        uses_task_dependencies=False,
-        on_all_tasks_complete=BatchAllTasksCompleteMode.TERMINATE_JOB,
-        on_task_failure=BatchTaskFailureAction.PERFORM_EXIT_OPTIONS_JOB_ACTION,
+        all_tasks_complete_mode=BatchAllTasksCompleteMode.TERMINATE_JOB,
         constraints=BatchJobConstraints(
             max_task_retry_count=0,
             max_wall_clock_time=None,
@@ -44,7 +40,7 @@ def mock_job():
 
 @pytest.fixture
 def mock_job_schedule():
-    schedule = models.BatchSchedule(
+    schedule = models.BatchJobScheduleConfiguration(
         recurrence_interval=datetime.timedelta(hours=1),
         do_not_run_until=datetime.datetime.strptime(
             "2025-01-01 08:00:00", "%Y-%m-%d %H:%M:%S"
@@ -78,7 +74,7 @@ def test_create_job_success(mock_batch_client, mock_job):
         verbose=True,
     )
     assert result
-    mock_batch_client.jobs.create_job.assert_called_once_with(mock_job)
+    mock_batch_client.create_job.assert_called_once_with(mock_job)
 
 
 def test_create_job_success_alternate(mock_batch_client, mock_job):
@@ -95,9 +91,7 @@ def test_create_job_success_alternate(mock_batch_client, mock_job):
         **additional_kwargs,
     )
     assert result
-    mock_batch_client.jobs.create_job.assert_called_once_with(
-        mock_job, **additional_kwargs
-    )
+    mock_batch_client.create_job.assert_called_once_with(mock_job, **additional_kwargs)
 
 
 def test_create_job_no_pool(mock_batch_client, mock_job):
@@ -117,16 +111,11 @@ def test_create_job_no_pool(mock_batch_client, mock_job):
 
 
 def test_create_job_exists_error(mock_batch_client, mock_job):
-    mock_deserializer = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 409  # HTTP 409 Conflict
-    mock_response.code = "JobExists."
-    batch_error_exception = models.BatchErrorException(
-        response=mock_response,
-        deserialize=mock_deserializer,
-    )
-    mock_batch_client.jobs.create_job.side_effect = batch_error_exception
-    with pytest.raises(models.BatchErrorException) as excinfo:
+    http_error = HttpResponseError(message="Job already exists", response=mock_response)
+    mock_batch_client.create_job.side_effect = http_error
+    with pytest.raises(HttpResponseError) as excinfo:
         create_job(
             client=mock_batch_client,
             job=mock_job,
@@ -134,7 +123,7 @@ def test_create_job_exists_error(mock_batch_client, mock_job):
             exist_ok=False,
             verbose=True,
         )
-    assert str(excinfo.value).startswith("Request encountered an exception")
+    assert excinfo.value.status_code == 409
 
 
 def test_create_job_schedule_success(mock_batch_client, mock_job_schedule):
@@ -146,9 +135,7 @@ def test_create_job_schedule_success(mock_batch_client, mock_job_schedule):
         verbose=True,
     )
     mock_batch_client.pools.exists.assert_called_once_with("my-pool")
-    mock_batch_client.jobs.job_schedules.create_job_schedule.assert_called_once_with(
-        mock_job_schedule
-    )
+    mock_batch_client.create_job_schedule.assert_called_once_with(mock_job_schedule)
 
 
 def test_create_job_schedule_no_pool(mock_batch_client, mock_job_schedule):
@@ -168,18 +155,13 @@ def test_create_job_schedule_no_pool(mock_batch_client, mock_job_schedule):
 
 
 def test_create_job_schedule_exists_error(mock_batch_client, mock_job_schedule):
-    mock_deserializer = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 409  # HTTP 409 Conflict
-    mock_response.code = "JobScheduleExists."
-    batch_error_exception = models.BatchErrorException(
-        response=mock_response,
-        deserialize=mock_deserializer,
+    http_error = HttpResponseError(
+        message="Job schedule already exists", response=mock_response
     )
-    mock_batch_client.jobs.job_schedules.create_job_schedule.side_effect = (
-        batch_error_exception
-    )
-    with pytest.raises(models.BatchErrorException) as excinfo:
+    mock_batch_client.create_job_schedule.side_effect = http_error
+    with pytest.raises(HttpResponseError) as excinfo:
         create_job_schedule(
             client=mock_batch_client,
             cloud_job_schedule=mock_job_schedule,
@@ -187,4 +169,4 @@ def test_create_job_schedule_exists_error(mock_batch_client, mock_job_schedule):
             exist_ok=False,
             verbose=True,
         )
-    assert str(excinfo.value).startswith("Request encountered an exception")
+    assert excinfo.value.status_code == 409

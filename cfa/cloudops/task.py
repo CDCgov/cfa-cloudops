@@ -11,17 +11,17 @@ import azure.mgmt.batch.models as batch_mgmt_models
 # 15.0.0+ model names use Batch prefix
 from azure.batch import models as batchmodels
 from azure.batch.models import (
-    BatchAutoUserScope,
-    BatchAutoUserSpecification,
-    BatchComputeNodeIdentityReference,
-    BatchElevationLevel,
-    BatchOutputFile,
-    BatchOutputFileBlobContainerDestination,
-    BatchOutputFileDestination,
-    BatchOutputFileUploadOptions,
-    BatchTaskAddParameter,
+    AutoUserScope,
+    AutoUserSpecification,
+    BatchNodeIdentityReference,
     BatchTaskContainerSettings,
-    BatchUserIdentity,
+    BatchTaskCreateOptions,
+    ElevationLevel,
+    OutputFile,
+    OutputFileBlobContainerDestination,
+    OutputFileDestination,
+    OutputFileUploadConfiguration,
+    UserIdentity,
 )
 
 from .auth import get_compute_node_identity_reference
@@ -173,9 +173,9 @@ def output_task_files_to_blob(
     path: str = None,
     upload_condition: str = "taskCompletion",
     blob_endpoint_subdomain: str = default_azure_blob_storage_endpoint_subdomain,
-    compute_node_identity_reference: BatchComputeNodeIdentityReference = None,
+    compute_node_identity_reference: BatchNodeIdentityReference = None,
     **kwargs,
-) -> BatchOutputFile:
+) -> OutputFile:
     """Get a properly configured BatchOutputFile object for uploading files from a Batch task to Blob storage.
 
     Requires azure-batch>=15.0.0.
@@ -202,13 +202,13 @@ def output_task_files_to_blob(
         blob_endpoint_subdomain: Azure Blob endpoint subdomains and domains that follow
             the account name. If None (default), use this package's
             default_azure_blob_storage_endpoint_subdomain.
-        compute_node_identity_reference: BatchComputeNodeIdentityReference to use when
+        compute_node_identity_reference: BatchNodeIdentityReference to use when
             constructing a BatchOutputFileBlobContainerDestination object for logging.
             If None (default), attempt to create compute node identity reference.
         **kwargs: Additional keyword arguments passed to the BatchOutputFile constructor.
 
     Returns:
-        BatchOutputFile: A BatchOutputFile object that can be used in constructing a
+        OutputFile: A BatchOutputFile object that can be used in constructing a
             batch task via get_task_config.
 
     Raises:
@@ -243,13 +243,11 @@ def output_task_files_to_blob(
     logger.debug(
         f"Validating compute node identity reference type: {type(compute_node_identity_reference)}"
     )
-    if not isinstance(
-        compute_node_identity_reference, BatchComputeNodeIdentityReference
-    ):
+    if not isinstance(compute_node_identity_reference, BatchNodeIdentityReference):
         error_msg = (
             "compute_node_identity_reference "
             "must be an instance of "
-            "BatchComputeNodeIdentityReference. "
+            "BatchNodeIdentityReference. "
             f"Got {type(compute_node_identity_reference)}."
         )
         logger.debug(f"Type validation failed: {error_msg}")
@@ -264,23 +262,25 @@ def output_task_files_to_blob(
     )
     logger.debug(f"Constructed container URL: '{container_url}'")
 
-    container = BatchOutputFileBlobContainerDestination(
+    container = OutputFileBlobContainerDestination(
         container_url=container_url,
         path=path,
         identity_reference=compute_node_identity_reference,
     )
     logger.debug(f"Created BatchOutputFileBlobContainerDestination with path: '{path}'")
 
-    destination = BatchOutputFileDestination(container=container)
+    destination = OutputFileDestination(container=container)
     logger.debug("Created BatchOutputFileDestination wrapper")
 
-    upload_options = BatchOutputFileUploadOptions(upload_condition=upload_condition)
+    upload_configuration = OutputFileUploadConfiguration(
+        upload_condition=upload_condition
+    )
     logger.debug(f"Created upload options with condition: '{upload_condition}'")
 
-    output_file = BatchOutputFile(
+    output_file = OutputFile(
         file_pattern=file_pattern,
         destination=destination,
-        upload_options=upload_options,
+        upload_configuration=upload_configuration,
         **kwargs,
     )
 
@@ -295,16 +295,16 @@ def get_task_config(
     task_id: str,
     base_call: str,
     container_settings: BatchTaskContainerSettings = None,
-    user_identity: BatchUserIdentity = None,
+    user_identity: UserIdentity = None,
     log_blob_container: str = None,
     log_blob_account: str = None,
     log_subdir: str = None,
     log_file_pattern: str = "../std*.txt",
     log_upload_condition: str = "taskCompletion",
-    log_compute_node_identity_reference: BatchComputeNodeIdentityReference = None,
-    output_files: list[BatchOutputFile] | BatchOutputFile = None,
+    log_compute_node_identity_reference: BatchNodeIdentityReference = None,
+    output_files: list[OutputFile] | OutputFile = None,
     **kwargs,
-) -> BatchTaskAddParameter:
+) -> BatchTaskCreateOptions:
     """Create a batch task with a given base call and set of container settings.
 
     If the ``user_identity`` is not set, set it up automatically with sufficient
@@ -393,10 +393,10 @@ def get_task_config(
         logger.debug(
             "No user identity provided, creating automatic admin user identity"
         )
-        user_identity = BatchUserIdentity(
-            auto_user=BatchAutoUserSpecification(
-                scope=BatchAutoUserScope.pool,
-                elevation_level=BatchElevationLevel.admin,
+        user_identity = UserIdentity(
+            auto_user=AutoUserSpecification(
+                scope=AutoUserScope.POOL,
+                elevation_level=ElevationLevel.ADMIN,
             )
         )
         logger.debug(
@@ -450,16 +450,27 @@ def get_task_config(
         f"Total output files configured: {len(total_output_files)} ({len(ensure_listlike(output_files))} custom + {len(ensure_listlike(log_output_files))} log files)"
     )
 
-    if kwargs:
-        logger.debug(f"Additional BatchTaskAddParameter kwargs: {list(kwargs.keys())}")
+    # Filter kwargs to only include valid BatchTaskCreateOptions parameters
+    # Remove parameters that don't exist in 15.x API but may be passed from callers
+    invalid_params = {"run_dependent_tasks_on_failure", "run_dependent_tasks_on_fail"}
+    valid_kwargs = {k: v for k, v in kwargs.items() if k not in invalid_params}
 
-    task_config = BatchTaskAddParameter(
+    if valid_kwargs:
+        logger.debug(
+            f"Additional BatchTaskCreateOptions kwargs: {list(valid_kwargs.keys())}"
+        )
+    if invalid_params & set(kwargs.keys()):
+        logger.debug(
+            f"Filtering out unsupported parameters: {invalid_params & set(kwargs.keys())}"
+        )
+
+    task_config = BatchTaskCreateOptions(
         id=task_id,
         command_line=base_call,
         container_settings=container_settings,
         user_identity=user_identity,
         output_files=total_output_files,
-        **kwargs,
+        **valid_kwargs,
     )
 
     logger.debug(
@@ -471,10 +482,10 @@ def get_task_config(
 
 def get_batch_compute_id(
     compute_id: batch_mgmt_models.ComputeNodeIdentityReference,
-) -> BatchComputeNodeIdentityReference:
+) -> BatchNodeIdentityReference:
     resource_id = getattr(compute_id, "resource_id", None)
     if not resource_id:
         raise ValueError(
             "compute_id must be an azure.mgmt.batch.models.ComputeNodeIdentityReference with a non-empty 'resource_id'."
         )
-    return BatchComputeNodeIdentityReference(resource_id=resource_id)
+    return BatchNodeIdentityReference(resource_id=resource_id)

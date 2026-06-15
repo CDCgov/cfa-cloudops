@@ -502,7 +502,7 @@ def test_list_available_images(
     mock_batch_service_client,
     cloud_client_with_service_principal,
 ):
-    mock_batch_service_client.account.list_supported_images.return_value = FAKE_IMAGES
+    mock_batch_service_client.list_supported_images.return_value = FAKE_IMAGES
     result = cloud_client_with_service_principal.list_available_images(
         operating_system="linux"
     )

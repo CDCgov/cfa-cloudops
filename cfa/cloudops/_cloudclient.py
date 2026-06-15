@@ -12,7 +12,6 @@ from azure.batch.models import (
     BatchAllTasksCompleteMode,
     BatchJobConstraints,
     BatchMetadataItem,
-    BatchTaskFailureAction,
 )
 from azure.keyvault.secrets import SecretClient
 
@@ -401,8 +400,8 @@ class CloudClient:
                 ],
                 user_identity=models.UserIdentity(
                     auto_user=models.AutoUserSpecification(
-                        scope=models.AutoUserScope.pool,
-                        elevation_level=models.ElevationLevel.admin,
+                        scope=models.AutoUserScope.POOL,
+                        elevation_level=models.ElevationLevel.ADMIN,
                     )
                 ),
             )
@@ -651,9 +650,7 @@ class CloudClient:
         job = batch_models.BatchJobCreateOptions(
             id=job_name,
             pool_info=batch_models.BatchPoolInfo(pool_id=pool_name),
-            uses_task_dependencies=True,
-            on_all_tasks_complete=on_all_tasks_complete,
-            on_task_failure=BatchTaskFailureAction.PERFORM_EXIT_OPTIONS_JOB_ACTION,
+            all_tasks_complete_mode=on_all_tasks_complete,
             constraints=job_constraints,
             metadata=[
                 BatchMetadataItem(
@@ -770,7 +767,7 @@ class CloudClient:
             do_not_run_until_datetime = datetime.datetime.strptime(
                 do_not_run_until, d.default_datetime_format
             )
-        schedule = batch_models.BatchSchedule(
+        schedule = batch_models.BatchJobScheduleConfiguration(
             start_window=start_window,
             recurrence_interval=recurrence_interval,
             do_not_run_until=do_not_run_until_datetime,
@@ -1461,10 +1458,8 @@ class CloudClient:
                     print(image)
         """
         logger.debug("Starting list_available_images() function.")
-        images = self.batch_service_client.account.list_supported_images(
-            account_list_supported_images_options=batch_models.AccountListSupportedImagesOptions(
-                filter="verificationType eq 'verified'"
-            )
+        images = self.batch_service_client.list_supported_images(
+            filter="verificationType eq 'verified'"
         )
         if operating_system:
             os_type = (

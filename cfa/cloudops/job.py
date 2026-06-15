@@ -38,7 +38,7 @@ def create_job(
         verbose: Message to stdout on success or failure due to job already existing?
             Defaults to False.
         **kwargs: Additional keyword arguments passed to
-            ``azure.batch.BatchClient.jobs.create_job``.
+            ``azure.batch.BatchClient.create_job``.
 
     Returns:
         bool: True if the job is successfully created. False if the job already
@@ -100,8 +100,8 @@ def create_job(
         logger.debug("No additional kwargs provided")
 
     try:
-        logger.debug(f"Calling client.jobs.create_job() for job '{job.id}'")
-        client.jobs.create_job(job, **kwargs)
+        logger.debug(f"Calling client.create_job() for job '{job.id}'")
+        client.create_job(job, **kwargs)
         logger.debug(f"Successfully created job '{job.id}' on pool '{pool_id}'")
 
         if verbose:
@@ -236,9 +236,9 @@ def create_job_schedule(
 
     try:
         logger.debug(
-            f"Calling client.job_schedules.create_job_schedule() for schedule '{cloud_job_schedule.id}'"
+            f"Calling client.create_job_schedule() for schedule '{cloud_job_schedule.id}'"
         )
-        client.job_schedules.create_job_schedule(cloud_job_schedule, **kwargs)
+        client.create_job_schedule(cloud_job_schedule, **kwargs)
         logger.debug(f"Successfully created job schedule '{cloud_job_schedule.id}'")
 
         if verbose:
