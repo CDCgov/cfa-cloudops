@@ -652,6 +652,7 @@ class CloudClient:
             pool_info=batch_models.BatchPoolInfo(pool_id=pool_name),
             uses_task_dependencies=True,
             all_tasks_complete_mode=on_all_tasks_complete,
+            task_failure_mode=batch_models.BatchTaskFailureMode.PERFORM_EXIT_OPTIONS_JOB_ACTION,
             constraints=job_constraints,
             metadata=[
                 BatchMetadataItem(
