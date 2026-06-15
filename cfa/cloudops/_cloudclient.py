@@ -650,6 +650,7 @@ class CloudClient:
         job = batch_models.BatchJobCreateOptions(
             id=job_name,
             pool_info=batch_models.BatchPoolInfo(pool_id=pool_name),
+            uses_task_dependencies=True,
             all_tasks_complete_mode=on_all_tasks_complete,
             constraints=job_constraints,
             metadata=[
