@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import sys
+import warnings
 
 from ._cloudclient import CloudClient
 from ._containerappclient import ContainerAppClient
@@ -9,6 +10,13 @@ from ._function_app_client import FunctionAppClient
 from .automation import run_experiment, run_tasks
 from .batch_helpers import Task
 from .helpers import get_log_level
+
+warnings.filterwarnings(
+    "ignore",
+    category=SyntaxWarning,
+    module=r"azure\.mgmt\.(compute|web)\.models\._models",
+)
+
 
 __all__ = [
     CloudClient,
@@ -18,6 +26,7 @@ __all__ = [
     run_tasks,
     Task,
 ]
+
 
 logger = logging.getLogger(__name__)
 run_time = datetime.datetime.now()

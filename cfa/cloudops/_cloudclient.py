@@ -2,7 +2,6 @@ import datetime
 import inspect
 import logging
 import os
-import warnings
 from graphlib import CycleError, TopologicalSorter
 from typing import Literal, Optional
 
@@ -39,12 +38,6 @@ from .client import (
 )
 from .job import create_job, create_job_schedule
 from .util import get_date_time, get_user
-
-warnings.filterwarnings(
-    "ignore",
-    category=SyntaxWarning,
-    module=r"azure\.mgmt\.(compute|web)\.models\._models",
-)
 
 logger = logging.getLogger(__name__)
 
