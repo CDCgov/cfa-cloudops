@@ -48,7 +48,7 @@ def remaining_task_autoscale_formula(
     // is adjusted based on the number of tasks in the queue.
     // Note that both comments and line breaks are acceptable in formula strings.
 
-    // Get pending tasks for the past 15 minutes.
+    // Get pending tasks for the past {task_sample_interval_minutes} minutes.
     $samples = $PendingTasks.GetSamplePercent(TimeInterval_Minute * {task_sample_interval_minutes});
     // If we have fewer than 70 percent data points, we use the last sample point, otherwise we use the maximum of last sample point and the history average.
     $tasks = $samples < 70 ? max(0, $PendingTasks.GetSample(1)) :
