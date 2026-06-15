@@ -53,7 +53,7 @@ def test_monitor_tasks_all_successful():
             state=models.BatchTaskState.COMPLETED, execution_info=MagicMock(exit_code=0)
         ),
     ]
-    mock_batch_client.jobs.tasks.list.return_value = mock_tasks
+    mock_batch_client.list_tasks.return_value = mock_tasks
 
     with patch("time.sleep", return_value=None):
         all_successful = monitor_tasks(
@@ -131,8 +131,7 @@ def test_get_pool_mounts():
 
 def test_download_job_stats():
     mock_batch_client = MagicMock()
-    mock_batch_client.task = MagicMock()
-    mock_batch_client.task.list.return_value = []
+    mock_batch_client.list_tasks.return_value = []
     file_name = "/tmp/job-stats.json"
     with patch("cfa.cloudops.batch_helpers.logger") as mock_logger:
         download_job_stats(
@@ -253,7 +252,7 @@ def test_get_task_status_requires_batch_client():
 
 def test_get_task_status_job_does_not_exist():
     mock_batch_client = MagicMock()
-    mock_batch_client.jobs.list.return_value = []
+    mock_batch_client.list_jobs.return_value = []
 
     with pytest.raises(ValueError) as excinfo:
         get_task_status(job_name="missing-job", batch_client=mock_batch_client)
@@ -262,9 +261,9 @@ def test_get_task_status_job_does_not_exist():
 
 def test_get_task_status_all_tasks():
     mock_batch_client = MagicMock()
-    mock_batch_client.jobs.list.return_value = [MagicMock(id="my-job")]
+    mock_batch_client.list_jobs.return_value = [MagicMock(id="my-job")]
 
-    mock_batch_client.jobs.tasks.list.return_value = [
+    mock_batch_client.list_tasks.return_value = [
         MagicMock(
             id="t1",
             state=models.BatchTaskState.RUNNING,
@@ -293,9 +292,9 @@ def test_get_task_status_all_tasks():
 
 def test_get_task_status_single_task():
     mock_batch_client = MagicMock()
-    mock_batch_client.jobs.list.return_value = [MagicMock(id="my-job")]
+    mock_batch_client.list_jobs.return_value = [MagicMock(id="my-job")]
 
-    mock_batch_client.jobs.tasks.list.return_value = [
+    mock_batch_client.list_tasks.return_value = [
         MagicMock(
             id="t1",
             state=models.BatchTaskState.COMPLETED,
@@ -318,8 +317,8 @@ def test_get_task_status_single_task():
 
 def test_get_task_status_unknown_task_id():
     mock_batch_client = MagicMock()
-    mock_batch_client.jobs.list.return_value = [MagicMock(id="my-job")]
-    mock_batch_client.jobs.tasks.list.return_value = [
+    mock_batch_client.list_jobs.return_value = [MagicMock(id="my-job")]
+    mock_batch_client.list_tasks.return_value = [
         MagicMock(
             id="t1",
             state=models.BatchTaskState.COMPLETED,

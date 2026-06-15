@@ -2,6 +2,7 @@ import datetime
 import inspect
 import logging
 import os
+import warnings
 from graphlib import CycleError, TopologicalSorter
 from typing import Literal, Optional
 
@@ -38,6 +39,12 @@ from .client import (
 )
 from .job import create_job, create_job_schedule
 from .util import get_date_time, get_user
+
+warnings.filterwarnings(
+    "ignore",
+    category=SyntaxWarning,
+    module=r"azure\.mgmt\.(compute|web)\.models\._models",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -831,7 +838,7 @@ class CloudClient:
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
-        job_info = self.batch_service_client.job.get(job_name)
+        job_info = self.batch_service_client.get_job(job_name)
         pool_name = None
         execution_info = getattr(job_info, "execution_info", None)
         pool_info = getattr(job_info, "pool_info", None)
@@ -946,7 +953,7 @@ class CloudClient:
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
-        job_info = self.batch_service_client.job.get(job_name)
+        job_info = self.batch_service_client.get_job(job_name)
         pool_name = None
         execution_info = getattr(job_info, "execution_info", None)
         pool_info = getattr(job_info, "pool_info", None)
@@ -1367,7 +1374,7 @@ class CloudClient:
             or logs before deleting the job.
         """
         logger.debug(f"Attempting to delete {job_name}.")
-        self.batch_service_client.job.delete(job_name)
+        self.batch_service_client.begin_delete_job(job_name).result()
         logger.info(f"Job '{job_name}' deleted.")
 
     def delete_job_schedule(self, job_schedule_id: str) -> None:
@@ -1392,7 +1399,7 @@ class CloudClient:
             This operation is irreversible.
         """
         logger.debug(f"Attempting to delete schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.delete(job_schedule_id)
+        self.batch_service_client.begin_delete_job_schedule(job_schedule_id).result()
         logger.info(f"Job schedule {job_schedule_id} deleted.")
 
     def resume_job_schedule(self, job_schedule_id: str) -> None:
@@ -1414,7 +1421,7 @@ class CloudClient:
                 client.resume_job_schedule("my-job-schedule")
         """
         logger.debug(f"Attempting to resume schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.enable(job_schedule_id)
+        self.batch_service_client.enable_job_schedule(job_schedule_id)
         logger.info(f"Job schedule {job_schedule_id} resumed.")
 
     def suspend_job_schedule(self, job_schedule_id: str) -> None:
@@ -1436,7 +1443,7 @@ class CloudClient:
                 client.suspend_job_schedule("my-job-schedule")
         """
         logger.debug(f"Attempting to suspend schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.disable(job_schedule_id)
+        self.batch_service_client.disable_job_schedule(job_schedule_id)
         logger.info(f"Job schedule {job_schedule_id} suspended.")
 
     def list_available_images(self, operating_system: str = None) -> list[dict]:

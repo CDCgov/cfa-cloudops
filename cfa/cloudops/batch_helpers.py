@@ -135,7 +135,7 @@ def _download_task_file(
         task_id (str): Name/ID of the task to monitor.
         file_name (str): File name to download from task (e.g. stdout.txt)
     """
-    stream = batch_client.files.download_from_task(job_name, task_id, file_name)
+    stream = batch_client.download_task_file(job_name, task_id, file_name)
     with open(
         os.path.join(f"{job_name}_output", f"{task_id}_{file_name}"),
         "w",
@@ -222,7 +222,7 @@ def monitor_tasks(
     # as tasks complete, print which complete
     # print remaining number of tasks
     logger.debug(f"Retrieving initial task list for job '{job_name}'")
-    tasks = list(batch_client.jobs.tasks.list(job_name))
+    tasks = list(batch_client.list_tasks(job_name))
 
     # get total tasks
     total_tasks = len([task for task in tasks])
@@ -235,7 +235,7 @@ def monitor_tasks(
     completions, incompletions, running, successes, failures = 0, 0, 0, 0, 0
 
     logger.debug(f"Getting initial job state for '{job_name}'")
-    job = batch_client.jobs.get(job_name)
+    job = batch_client.get_job(job_name)
     logger.debug(f"Initial job state: {job.as_dict()['state']}")
 
     polling_count = 0
@@ -245,7 +245,7 @@ def monitor_tasks(
             logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
             time.sleep(5)  # Polling interval
 
-            tasks = list(batch_client.jobs.tasks.list(job_name))
+            tasks = list(batch_client.list_tasks(job_name))
             logger.debug(f"Retrieved {len(tasks)} tasks for job '{job_name}'")
 
             incomplete_tasks = [
@@ -320,7 +320,7 @@ def monitor_tasks(
                 )
                 completed = True
                 break
-            job = batch_client.jobs.get(job_name)
+            job = batch_client.get_job(job_name)
         else:
             logger.warning(f"Monitoring timeout reached after {timeout} minutes")
             logger.debug(
@@ -412,9 +412,7 @@ def download_job_stats(
         logger.debug(f"Using custom filename: {file_name}")
 
     logger.debug("Retrieving task list from batch service")
-    r = batch_service_client.task.list(
-        job_id=job_name,
-    )
+    r = batch_service_client.list_tasks(job_name)
     logger.debug("Task list retrieved successfully")
 
     fields = [
@@ -486,7 +484,7 @@ def check_job_exists(job_name: str, batch_client: object):
         slower for accounts with many jobs. The check is case-sensitive.
     """
     job_list = []
-    for job in batch_client.jobs.list():
+    for job in batch_client.list_jobs():
         job_list.append(job.id)
 
     if job_name in job_list:
@@ -533,7 +531,7 @@ def get_completed_tasks(job_name: str, batch_client: object):
         detailed success/failure information.
     """
     logger.debug("Pulling in task information.")
-    tasks = [task for task in batch_client.jobs.tasks.list(job_name)]
+    tasks = [task for task in batch_client.list_tasks(job_name)]
     total_tasks = len(tasks)
 
     completed_tasks = [
@@ -577,7 +575,7 @@ def check_job_complete(job_name: str, batch_client: object) -> bool:
         or monitor_tasks() to get detailed success/failure information.
     """
     logger.debug(f"Checking completion status for job: {job_name}")
-    job = batch_client.jobs.get(job_name)
+    job = batch_client.get_job(job_name)
     is_complete = job.state == batch_models.BatchJobState.COMPLETED
     logger.debug(
         f"Job {job_name} completion status: {is_complete} (state: {job.state})"
@@ -625,7 +623,7 @@ def get_job_state(job_name: str, batch_client: object) -> str:
         terminated. The exact states depend on the Azure Batch service version.
     """
     logger.debug(f"Retrieving state for job: {job_name}")
-    job = batch_client.jobs.get(job_name)
+    job = batch_client.get_job(job_name)
     state = str(job.state)
     logger.debug(f"Job {job_name} current state: {state}")
     return state
@@ -1597,7 +1595,9 @@ def add_task_collection(
         f"Adding '{len(tasks_to_add)}' to job '{job_name}' in Azure Batch service"
     )
 
-    result = batch_client.create_task_collection(job_name, value=tasks_to_add)
+    result = batch_client.create_task_collection(
+        job_name, batch_models.BatchTaskGroup(task_values=tasks_to_add)
+    )
     logger.debug(f"Successfully added {len(tasks_to_add)}' tasks job '{job_name}'")
     return result
 
@@ -1747,7 +1747,7 @@ def get_task_status(
     if not check_job_exists(job_name, batch_client):
         raise ValueError(f"Job {job_name} does not exist.")
 
-    tasks = list(batch_client.jobs.tasks.list(job_name))
+    tasks = list(batch_client.list_tasks(job_name))
     if task_id is not None:
         task = next((t for t in tasks if t.id == task_id), None)
         if task is None:

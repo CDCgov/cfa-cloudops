@@ -75,7 +75,7 @@ def create_job(
 
     if verify_pool:
         logger.debug(f"Pool verification enabled, checking if pool '{pool_id}' exists")
-        pool_exists = client.pools.exists(pool_id)
+        pool_exists = client.pool_exists(pool_id)
         logger.debug(f"Pool '{pool_id}' exists: {pool_exists}")
 
         if not pool_exists:
@@ -161,7 +161,7 @@ def create_job_schedule(
         verbose: Message to stdout on success or failure due to job schedule already existing?
             Defaults to False.
         **kwargs: Additional keyword arguments passed to
-            ``azure.batch.BatchClient.job_schedules.create_job_schedule``.
+            ``azure.batch.BatchClient.create_job_schedule``.
 
     Returns:
         bool: True if the job schedule is successfully created. False if the job schedule already
@@ -213,7 +213,7 @@ def create_job_schedule(
         )
         logger.debug(f"Pool verification enabled, checking if pool '{pool_id}' exists")
 
-        if not client.pools.exists(pool_id):
+        if not client.pool_exists(pool_id):
             error_msg = (
                 f"Attempt to create job schedule {cloud_job_schedule.id} on "
                 f"pool {pool_id}, but could not find "

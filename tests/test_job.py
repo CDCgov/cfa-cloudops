@@ -16,8 +16,7 @@ from cfa.cloudops.job import create_job, create_job_schedule
 @pytest.fixture
 def mock_batch_client():
     mock_client = MagicMock(spec=BatchClient)
-    mock_client.pools = MagicMock()
-    mock_client.pools.exists = MagicMock(return_value=True)
+    mock_client.pool_exists = MagicMock(return_value=True)
     mock_client.create_job = MagicMock(return_value=None)
     mock_client.create_job_schedule = MagicMock(return_value=None)
     return mock_client
@@ -95,7 +94,7 @@ def test_create_job_success_alternate(mock_batch_client, mock_job):
 
 
 def test_create_job_no_pool(mock_batch_client, mock_job):
-    mock_batch_client.pools.exists.return_value = False
+    mock_batch_client.pool_exists.return_value = False
     with pytest.raises(ValueError) as excinfo:
         create_job(
             client=mock_batch_client,
@@ -134,12 +133,12 @@ def test_create_job_schedule_success(mock_batch_client, mock_job_schedule):
         exist_ok=False,
         verbose=True,
     )
-    mock_batch_client.pools.exists.assert_called_once_with("my-pool")
+    mock_batch_client.pool_exists.assert_called_once_with("my-pool")
     mock_batch_client.create_job_schedule.assert_called_once_with(mock_job_schedule)
 
 
 def test_create_job_schedule_no_pool(mock_batch_client, mock_job_schedule):
-    mock_batch_client.pools.exists.return_value = False
+    mock_batch_client.pool_exists.return_value = False
     with pytest.raises(ValueError) as excinfo:
         create_job_schedule(
             client=mock_batch_client,
