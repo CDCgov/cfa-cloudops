@@ -274,15 +274,13 @@ def monitor_tasks(
             successes = 0
 
             for task in completed_tasks:
-                execution_info = getattr(task, "execution_info", None)
+                execution_info = getattr(task, "execution_info", None) or getattr(
+                    task, "executionInfo", None
+                )
                 result = getattr(execution_info, "result", None)
-                if result is None and hasattr(task, "as_dict"):
-                    task_dict = task.as_dict()
-                    exec_dict = task_dict.get("execution_info") or task_dict.get(
-                        "executionInfo"
-                    )
-                    if isinstance(exec_dict, dict):
-                        result = exec_dict.get("result")
+                result = getattr(result, "value", result)
+                if isinstance(result, str):
+                    result = result.lower()
 
                 if result == "failure":
                     failures += 1
