@@ -148,7 +148,7 @@ def get_batch_service_client(
     Uses credentials obtained via a CredentialHandler: either a user-provided one
     or a default based on environment variables.
 
-    Requires azure-batch>=15.0.0 (uses the new BatchClient from azure-core).
+    Requires azure-batch>=15.1.0 (uses the new BatchClient from azure-core).
 
     Args:
         credential_handler: Credential handler for connecting and authenticating to

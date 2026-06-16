@@ -130,7 +130,7 @@ def _download_task_file(
     """Download specified file from completed Batch task as a stream and save it to a local file after decoding it.
 
     Args:
-        batch_client (object): Azure Batch service client instance for API calls.
+        batch_client (object): Azure Batch service client instance (`azure.batch.BatchClient`) for API calls.
         job_name (str): Name/ID of the job to monitor. The job must exist and be active.
         task_id (str): Name/ID of the task to monitor.
         file_name (str): File name to download from task (e.g. stdout.txt)
@@ -166,7 +166,7 @@ def monitor_tasks(
         job_name (str): Name/ID of the job to monitor. The job must exist and be active.
         timeout (int): Maximum time in minutes to monitor before timing out. If None,
             defaults to 480 minutes (8 hours).
-        batch_client (object): Azure Batch service client instance for API calls.
+        batch_client (object): Azure Batch service client instance (`azure.batch.BatchClient`) for API calls.
         download_task_output (bool): Whether to download stdout and stderr from each
             completed task. If True, saves output files to a directory named
             "{job_name}_output". Defaults to False.

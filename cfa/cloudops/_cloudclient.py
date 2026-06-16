@@ -63,7 +63,7 @@ class CloudClient:
         cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
         batch_mgmt_client: Azure Batch management client
         compute_mgmt_client: Azure Compute management client
-        batch_service_client: Azure Batch service client
+        batch_service_client: Azure Batch service client (`azure.batch.BatchClient`)
         blob_service_client: Azure Blob storage client
         pool_name (str): Name of the most recently created or used pool
         save_logs_to_blob (str): Blob container name for saving task logs
@@ -589,6 +589,8 @@ class CloudClient:
             - The job must be created before adding tasks to it
             - If save_logs_to_blob is specified, ensure the blob container exists
             - Job names are automatically cleaned of spaces
+            - Jobs are created with task dependencies enabled (`uses_task_dependencies=True`)
+            - Jobs are configured with `task_failure_mode=PERFORM_EXIT_OPTIONS_JOB_ACTION`
         """
         # save job information that will be used with tasks
         job_name = job_name.replace(" ", "")
@@ -825,7 +827,7 @@ class CloudClient:
                         {"source": "logscontainer", "target": "/mnt/logs"}
                     ]
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
-            depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
+            depends_on (str | list[str], optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
             container_image_name (str, optional): Container image to use for the task. Default is None.
@@ -1238,7 +1240,7 @@ class CloudClient:
             job_name (str): ID of the job to monitor. The job must exist and be in
                 an active state.
             timeout (int, optional): Maximum time in minutes to monitor the job before giving up.
-                If None, monitoring continues indefinitely until all tasks complete.
+                If None, defaults to 480 minutes (8 hours).
             download_job_stats (bool, optional): Whether to download comprehensive job
                 statistics when the job completes. Statistics include task execution
                 times, resource usage, and success/failure rates. Default is False.
