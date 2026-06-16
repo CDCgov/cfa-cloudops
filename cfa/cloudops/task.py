@@ -472,7 +472,7 @@ def get_task_config(
     )
 
     logger.debug(
-        f"Successfully created BatchTaskAddParameter for task '{task_id}' with {len(total_output_files)} output files"
+        f"Successfully created BatchTaskCreateOptions for task '{task_id}' with {len(total_output_files)} output files"
     )
 
     return task_config
