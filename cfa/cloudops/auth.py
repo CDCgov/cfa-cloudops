@@ -18,7 +18,7 @@ from azure.identity import (
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models as batch_mgmt_models
-from azure.mgmt.resource import SubscriptionClient
+from azure.mgmt.resource.subscriptions import SubscriptionClient
 from dotenv import load_dotenv
 from msrest.authentication import BasicTokenAuthentication
 

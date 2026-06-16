@@ -18,7 +18,7 @@ from azure.keyvault.secrets import SecretClient
 
 # from azure.batch.models import TaskAddParameter
 from azure.mgmt.batch import models
-from azure.mgmt.resource import SubscriptionClient
+from azure.mgmt.resource.subscriptions import SubscriptionClient
 
 import cfa.cloudops.defaults as d
 from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
