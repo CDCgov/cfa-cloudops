@@ -274,9 +274,19 @@ def monitor_tasks(
             successes = 0
 
             for task in completed_tasks:
-                if task.as_dict()["execution_info"]["result"] == "failure":
+                execution_info = getattr(task, "execution_info", None)
+                result = getattr(execution_info, "result", None)
+                if result is None and hasattr(task, "as_dict"):
+                    task_dict = task.as_dict()
+                    exec_dict = task_dict.get("execution_info") or task_dict.get(
+                        "executionInfo"
+                    )
+                    if isinstance(exec_dict, dict):
+                        result = exec_dict.get("result")
+
+                if result == "failure":
                     failures += 1
-                elif task.as_dict()["execution_info"]["result"] == "success":
+                elif result == "success":
                     successes += 1
                 if download_task_output:
                     os.makedirs(f"{job_name}_output", exist_ok=True)
