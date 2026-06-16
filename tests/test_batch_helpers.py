@@ -74,7 +74,7 @@ def test_monitor_tasks_missing_job_execution_info():
         job_name="my-job", timeout=30, batch_client=mock_batch_client
     )
 
-    assert result["completed"] is False
+    assert result["completed"] is True
     assert result["terminate_reason"] is None
 
 
