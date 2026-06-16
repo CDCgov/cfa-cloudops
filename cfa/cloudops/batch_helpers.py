@@ -352,11 +352,25 @@ def monitor_tasks(
 
     # get terminate reason
     logger.debug("Checking for job termination reason")
-    if "terminate_reason" in job.as_dict()["execution_info"].keys():
-        terminate_reason = job.as_dict()["execution_info"]["terminate_reason"]
+    terminate_reason = None
+
+    execution_info = getattr(job, "execution_info", None)
+    terminate_reason = getattr(execution_info, "terminate_reason", None)
+
+    if terminate_reason is None and hasattr(job, "as_dict"):
+        job_dict = job.as_dict()
+        exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
+        if isinstance(exec_dict, dict):
+            terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
+                "terminateReason"
+            )
+
+    if not isinstance(terminate_reason, str):
+        terminate_reason = None
+
+    if terminate_reason is not None:
         logger.debug(f"Job terminate reason: {terminate_reason}")
     else:
-        terminate_reason = None
         logger.debug("No job termination reason found")
 
     runtime = end_time - start_time

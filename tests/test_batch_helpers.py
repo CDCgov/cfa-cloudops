@@ -63,6 +63,21 @@ def test_monitor_tasks_all_successful():
     assert all_successful["completed"] is True
 
 
+def test_monitor_tasks_missing_job_execution_info():
+    mock_batch_client = MagicMock()
+    mock_batch_client.get_job.return_value = MagicMock(
+        as_dict=MagicMock(return_value={"state": "completed"})
+    )
+    mock_batch_client.list_tasks.return_value = []
+
+    result = monitor_tasks(
+        job_name="my-job", timeout=30, batch_client=mock_batch_client
+    )
+
+    assert result["completed"] is False
+    assert result["terminate_reason"] is None
+
+
 def test_add_task():
     mock_batch_client = MagicMock()
     task_id_base = "task-base"
