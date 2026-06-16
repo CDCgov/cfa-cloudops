@@ -176,7 +176,7 @@ def create_job_schedule(
         >>> from azure.batch import models
         >>> import datetime
         >>> client = get_batch_service_client()
-        >>> schedule = models.BatchJobSchedule(
+        >>> schedule = models.BatchJobScheduleConfiguration(
         ...     recurrence_interval=datetime.timedelta(hours=1),
         ...     do_not_run_until=datetime.datetime.strptime("2025-01-01 08:00:00", "%Y-%m-%d %H:%M:%S"),
         ...     do_not_run_after=datetime.datetime.strptime("2025-01-01 17:00:00", "%Y-%m-%d %H:%M:%S")
