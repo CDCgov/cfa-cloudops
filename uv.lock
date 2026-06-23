@@ -233,15 +233,16 @@ wheels = [
 
 [[package]]
 name = "azure-batch"
-version = "14.2.0"
+version = "15.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "azure-common" },
-    { name = "msrestazure" },
+    { name = "azure-core" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/3e/4611960f8ceb281285d764f32a0e88515fab4e1e32ff5d02bc77e55bbcb6/azure-batch-14.2.0.tar.gz", hash = "sha256:c79267d6c3d3fe14a16a422ab5bbfabcbd68ed0b58b6bbcdfa0c8345c4c78532", size = 243784, upload-time = "2024-03-27T20:05:11.192Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/ec/9c38379dea2a4817a5c5b44282eff56476326cefa09da9e804809b397656/azure_batch-15.1.0.tar.gz", hash = "sha256:2f684d176b457b7213535e145180a914ed6844b2d1066fcc22ac88c3ac9e3fa5", size = 298104, upload-time = "2026-05-01T23:30:12.731Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/15/42aa83f62dc47e00bed0e590d19252c24b94b8c3b740d9bce33ec867e785/azure_batch-14.2.0-py3-none-any.whl", hash = "sha256:115ccff0007852784ccf8fc12f5f3d415ed80513be306da7a8938ca82d948ee7", size = 243322, upload-time = "2024-03-27T20:05:13.803Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/35/358a421ebbb0d6fa929333dd71b94922d34445aa02d9d2fa7c0a277dcf53/azure_batch-15.1.0-py3-none-any.whl", hash = "sha256:6001232ba67a4051f4f1b35d434232757b78baa14e4964ec3bfb91afa1d10ed4", size = 260933, upload-time = "2026-05-01T23:30:14.604Z" },
 ]
 
 [[package]]
@@ -511,6 +512,7 @@ dependencies = [
     { name = "griddler" },
     { name = "humanize" },
     { name = "msrest" },
+    { name = "msrestazure" },
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas" },
@@ -543,7 +545,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.10.0" },
-    { name = "azure-batch", specifier = ">=14.2.0,<15.0.0" },
+    { name = "azure-batch", specifier = ">=15.1.0" },
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-keyvault", specifier = ">=4.2.0" },
@@ -558,6 +560,7 @@ requires-dist = [
     { name = "griddler", git = "https://github.com/CDCgov/pygriddler.git" },
     { name = "humanize", specifier = ">=4.13.0" },
     { name = "msrest", specifier = ">=0.7.1" },
+    { name = "msrestazure", specifier = ">=0.6.4" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
