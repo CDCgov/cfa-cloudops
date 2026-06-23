@@ -8,7 +8,7 @@ The versioning pattern is `major.minor.patch`.
 
 ---
 ## v0.6.3
-- use newest azure-mgmt-resource library
+- use newest azure-mgmt-resource-suscriptions library (converted from azure-mgmt-resource library)
 
 ## v0.6.2
 - change ActiveTasks to PendingTasks in autoscale formulas for the expected behavior.
