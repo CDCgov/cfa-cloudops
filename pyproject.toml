@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.6.0"
+version = "0.6.2"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -29,7 +29,7 @@ dependencies = [
     "toml>=0.10.2",
     "networkx>=3.4.2",
     "anyio>=4.10.0",
-    "duckdb>=1.4.4",
+    "duckdb>=1.4.4"
 ]
 
 [build-system]
@@ -76,7 +76,7 @@ pythonpath = ["."]
 
 [dependency-groups]
 dev = [
-    "aiohttp>=3.14.0",
+    "aiohttp>=3.14.1",
     "azure-mgmt-authorization>=4.0.0",
     "coverage-badge>=1.1.2",
     "ipykernel>=7.1.0",

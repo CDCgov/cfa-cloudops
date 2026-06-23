@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.6.2
+- change ActiveTasks to PendingTasks in autoscale formulas for the expected behavior.
+
+## v0.6.1
+- changed default autoscale formulas to use Pending Tasks instead of Active Tasks.
+
 ## v0.6.0
 - Updated Azure Batch integration code to support `azure-mgmt-batch` v19.0.0.
 
