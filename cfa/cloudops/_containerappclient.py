@@ -9,7 +9,7 @@ from azure.mgmt.appcontainers.models import (
     JobExecutionContainer,
     JobExecutionTemplate,
 )
-from azure.mgmt.resource import SubscriptionClient
+from azure.mgmt.resource.subscriptions import SubscriptionClient
 
 logger = logging.getLogger(__name__)
 

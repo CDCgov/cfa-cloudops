@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.6.2"
+version = "0.6.3"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -19,8 +19,7 @@ dependencies = [
     "azure-keyvault>=4.2.0",
     "azure-mgmt-compute>=36.0.0",
     "azure-batch>=14.2.0,<15.0.0",
-    # azure-mgmt-resource<25.0.0: 25.x introduces breaking changes to resource management APIs not yet supported by cfa.cloudops.
-    "azure-mgmt-resource>=24.0.0,<25.0.0",
+    "azure-mgmt-resource-subscriptions>=1.0.0b2",
     "azure-mgmt-appcontainers>=4.0.0",
     "python-dotenv>=1.2.2",
     "docker>=7.1.0",

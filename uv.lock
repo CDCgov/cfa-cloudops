@@ -408,18 +408,17 @@ wheels = [
 ]
 
 [[package]]
-name = "azure-mgmt-resource"
-version = "24.0.0"
+name = "azure-mgmt-resource-subscriptions"
+version = "1.0.0b2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "azure-common" },
     { name = "azure-mgmt-core" },
     { name = "isodate" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/4c/b27a3dfbedebbcc8e346a956a803528bd94a19fdf14b1de4bd781b03a6cc/azure_mgmt_resource-24.0.0.tar.gz", hash = "sha256:cf6b8995fcdd407ac9ff1dd474087129429a1d90dbb1ac77f97c19b96237b265", size = 3030022, upload-time = "2025-06-17T08:04:01.731Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/d2/1d42399ff4db0b3aa1c86ffde853199e7d34ca8416967a38418a883251dd/azure_mgmt_resource_subscriptions-1.0.0b2.tar.gz", hash = "sha256:9da8a9532469d738f4a24950565994f3627272edf63d0798c9ef523435e0f4a4", size = 57164, upload-time = "2026-05-22T08:33:50.352Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/18/f047cb553dad6fdb65c625c4fe48552e043c4e9a859416a70c5047d07475/azure_mgmt_resource-24.0.0-py3-none-any.whl", hash = "sha256:27b32cd223e2784269f5a0db3c282042886ee4072d79cedc638438ece7cd0df4", size = 3613790, upload-time = "2025-06-17T08:04:04.046Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/c1/a16f83c1fcde7e3c5f4e85768afdd55975e6cfa4d04b83ef9d613a3757c8/azure_mgmt_resource_subscriptions-1.0.0b2-py3-none-any.whl", hash = "sha256:bbd458f54a5f273674a1b0fe746aceee5dd5b582b28e34ddf22acc82f1e5c7a7", size = 64649, upload-time = "2026-05-22T08:33:51.646Z" },
 ]
 
 [[package]]
@@ -493,7 +492,7 @@ wheels = [
 
 [[package]]
 name = "cfa-cloudops"
-version = "0.6.0"
+version = "0.6.3"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -504,7 +503,7 @@ dependencies = [
     { name = "azure-mgmt-appcontainers" },
     { name = "azure-mgmt-batch" },
     { name = "azure-mgmt-compute" },
-    { name = "azure-mgmt-resource" },
+    { name = "azure-mgmt-resource-subscriptions" },
     { name = "azure-mgmt-web" },
     { name = "azure-storage-blob" },
     { name = "docker" },
@@ -551,7 +550,7 @@ requires-dist = [
     { name = "azure-mgmt-appcontainers", specifier = ">=4.0.0" },
     { name = "azure-mgmt-batch", specifier = ">=19.0.0" },
     { name = "azure-mgmt-compute", specifier = ">=36.0.0" },
-    { name = "azure-mgmt-resource", specifier = ">=24.0.0,<25.0.0" },
+    { name = "azure-mgmt-resource-subscriptions", specifier = ">=1.0.0b2" },
     { name = "azure-mgmt-web", specifier = ">=10.1.0" },
     { name = "azure-storage-blob", specifier = ">=12.26.0" },
     { name = "docker", specifier = ">=7.1.0" },
