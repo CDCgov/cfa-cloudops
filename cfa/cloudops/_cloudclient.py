@@ -9,14 +9,13 @@ import networkx as nx
 import pandas as pd
 from azure.batch import models as batch_models
 from azure.batch.models import (
-    JobConstraints,
-    MetadataItem,
-    OnAllTasksComplete,
-    OnTaskFailure,
+    BatchAllTasksCompleteMode,
+    BatchJobConstraints,
+    BatchMetadataItem,
 )
 from azure.keyvault.secrets import SecretClient
 
-# from azure.batch.models import TaskAddParameter
+# from azure.batch.models import BatchTaskAddParameter
 from azure.mgmt.batch import models
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 
@@ -64,7 +63,7 @@ class CloudClient:
         cred: Credential handler (EnvCredentialHandler, SPCredentialHandler, or DefaultCredentialHandler)
         batch_mgmt_client: Azure Batch management client
         compute_mgmt_client: Azure Compute management client
-        batch_service_client: Azure Batch service client
+        batch_service_client: Azure Batch service client (`azure.batch.BatchClient`)
         blob_service_client: Azure Blob storage client
         pool_name (str): Name of the most recently created or used pool
         save_logs_to_blob (str): Blob container name for saving task logs
@@ -401,8 +400,8 @@ class CloudClient:
                 ],
                 user_identity=models.UserIdentity(
                     auto_user=models.AutoUserSpecification(
-                        scope=models.AutoUserScope.pool,
-                        elevation_level=models.ElevationLevel.admin,
+                        scope=models.AutoUserScope.POOL,
+                        elevation_level=models.ElevationLevel.ADMIN,
                     )
                 ),
             )
@@ -590,6 +589,8 @@ class CloudClient:
             - The job must be created before adding tasks to it
             - If save_logs_to_blob is specified, ensure the blob container exists
             - Job names are automatically cleaned of spaces
+            - Jobs are created with task dependencies enabled (`uses_task_dependencies=True`)
+            - Jobs are configured with `task_failure_mode=PERFORM_EXIT_OPTIONS_JOB_ACTION`
         """
         # save job information that will be used with tasks
         job_name = job_name.replace(" ", "")
@@ -628,13 +629,13 @@ class CloudClient:
             logger.debug(f"Timeout for job set to: {_to}")
 
         on_all_tasks_complete = (
-            OnAllTasksComplete.terminate_job
+            BatchAllTasksCompleteMode.TERMINATE_JOB
             if mark_complete_after_tasks_run
-            else OnAllTasksComplete.no_action
+            else BatchAllTasksCompleteMode.NO_ACTION
         )
         logger.debug(f"On all tasks complete action set to: {on_all_tasks_complete}")
         logger.debug("Configuring job constraints.")
-        job_constraints = JobConstraints(
+        job_constraints = BatchJobConstraints(
             max_task_retry_count=task_retries,
             max_wall_clock_time=_to,
         )
@@ -648,24 +649,26 @@ class CloudClient:
 
         # add the job
         logger.debug("Creating job add parameters.")
-        job = batch_models.JobAddParameter(
+        job = batch_models.BatchJobCreateOptions(
             id=job_name,
-            pool_info=batch_models.PoolInformation(pool_id=pool_name),
+            pool_info=batch_models.BatchPoolInfo(pool_id=pool_name),
             uses_task_dependencies=True,
-            on_all_tasks_complete=on_all_tasks_complete,
-            on_task_failure=OnTaskFailure.perform_exit_options_job_action,
+            all_tasks_complete_mode=on_all_tasks_complete,
+            task_failure_mode=batch_models.BatchTaskFailureMode.PERFORM_EXIT_OPTIONS_JOB_ACTION,
             constraints=job_constraints,
             metadata=[
-                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run),
-                MetadataItem(name="owner", value=get_user()),
-                MetadataItem(name="datetime_created", value=get_date_time()),
+                BatchMetadataItem(
+                    name="mark_complete", value=str(mark_complete_after_tasks_run)
+                ),
+                BatchMetadataItem(name="owner", value=get_user()),
+                BatchMetadataItem(name="datetime_created", value=get_date_time()),
             ],
         )
 
         # Configure task retry settings
         logger.debug("Configuring task retry settings.")
         if task_retries > 0:
-            job.constraints = job.constraints or batch_models.JobConstraints()
+            job.constraints = job.constraints or batch_models.BatchJobConstraints()
             job.constraints.max_task_retry_count = task_retries
 
         # Create the job
@@ -750,10 +753,10 @@ class CloudClient:
         job_schedule_id = job_schedule_name.replace(" ", "-").lower()
         logger.debug(f"job_schedule_id: {job_schedule_id}")
 
-        job_specification = batch_models.JobSpecification(
-            pool_info=batch_models.PoolInformation(pool_id=pool_name),
-            on_all_tasks_complete=batch_models.OnAllTasksComplete.terminate_job,
-            job_manager_task=batch_models.JobManagerTask(
+        job_specification = batch_models.BatchJobSpecification(
+            pool_info=batch_models.BatchPoolInfo(pool_id=pool_name),
+            on_all_tasks_complete=batch_models.BatchAllTasksCompleteMode.TERMINATE_JOB,
+            job_manager_task=batch_models.BatchJobManagerTask(
                 id=f"{job_schedule_id}-job", command_line=command
             ),
         )
@@ -768,7 +771,7 @@ class CloudClient:
             do_not_run_until_datetime = datetime.datetime.strptime(
                 do_not_run_until, d.default_datetime_format
             )
-        schedule = batch_models.Schedule(
+        schedule = batch_models.BatchJobScheduleConfiguration(
             start_window=start_window,
             recurrence_interval=recurrence_interval,
             do_not_run_until=do_not_run_until_datetime,
@@ -776,25 +779,26 @@ class CloudClient:
         )
 
         # add the job schedule
-        job_schedule_add_param = batch_models.JobScheduleAddParameter(
+        job_schedule_add_param = batch_models.BatchJobScheduleCreateOptions(
             id=job_schedule_id,
             display_name=job_schedule_name,
             schedule=schedule,
             job_specification=job_specification,
         )
 
-        job_schedule_add_options = batch_models.JobScheduleAddOptions(
-            timeout=timeout,
-        )
+        # In 15.0.0+, timeout is passed as service_timeout parameter to create_job_schedule
+        job_schedule_kwargs = {}
+        if timeout is not None:
+            job_schedule_kwargs["service_timeout"] = timeout
 
-        # Create the job
+        # Create the job schedule
         create_job_schedule(
             self.batch_service_client,
             job_schedule_add_param,
             exist_ok=exist_ok,
             verify_pool=verify_pool,
             verbose=verbose,
-            job_schedule_add_options=job_schedule_add_options,
+            **job_schedule_kwargs,
         )
 
     def add_task(
@@ -823,7 +827,7 @@ class CloudClient:
                         {"source": "logscontainer", "target": "/mnt/logs"}
                     ]
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
-            depends_on (str | list, optional): Task ID or list of task IDs this task depends on. Default is None.
+            depends_on (str | list[str], optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
             container_image_name (str, optional): Container image to use for the task. Default is None.
@@ -831,7 +835,7 @@ class CloudClient:
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
-        job_info = self.batch_service_client.job.get(job_name)
+        job_info = self.batch_service_client.get_job(job_name)
         pool_name = None
         execution_info = getattr(job_info, "execution_info", None)
         pool_info = getattr(job_info, "pool_info", None)
@@ -946,7 +950,7 @@ class CloudClient:
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
-        job_info = self.batch_service_client.job.get(job_name)
+        job_info = self.batch_service_client.get_job(job_name)
         pool_name = None
         execution_info = getattr(job_info, "execution_info", None)
         pool_info = getattr(job_info, "pool_info", None)
@@ -1236,7 +1240,7 @@ class CloudClient:
             job_name (str): ID of the job to monitor. The job must exist and be in
                 an active state.
             timeout (int, optional): Maximum time in minutes to monitor the job before giving up.
-                If None, monitoring continues indefinitely until all tasks complete.
+                If None, defaults to 480 minutes (8 hours).
             download_job_stats (bool, optional): Whether to download comprehensive job
                 statistics when the job completes. Statistics include task execution
                 times, resource usage, and success/failure rates. Default is False.
@@ -1367,7 +1371,7 @@ class CloudClient:
             or logs before deleting the job.
         """
         logger.debug(f"Attempting to delete {job_name}.")
-        self.batch_service_client.job.delete(job_name)
+        self.batch_service_client.begin_delete_job(job_name).result()
         logger.info(f"Job '{job_name}' deleted.")
 
     def delete_job_schedule(self, job_schedule_id: str) -> None:
@@ -1392,7 +1396,7 @@ class CloudClient:
             This operation is irreversible.
         """
         logger.debug(f"Attempting to delete schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.delete(job_schedule_id)
+        self.batch_service_client.begin_delete_job_schedule(job_schedule_id).result()
         logger.info(f"Job schedule {job_schedule_id} deleted.")
 
     def resume_job_schedule(self, job_schedule_id: str) -> None:
@@ -1414,7 +1418,7 @@ class CloudClient:
                 client.resume_job_schedule("my-job-schedule")
         """
         logger.debug(f"Attempting to resume schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.enable(job_schedule_id)
+        self.batch_service_client.enable_job_schedule(job_schedule_id)
         logger.info(f"Job schedule {job_schedule_id} resumed.")
 
     def suspend_job_schedule(self, job_schedule_id: str) -> None:
@@ -1436,7 +1440,7 @@ class CloudClient:
                 client.suspend_job_schedule("my-job-schedule")
         """
         logger.debug(f"Attempting to suspend schedule {job_schedule_id}.")
-        self.batch_service_client.job_schedule.disable(job_schedule_id)
+        self.batch_service_client.disable_job_schedule(job_schedule_id)
         logger.info(f"Job schedule {job_schedule_id} suspended.")
 
     def list_available_images(self, operating_system: str = None) -> list[dict]:
@@ -1458,10 +1462,8 @@ class CloudClient:
                     print(image)
         """
         logger.debug("Starting list_available_images() function.")
-        images = self.batch_service_client.account.list_supported_images(
-            account_list_supported_images_options=batch_models.AccountListSupportedImagesOptions(
-                filter="verificationType eq 'verified'"
-            )
+        images = self.batch_service_client.list_supported_images(
+            filter="verificationType eq 'verified'"
         )
         if operating_system:
             os_type = (

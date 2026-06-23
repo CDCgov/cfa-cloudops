@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v.0.7.0
+- Updated Azure Batch library to 15.x
+
 ## v0.6.3
 - Switch to azure-mgmt-resource-subscriptions (replaces azure-mgmt-resource).
 

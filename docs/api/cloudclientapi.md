@@ -1,3 +1,3 @@
 # CloudClient API Reference
 
-::: cfa.cloudops.CloudClient
+::: cfa.cloudops._cloudclient.CloudClient

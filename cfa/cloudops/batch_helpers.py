@@ -12,12 +12,16 @@ import azure.batch.models as batch_models
 import griddler
 import yaml
 from azure.batch.models import (
+    AutoUserScope,
+    AutoUserSpecification,
+    BatchJobActionKind,
+    BatchTaskConstraints,
     DependencyAction,
+    ElevationLevel,
     ExitCodeMapping,
     ExitConditions,
     ExitOptions,
-    JobAction,
-    TaskConstraints,
+    UserIdentity,
 )
 
 from cfa.cloudops.task import (
@@ -30,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 AZ_MOUNT_DIR = "/mnt/batch/tasks/fsmounts"
 NO_EXIT_OPTIONS = ExitOptions(
-    dependency_action=DependencyAction.satisfy, job_action=JobAction.none
+    dependency_action=DependencyAction.SATISFY, job_action=BatchJobActionKind.NONE
 )
 NO_EXIT_CONDITIONS = ExitConditions(
     exit_codes=[
@@ -42,7 +46,7 @@ NO_EXIT_CONDITIONS = ExitConditions(
     default=NO_EXIT_OPTIONS,
 )
 TERMMINATE_EXIT_OPTIONS = ExitOptions(
-    dependency_action=DependencyAction.block, job_action=JobAction.none
+    dependency_action=DependencyAction.BLOCK, job_action=BatchJobActionKind.NONE
 )
 TERMMINATE_EXIT_CONDITIONS = ExitConditions(
     exit_codes=[
@@ -106,10 +110,10 @@ def _generate_task_dependencies(depends_on, depends_on_range):
     task_deps = None
     if depends_on is not None:
         depends_on = [depends_on] if isinstance(depends_on, str) else depends_on
-        task_deps = batch_models.TaskDependencies(task_ids=depends_on)
+        task_deps = batch_models.BatchTaskDependencies(task_ids=depends_on)
 
     if depends_on_range is not None:
-        task_deps = batch_models.TaskDependencies(
+        task_deps = batch_models.BatchTaskDependencies(
             task_id_ranges=[
                 batch_models.TaskIdRange(
                     start=int(depends_on_range[0]),
@@ -126,12 +130,12 @@ def _download_task_file(
     """Download specified file from completed Batch task as a stream and save it to a local file after decoding it.
 
     Args:
-        batch_client (object): Azure Batch service client instance for API calls.
+        batch_client (object): Azure Batch service client instance (`azure.batch.BatchClient`) for API calls.
         job_name (str): Name/ID of the job to monitor. The job must exist and be active.
         task_id (str): Name/ID of the task to monitor.
         file_name (str): File name to download from task (e.g. stdout.txt)
     """
-    stream = batch_client.file.get_from_task(job_name, task_id, file_name)
+    stream = batch_client.download_task_file(job_name, task_id, file_name)
     with open(
         os.path.join(f"{job_name}_output", f"{task_id}_{file_name}"),
         "w",
@@ -162,7 +166,7 @@ def monitor_tasks(
         job_name (str): Name/ID of the job to monitor. The job must exist and be active.
         timeout (int): Maximum time in minutes to monitor before timing out. If None,
             defaults to 480 minutes (8 hours).
-        batch_client (object): Azure Batch service client instance for API calls.
+        batch_client (object): Azure Batch service client instance (`azure.batch.BatchClient`) for API calls.
         download_task_output (bool): Whether to download stdout and stderr from each
             completed task. If True, saves output files to a directory named
             "{job_name}_output". Defaults to False.
@@ -218,7 +222,7 @@ def monitor_tasks(
     # as tasks complete, print which complete
     # print remaining number of tasks
     logger.debug(f"Retrieving initial task list for job '{job_name}'")
-    tasks = list(batch_client.task.list(job_name))
+    tasks = list(batch_client.list_tasks(job_name))
 
     # get total tasks
     total_tasks = len([task for task in tasks])
@@ -231,7 +235,7 @@ def monitor_tasks(
     completions, incompletions, running, successes, failures = 0, 0, 0, 0, 0
 
     logger.debug(f"Getting initial job state for '{job_name}'")
-    job = batch_client.job.get(job_name)
+    job = batch_client.get_job(job_name)
     logger.debug(f"Initial job state: {job.as_dict()['state']}")
 
     polling_count = 0
@@ -241,21 +245,27 @@ def monitor_tasks(
             logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
             time.sleep(5)  # Polling interval
 
-            logger.debug(f"Retrieving current task list (poll #{polling_count})")
-            tasks = list(batch_client.task.list(job_name))
+            tasks = list(batch_client.list_tasks(job_name))
+            logger.debug(f"Retrieved {len(tasks)} tasks for job '{job_name}'")
 
             incomplete_tasks = [
-                task for task in tasks if task.state != batch_models.TaskState.completed
+                task
+                for task in tasks
+                if task.state != batch_models.BatchTaskState.COMPLETED
             ]
             incompletions = len(incomplete_tasks)
 
             completed_tasks = [
-                task for task in tasks if task.state == batch_models.TaskState.completed
+                task
+                for task in tasks
+                if task.state == batch_models.BatchTaskState.COMPLETED
             ]
             completions = len(completed_tasks)
 
             running_tasks = [
-                task for task in tasks if task.state == batch_models.TaskState.running
+                task
+                for task in tasks
+                if task.state == batch_models.BatchTaskState.RUNNING
             ]
             running = len(running_tasks)
 
@@ -264,9 +274,17 @@ def monitor_tasks(
             successes = 0
 
             for task in completed_tasks:
-                if task.as_dict()["execution_info"]["result"] == "failure":
+                execution_info = getattr(task, "execution_info", None) or getattr(
+                    task, "executionInfo", None
+                )
+                result = getattr(execution_info, "result", None)
+                result = getattr(result, "value", result)
+                if isinstance(result, str):
+                    result = result.lower()
+
+                if result == "failure":
                     failures += 1
-                elif task.as_dict()["execution_info"]["result"] == "success":
+                elif result == "success":
                     successes += 1
                 if download_task_output:
                     os.makedirs(f"{job_name}_output", exist_ok=True)
@@ -310,7 +328,7 @@ def monitor_tasks(
                 )
                 completed = True
                 break
-            job = batch_client.job.get(job_name)
+            job = batch_client.get_job(job_name)
         else:
             logger.warning(f"Monitoring timeout reached after {timeout} minutes")
             logger.debug(
@@ -332,11 +350,25 @@ def monitor_tasks(
 
     # get terminate reason
     logger.debug("Checking for job termination reason")
-    if "terminate_reason" in job.as_dict()["execution_info"].keys():
-        terminate_reason = job.as_dict()["execution_info"]["terminate_reason"]
+    terminate_reason = None
+
+    execution_info = getattr(job, "execution_info", None)
+    terminate_reason = getattr(execution_info, "terminate_reason", None)
+
+    if terminate_reason is None and hasattr(job, "as_dict"):
+        job_dict = job.as_dict()
+        exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
+        if isinstance(exec_dict, dict):
+            terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
+                "terminateReason"
+            )
+
+    if not isinstance(terminate_reason, str):
+        terminate_reason = None
+
+    if terminate_reason is not None:
         logger.debug(f"Job terminate reason: {terminate_reason}")
     else:
-        terminate_reason = None
         logger.debug("No job termination reason found")
 
     runtime = end_time - start_time
@@ -402,9 +434,7 @@ def download_job_stats(
         logger.debug(f"Using custom filename: {file_name}")
 
     logger.debug("Retrieving task list from batch service")
-    r = batch_service_client.task.list(
-        job_id=job_name,
-    )
+    r = batch_service_client.list_tasks(job_name)
     logger.debug("Task list retrieved successfully")
 
     fields = [
@@ -476,7 +506,7 @@ def check_job_exists(job_name: str, batch_client: object):
         slower for accounts with many jobs. The check is case-sensitive.
     """
     job_list = []
-    for job in batch_client.job.list():
+    for job in batch_client.list_jobs():
         job_list.append(job.id)
 
     if job_name in job_list:
@@ -523,11 +553,11 @@ def get_completed_tasks(job_name: str, batch_client: object):
         detailed success/failure information.
     """
     logger.debug("Pulling in task information.")
-    tasks = [task for task in batch_client.task.list(job_name)]
+    tasks = [task for task in batch_client.list_tasks(job_name)]
     total_tasks = len(tasks)
 
     completed_tasks = [
-        task for task in tasks if task.state == batch_models.TaskState.completed
+        task for task in tasks if task.state == batch_models.BatchTaskState.COMPLETED
     ]
     num_c_tasks = len(completed_tasks)
 
@@ -567,8 +597,8 @@ def check_job_complete(job_name: str, batch_client: object) -> bool:
         or monitor_tasks() to get detailed success/failure information.
     """
     logger.debug(f"Checking completion status for job: {job_name}")
-    job = batch_client.job.get(job_name)
-    is_complete = job.state == batch_models.JobState.completed
+    job = batch_client.get_job(job_name)
+    is_complete = job.state == batch_models.BatchJobState.COMPLETED
     logger.debug(
         f"Job {job_name} completion status: {is_complete} (state: {job.state})"
     )
@@ -615,7 +645,7 @@ def get_job_state(job_name: str, batch_client: object) -> str:
         terminated. The exact states depend on the Azure Batch service version.
     """
     logger.debug(f"Retrieving state for job: {job_name}")
-    job = batch_client.job.get(job_name)
+    job = batch_client.get_job(job_name)
     state = str(job.state)
     logger.debug(f"Job {job_name} current state: {state}")
     return state
@@ -1325,10 +1355,10 @@ def add_task(
 
     # Add a task to the job
     logger.debug("Creating user identity with admin privileges")
-    user_identity = batch_models.UserIdentity(
-        auto_user=batch_models.AutoUserSpecification(
-            scope=batch_models.AutoUserScope.pool,
-            elevation_level=batch_models.ElevationLevel.admin,
+    user_identity = UserIdentity(
+        auto_user=AutoUserSpecification(
+            scope=AutoUserScope.POOL,
+            elevation_level=ElevationLevel.ADMIN,
         )
     )
 
@@ -1356,7 +1386,7 @@ def add_task(
         _to = datetime.timedelta(minutes=timeout)
         logger.debug(f"Task timeout constraint set to {timeout} minutes")
 
-    task_constraints = TaskConstraints(max_wall_clock_time=_to)
+    task_constraints = BatchTaskConstraints(max_wall_clock_time=_to)
     logger.debug(f"Command line for task {task_id}: '{cmd_str}'")
 
     # if full container name is none, pull info from job
@@ -1399,7 +1429,7 @@ def add_task(
 
     # Add the task to the job
     logger.debug(f"Submitting task '{task_id}' to Azure Batch service")
-    batch_client.task.add(job_id=job_name, task=new_task)
+    batch_client.create_task(job_name, new_task)
     logger.debug(f"Task '{task_id}' successfully added to job '{job_name}'")
     return task_id
 
@@ -1414,7 +1444,7 @@ def add_task_collection(
     batch_client: object | None = None,
     task_id_max: int = 0,
     task_id_ints: bool = False,
-) -> batch_models.TaskAddCollectionResult:
+) -> batch_models.BatchCreateTaskCollectionResult:
     """Add a list of tasks to an Azure Batch job with comprehensive configuration options.
 
     Creates and adds a list of tasks to the specified job with support for dependencies,
@@ -1502,10 +1532,10 @@ def add_task_collection(
 
     # Add a task to the job
     logger.debug("Creating user identity with admin privileges")
-    user_identity = batch_models.UserIdentity(
-        auto_user=batch_models.AutoUserSpecification(
-            scope=batch_models.AutoUserScope.pool,
-            elevation_level=batch_models.ElevationLevel.admin,
+    user_identity = UserIdentity(
+        auto_user=AutoUserSpecification(
+            scope=AutoUserScope.POOL,
+            elevation_level=ElevationLevel.ADMIN,
         )
     )
 
@@ -1543,7 +1573,7 @@ def add_task_collection(
 
         timeout = task.get("timeout")
         _to = datetime.timedelta(minutes=timeout) if timeout else None
-        task_constraints = TaskConstraints(max_wall_clock_time=_to)
+        task_constraints = BatchTaskConstraints(max_wall_clock_time=_to)
 
         mounts = task.get("mounts", [])
         mount_str = _generate_mount_string(mounts)
@@ -1584,10 +1614,12 @@ def add_task_collection(
 
     # Add the task list to job
     logger.debug(
-        f"Adding '{len(tasks_to_add)}' to job '{job_name}' i Azure Batch service"
+        f"Adding '{len(tasks_to_add)}' to job '{job_name}' in Azure Batch service"
     )
 
-    result = batch_client.task.add_collection(job_id=job_name, value=tasks_to_add)
+    result = batch_client.create_task_collection(
+        job_name, batch_models.BatchTaskGroup(task_values=tasks_to_add)
+    )
     logger.debug(f"Successfully added {len(tasks_to_add)}' tasks job '{job_name}'")
     return result
 
@@ -1737,7 +1769,7 @@ def get_task_status(
     if not check_job_exists(job_name, batch_client):
         raise ValueError(f"Job {job_name} does not exist.")
 
-    tasks = list(batch_client.task.list(job_name))
+    tasks = list(batch_client.list_tasks(job_name))
     if task_id is not None:
         task = next((t for t in tasks if t.id == task_id), None)
         if task is None:
