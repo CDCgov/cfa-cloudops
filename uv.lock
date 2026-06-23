@@ -493,11 +493,12 @@ wheels = [
 
 [[package]]
 name = "cfa-cloudops"
-version = "0.6.3"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
     { name = "azure-batch" },
+    { name = "azure-common" },
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-keyvault" },
@@ -546,6 +547,7 @@ dev = [
 requires-dist = [
     { name = "anyio", specifier = ">=4.10.0" },
     { name = "azure-batch", specifier = ">=15.1.0" },
+    { name = "azure-common", specifier = ">=1.1.28" },
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-keyvault", specifier = ">=4.2.0" },
