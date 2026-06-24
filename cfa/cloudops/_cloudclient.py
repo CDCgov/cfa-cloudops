@@ -447,15 +447,17 @@ class CloudClient:
                 container_image_names=[container_image_name],
             )
             logger.debug(f"Set container image: {container_image_name}")
+        else:
+            container_config = models.ContainerConfiguration(
+                type="dockerCompatible", container_image_names=[]
+            )
 
-            # Add container registry if available
-            if hasattr(self.cred, "azure_container_registry"):
-                container_config.container_registries = [
-                    self.cred.azure_container_registry
-                ]
-                logger.debug("Added azure container registry to client configuration.")
+        # Add container registry if available
+        if hasattr(self.cred, "azure_container_registry"):
+            container_config.container_registries = [self.cred.azure_container_registry]
+            logger.debug("Added azure container registry to client configuration.")
 
-            d.assign_container_config(pool_config, container_config)
+        d.assign_container_config(pool_config, container_config)
 
         # Configure availability zones in the virtual machine configuration
         # Set node placement configuration for zonal deployment
