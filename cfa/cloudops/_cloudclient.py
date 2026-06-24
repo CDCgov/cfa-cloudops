@@ -809,7 +809,7 @@ class CloudClient:
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
-        container_image_name: str = None,
+        container_image_name: str | None = None,
         timeout: int | None = None,
     ):
         """
