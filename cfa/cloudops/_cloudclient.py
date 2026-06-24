@@ -456,9 +456,6 @@ class CloudClient:
                 logger.debug("Added azure container registry to client configuration.")
 
             d.assign_container_config(pool_config, container_config)
-        else:
-            logger.error("container_image_name not provided.")
-            raise ValueError("container_image_name not provided.")
 
         # Configure availability zones in the virtual machine configuration
         # Set node placement configuration for zonal deployment
