@@ -875,8 +875,13 @@ class CloudClient:
 
                 pool_container = vm_config.container_configuration.container_image_names
                 try:
-                    container_name = pool_container[0].split("://")[-1]
-                    logger.debug(f"Container name set to {container_name}.")
+                    if pool_container is not None and len(pool_container) > 0:
+                        container_name = pool_container[0].split("://")[-1]
+                        logger.debug(f"Container name set to {container_name}.")
+                    else:
+                        raise ValueError(
+                            "No container image found in pool configuration and no image provided."
+                        )
                 except Exception as e:
                     logger.error(f"No container image found or provided: {str(e)}")
                     raise
