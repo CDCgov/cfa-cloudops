@@ -829,8 +829,8 @@ class CloudClient:
             depends_on (str | list[str], optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
-            container_image_name (str, optional): Container image to use for the task. Default is None.
-            timeout (int, optional): Maximum time in minutes for the task to run. Default is None.
+            container_image_name (str | None, optional): Container image to use for the task. Default is None.
+            timeout (int | None, optional): Maximum time in minutes for the task to run. Default is None.
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
@@ -872,9 +872,15 @@ class CloudClient:
                     pool_info.deployment_configuration.virtual_machine_configuration
                 )
                 logger.debug("Generated VM config.")
-                pool_container = vm_config.container_configuration.container_image_names
-                container_name = pool_container[0].split("://")[-1]
-                logger.debug(f"Container name set to {container_name}.")
+                try:
+                    pool_container = (
+                        vm_config.container_configuration.container_image_names
+                    )
+                    container_name = pool_container[0].split("://")[-1]
+                    logger.debug(f"Container name set to {container_name}.")
+                except Exception as e:
+                    logger.error(f"No container image found or provided: {str(e)}")
+                    raise
             else:
                 container_name = self.full_container_name
                 logger.debug(f"Container name set to {container_name}.")
