@@ -880,7 +880,7 @@ class CloudClient:
                         logger.debug(f"Container name set to {container_name}.")
                     else:
                         raise ValueError(
-                            "No container image found in pool configuration and no image provided."
+                            "No container image found in pool configuration and no container image name provided."
                         )
                 except Exception as e:
                     logger.error(f"No container image found or provided: {str(e)}")
