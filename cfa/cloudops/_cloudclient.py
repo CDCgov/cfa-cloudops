@@ -872,10 +872,9 @@ class CloudClient:
                     pool_info.deployment_configuration.virtual_machine_configuration
                 )
                 logger.debug("Generated VM config.")
+
+                pool_container = vm_config.container_configuration.container_image_names
                 try:
-                    pool_container = (
-                        vm_config.container_configuration.container_image_names
-                    )
                     container_name = pool_container[0].split("://")[-1]
                     logger.debug(f"Container name set to {container_name}.")
                 except Exception as e:
