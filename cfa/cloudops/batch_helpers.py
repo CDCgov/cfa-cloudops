@@ -1830,7 +1830,15 @@ def get_vm_name(
         family_name = vm_name_to_family(vm_name)
         quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
         if not any(quota["name"] == family_name for quota in quotas):
-            options = find_similar_vm_families(family_name, 4, 0.5, quotas)
+            options = find_similar_vm_families(
+                family_name,
+                4,
+                0.5,
+                quotas,
+                batch_mgmt_client,
+                resource_group,
+                account_name,
+            )
             if options:
                 raise ValueError(
                     f"VM {vm_name} is not available in the current quota. VM families available: {', '.join(options)}"
@@ -1865,6 +1873,9 @@ def find_similar_vm_families(
     limit: int = 10,
     min_score: float = 0.5,
     quotas: list[dict] | None = None,
+    batch_mgmt_client: BatchManagementClient | None = None,
+    resource_group: str | None = None,
+    account_name: str | None = None,
 ) -> list[str]:
     """Return quota family names that are closest to the requested family name.
 
@@ -1878,7 +1889,11 @@ def find_similar_vm_families(
         list[str]: A list of similar VM family names.
     """
     if quotas is None:
-        quotas = get_all_vm_quotas()
+        quotas = get_all_vm_quotas(
+            batch_mgmt_client=batch_mgmt_client,
+            resource_group=resource_group,
+            account_name=account_name,
+        )
 
     available_names = [quota["name"] for quota in quotas if quota.get("name")]
     if not available_names:
