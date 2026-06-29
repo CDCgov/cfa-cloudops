@@ -2384,11 +2384,11 @@ class CloudClient:
             job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
         )
 
-    def get_all_vm_quotas(self) -> dict:
+    def get_all_vm_quotas(self) -> list[dict]:
         """Retrieves all available VMs in the Azure account.
 
         Returns:
-            dict: list of available VM names with their quotas
+            list[dict]: list of available VM names with their quotas
         """
         return get_all_vm_quotas(
             batch_mgmt_client=self.batch_mgmt_client,
@@ -2440,7 +2440,7 @@ class CloudClient:
         Returns:
             str: The name of a VM that matches the specified criteria.
         """
-        return get_vm_size(
+        return batch_helpers.get_vm_name(
             series=series,
             cores=cores,
             amd=amd,
