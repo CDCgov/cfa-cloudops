@@ -1935,8 +1935,17 @@ def find_similar_vm_families(
 
 
 def construct_vm_name(vm_family_name: str, cores: int) -> str:
-    vm_spec = vm_family_name.split("standard")[-1].split("Family")[0]
-    vm_series = vm_spec[0]
-    vm_attrs, vm_size = vm_spec.split("v")
+    """Construct a VM name from the family name and number of cores.
+
+    Args:
+        vm_family_name (str): The VM family name, like "standardDADSv5Family".
+        cores (int): The number of cores for the VM.
+
+    Returns:
+        str: The constructed VM name.
+    """
+    vm_spec = list(vm_family_name.split("standard")[-1].split("Family")[0])
+    vm_series = vm_spec.pop(0)
+    vm_attrs, vm_size = "".join(vm_spec).split("v")
     vm_attrs = vm_attrs.lower()
     return f"standard_{vm_series}{cores}{vm_attrs}_v{vm_size}"

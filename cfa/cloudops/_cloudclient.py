@@ -215,16 +215,17 @@ class CloudClient:
                     how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
-            vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4ds_v5").
+            vm_size (str): Azure VM size for the pool nodes (e.g., "standard_D4ads_v5").
                 Defaults to the value from defaults module.
                 VM size can also be given in the form "xsmall", "small", "medium", "large", or "xlarge" for convenience,
                 which will be mapped to specific Azure VM sizes. The sizes map to the following Azure VM sizes:
-                    - "xsmall": "Standard_D2s_v3"
-                    - "small": "Standard_D4s_v3"
-                    - "medium": "Standard_D8s_v3"
-                    - "large": "Standard_D16s_v3"
-                    - "xlarge": "Standard_D32s_v3"
+                    - "xsmall": "standard_D2ads_v5"
+                    - "small": "standard_D4ads_v5"
+                    - "medium": "standard_D8ads_v5"
+                    - "large": "standard_D16ads_v5"
+                    - "xlarge": "standard_D32ads_v5"
                  Note that not all VM sizes may be available in all regions, so ensure the specified size is available in your Azure region.
+                 For help determining available VM sizes, you can use the `get_vm_name` method of this client.
             autoscale (bool): Whether to enable autoscaling (True) or use fixed scaling (False).
                 Default is True.
             autoscale_formula (str): Autoscale formula to use when autoscale=True.
@@ -275,7 +276,7 @@ class CloudClient:
                 client.create_pool(
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
-                    vm_size="Standard_D4ds_v5",
+                    vm_size="standard_D4ads_v5",
                     mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,

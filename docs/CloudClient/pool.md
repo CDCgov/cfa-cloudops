@@ -35,11 +35,13 @@ The `vm_size` parameter in `create_pool()` can take t-shirt sizes for easier cre
 
 | t-shirt size | VM name | vCPUs | RAM (GB) | Temp Disk Size (GiB) | Disk Cache Size (GiB) | Cached Disk Random Read IOPS |
 | -- | -- | -- | -- | -- | -- | -- |
-| xsmall | Standard_D2ds_v5 | 2 | 8 | 16 | 50 | 4,000 |
-| small | Standard_D4ds_v5 | 4 | 16 | 32 | 100 | 8,000 |
-| medium | Standard_D8ds_v5 | 8 | 32 | 64 | 200 | 16,000 |
-| large | Standard_D16ds_v5 | 16 | 64 | 128 | 400 | 32,000 |
-| xlarge | Standard_D32ds_v5 | 32 | 128 | 256 | 800 | 64,000|
+| xsmall | Standard_D2ads_v5 | 2 | 8 | 16 | 50 | 4,000 |
+| small | Standard_D4ads_v5 | 4 | 16 | 32 | 100 | 8,000 |
+| medium | Standard_D8ads_v5 | 8 | 32 | 64 | 200 | 16,000 |
+| large | Standard_D16ads_v5 | 16 | 64 | 128 | 400 | 32,000 |
+| xlarge | Standard_D32ads_v5 | 32 | 128 | 256 | 800 | 64,000|
+
+For more customizability, the method `get_vm_name` can be used to construct the VM name depending on a variety of factors, such as series, cores, processor, temporary storage, SSD storage and version. If the provided attributes do not exist, the method will return any similar VMs in the account with a non-zero quota.
 
 
 
