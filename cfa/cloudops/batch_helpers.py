@@ -1839,24 +1839,11 @@ def get_vm_name(
         # check available in quota
         family_name = vm_name_to_family(vm_name)
         quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
-        if not any(quota["name"] == family_name for quota in quotas):
-            options = find_similar_vm_families(
-                family_name,
-                4,
-                0.5,
-                quotas,
-                batch_mgmt_client,
-                resource_group,
-                account_name,
-            )
-            if options:
-                raise ValueError(
-                    f"VM {vm_name} is not available in the current quota. VM families available: {', '.join(options)}"
-                )
 
         if not any(quota.get("name") == family_name for quota in quotas):
-            options = find_similar_vm_families(family_name, 4, 0.5, quotas)
-            hint = f" Similar families: {', '.join(options)}" if options else ""
+            options = find_similar_vm_families(family_name, 4, 0.6, quotas)
+            suggestions = [construct_vm_name(opt, cores) for opt in options]
+            hint = f" Similar families: {', '.join(suggestions)}" if suggestions else ""
             raise ValueError(
                 f"VM {vm_name} is not available in the current quota.{hint}"
             )
@@ -1941,3 +1928,11 @@ def find_similar_vm_families(
 
     scored_names.sort(key=lambda item: (-item[0], item[1]))
     return [candidate for _score, candidate in scored_names[:limit]]
+
+
+def construct_vm_name(vm_family_name: str, cores: int) -> str:
+    vm_spec = vm_family_name.split("standard")[-1].split("Family")[0]
+    vm_series = vm_spec[0]
+    vm_attrs, vm_size = vm_spec.split("v")
+    vm_attrs = vm_attrs.lower()
+    return f"standard_{vm_series}{cores}{vm_attrs}_v{vm_size}"
