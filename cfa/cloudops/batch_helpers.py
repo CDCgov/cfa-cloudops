@@ -1628,8 +1628,9 @@ def get_vm_size(size="small"):
 
     Args:
         size (str): A simple descriptor for the desired VM size. Options include
-            "xsmall", "small", "medium", "large", "xlarge". Defaults to
-            "small".
+            "xsmall", "small", "medium", "large", "xlarge",
+            "xsmall_amd", "small_amd", "medium_amd", "large_amd", "xlarge_amd".
+            Defaults to "small".
 
     Returns:
         str: The corresponding Azure VM size string.
@@ -1657,6 +1658,11 @@ def get_vm_size(size="small"):
         "medium": "Standard_D8ads_v5",
         "large": "Standard_D16ads_v5",
         "xlarge": "Standard_D32ads_v5",
+        "xsmall_amd": "Standard_D2ads_v5",
+        "small_amd": "Standard_D4ads_v5",
+        "medium_amd": "Standard_D8ads_v5",
+        "large_amd": "Standard_D16ads_v5",
+        "xlarge_amd": "Standard_D32ads_v5",
     }
     vm_size = size_mapping.get(size.lower())
     if vm_size is None:
@@ -1733,8 +1739,21 @@ def get_all_vm_quotas(
     account = batch_mgmt_client.batch_account.get(
         resource_group_name=resource_group, account_name=account_name
     )
-    quotas = account.dedicated_core_quota_per_vm_family
-    available = [quota for quota in quotas if quota["coreQuota"] > 0]
+    quotas = []
+    for q in account.dedicated_core_quota_per_vm_family or []:
+        if hasattr(q, "as_dict"):
+            quotas.append(q.as_dict())
+        elif isinstance(q, dict):
+            quotas.append(q)
+        else:
+            quotas.append(
+                {
+                    "name": getattr(q, "name", None),
+                    "coreQuota": getattr(q, "coreQuota", None)
+                    or getattr(q, "core_quota", 0),
+                }
+            )
+    available = [quota for quota in quotas if quota.get("coreQuota", 0) > 0]
     return available
 
 
