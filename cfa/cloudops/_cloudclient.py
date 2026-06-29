@@ -2392,8 +2392,8 @@ class CloudClient:
         """
         return get_all_vm_quotas(
             batch_mgmt_client=self.batch_mgmt_client,
-            resource_group=self.cred.resource_group,
-            account_name=self.cred.account_name,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
         )
 
     def get_vm_series_quotas(
@@ -2412,8 +2412,8 @@ class CloudClient:
         return get_vm_series_quotas(
             series=series,
             batch_mgmt_client=self.batch_mgmt_client,
-            resource_group=self.cred.resource_group,
-            account_name=self.cred.account_name,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
         )
 
     def get_vm_name(
@@ -2449,6 +2449,6 @@ class CloudClient:
             version=version,
             verify=verify,
             batch_mgmt_client=self.batch_mgmt_client,
-            resource_group=self.cred.resource_group,
-            account_name=self.cred.account_name,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
         )
