@@ -1843,7 +1843,11 @@ def get_vm_name(
         if not any(quota.get("name") == family_name for quota in quotas):
             options = find_similar_vm_families(family_name, 4, 0.6, quotas)
             suggestions = [construct_vm_name(opt, cores) for opt in options]
-            hint = f" Similar families: {', '.join(suggestions)}" if suggestions else ""
+            hint = (
+                f" Similar available VMs: {', '.join(suggestions)}"
+                if suggestions
+                else ""
+            )
             raise ValueError(
                 f"VM {vm_name} is not available in the current quota.{hint}"
             )
