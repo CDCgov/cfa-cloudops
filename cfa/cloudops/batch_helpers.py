@@ -1657,6 +1657,11 @@ def get_vm_size(size="small"):
         "medium": "Standard_D8ads_v5",
         "large": "Standard_D16ads_v5",
         "xlarge": "Standard_D32ads_v5",
+        "xsmall_amd": "Standard_D2ads_v5",
+        "small_amd": "Standard_D4ads_v5",
+        "medium_amd": "Standard_D8ads_v5",
+        "large_amd": "Standard_D16ads_v5",
+        "xlarge_amd": "Standard_D32ads_v5",
     }
     vm_size = size_mapping.get(size.lower())
     if vm_size is None:
