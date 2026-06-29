@@ -1915,11 +1915,7 @@ def find_similar_vm_families(
         list[str]: A list of similar VM family names.
     """
     if quotas is None:
-        quotas = get_all_vm_quotas(
-            batch_mgmt_client=batch_mgmt_client,
-            resource_group=resource_group,
-            account_name=account_name,
-        )
+        quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
 
     available_names = [quota["name"] for quota in quotas if quota.get("name")]
     if not available_names:
