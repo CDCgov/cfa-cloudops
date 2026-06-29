@@ -2440,7 +2440,7 @@ class CloudClient:
         Returns:
             str: The name of a VM that matches the specified criteria.
         """
-        return get_vm_size(
+        return batch_helpers.get_vm_name(
             series=series,
             cores=cores,
             amd=amd,
