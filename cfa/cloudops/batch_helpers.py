@@ -3,8 +3,10 @@ import datetime
 import json
 import logging
 import os
+import re
 import time
 import uuid
+from difflib import SequenceMatcher
 from pathlib import Path
 from zoneinfo import ZoneInfo as zi
 
@@ -19,6 +21,7 @@ from azure.batch.models import (
     JobAction,
     TaskConstraints,
 )
+from azure.mgmt.batch import BatchManagementClient
 
 from cfa.cloudops.task import (
     get_container_settings,
@@ -1712,3 +1715,201 @@ def get_task_status(
         )
 
     return json.dumps(out_json)
+
+
+def get_all_vm_quotas(
+    batch_mgmt_client: BatchManagementClient, resource_group: str, account_name: str
+) -> list[dict]:
+    """Returns all available VMs in the account.
+
+    Args:
+        batch_mgmt_client (BatchManagementClient): instance of Azure BatchManagementClient
+        resource_group (str): name of the resource group
+        account_name (str): name of the batch account
+
+    Returns:
+        list[dict]: list of available VM names with their quotas
+    """
+    account = batch_mgmt_client.batch_account.get(
+        resource_group_name=resource_group, account_name=account_name
+    )
+    quotas = account.dedicated_core_quota_per_vm_family
+    available = [quota for quota in quotas if quota["coreQuota"] > 0]
+    return available
+
+
+def get_vm_series_quotas(
+    series: str | list[str],
+    batch_mgmt_client: BatchManagementClient,
+    resource_group: str,
+    account_name: str,
+):
+    """
+    Returns all available VMs in the account that match the given series.
+
+    Args:
+        series (str | list[str]): VM series to filter, e.g. "D" or "E".
+        batch_mgmt_client (BatchManagementClient): instance of Azure BatchManagementClient
+        resource_group (str): name of the resource group
+        account_name (str): name of the batch account
+
+    Returns:
+        list[dict]: list of available VM names with their quotas that match the given series
+    """
+    if isinstance(series, str):
+        series = [series]
+    quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+    output = []
+    for s in series:
+        for quota in quotas:
+            if quota["name"].split("standard")[-1].startswith(s):
+                output.append(quota)
+    return output
+
+
+def vm_name_to_family(vm_name: str) -> str:
+    """Convert a VM name like 'standard_D4ads_v5' to 'standardDADSv5Family'.
+
+    Args:
+        vm_name (str): The VM name to convert, e.g., 'standard_D4ads_v5'.
+
+    Returns:
+        str: The corresponding VM family name.
+    """
+    match = re.fullmatch(r"standard_([A-Za-z]+)(\d+)([A-Za-z0-9_]*)_v(\d+)", vm_name)
+    if not match:
+        raise ValueError(f"Unexpected vm_name format: {vm_name}")
+
+    series, _cores, attrs, version = match.groups()
+    attrs = attrs.replace("_", "").upper()
+
+    return f"standard{series.upper()}{attrs}v{version}Family"
+
+
+def get_vm_name(
+    series: str = "D",
+    cores: int = 4,
+    amd: bool = False,
+    temp_disk: bool = False,
+    ssd: bool = False,
+    version: int = 5,
+    verify: bool = True,
+    batch_mgmt_client: BatchManagementClient | None = None,
+    resource_group: str | None = None,
+    account_name: str | None = None,
+) -> str:
+    """Construct usable VM name by providing VM characteristics.
+
+    Args:
+        series (str, optional): VM series to use, e.g., "D" or "E". Defaults to "D".
+        cores (int, optional): Number of cores for the VM. Defaults to 4.
+        amd (bool, optional): Whether to use AMD processors. Defaults to False.
+        temp_disk (bool, optional): Whether to include a temporary disk. Defaults to False.
+        ssd (bool, optional): Whether to use SSD storage. Defaults to False.
+        version (int, optional): VM version. Defaults to 5.
+        verify (bool, optional): Whether to verify the VM name against available quotas. Defaults to True.
+        batch_mgmt_client (BatchManagementClient | None, optional): Batch management client instance. Defaults to None.
+        resource_group (str | None, optional): Resource group name. Defaults to None.
+        account_name (str | None, optional): Batch account name. Defaults to None.
+
+    Raises:
+        ValueError: If the VM name is not available in the current quota.
+
+    Returns:
+        str: The constructed VM name.
+    """
+
+    amd_str = "a" if amd else ""
+    temp_disk_str = "d" if temp_disk else ""
+    ssd_str = "s" if ssd else ""
+    vm_name = (
+        f"standard_{series.upper()}{cores}{amd_str}{temp_disk_str}{ssd_str}_v{version}"
+    )
+    if verify:
+        # check available in quota
+        family_name = vm_name_to_family(vm_name)
+        quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+        if not any(quota["name"] == family_name for quota in quotas):
+            options = find_similar_vm_families(family_name, 4, 0.5, quotas)
+            if options:
+                raise ValueError(
+                    f"VM {vm_name} is not available in the current quota. VM families available: {', '.join(options)}"
+                )
+    return vm_name
+
+
+def get_vm_components(vm) -> tuple[str, str, str]:
+    """Extract VM components from the VM name.
+
+    Args:
+        vm (str): The VM name.
+
+    Returns:
+        tuple[str, str, str]: A tuple containing the series, attributes, and version of the VM.
+    """
+    vm_attrs = vm.lower().split("standard")[-1].split("family")[0]
+    vm_split = vm_attrs.split("v")
+    version = int(vm_split[-1])
+    instance = vm_split[0]
+    if len(instance) == 1:
+        series = instance
+        attr = ""
+    else:
+        series = instance[0]
+        attr = instance[1:]
+    return series.upper(), attr, str(version)
+
+
+def find_similar_vm_families(
+    family_name: str,
+    limit: int = 10,
+    min_score: float = 0.5,
+    quotas: list[dict] | None = None,
+) -> list[str]:
+    """Return quota family names that are closest to the requested family name.
+
+    Args:
+        family_name (str): The requested VM family name, like "standardDADSv5Family".
+        limit (int, optional): The maximum number of similar family names to return. Defaults to 10.
+        min_score (float, optional): The minimum similarity score required to consider a family name. Defaults to 0.5.
+        quotas (list[dict] | None, optional): A list of quota dictionaries. If None, fetches all VM quotas. Defaults to None.
+
+    Returns:
+        list[str]: A list of similar VM family names.
+    """
+    if quotas is None:
+        quotas = get_all_vm_quotas()
+
+    available_names = [quota["name"] for quota in quotas if quota.get("name")]
+    if not available_names:
+        return []
+
+    def normalize(name: str) -> str:
+        return "".join(ch for ch in name.lower() if ch.isalnum())
+
+    target_norm = normalize(family_name)
+    target_series, _target_attrs, target_version = get_vm_components(family_name)
+
+    scored_names = []
+    for candidate in available_names:
+        candidate_norm = normalize(candidate)
+        similarity = SequenceMatcher(None, target_norm, candidate_norm).ratio()
+
+        try:
+            candidate_series, _candidate_attrs, candidate_version = get_vm_components(
+                candidate
+            )
+        except (IndexError, ValueError):
+            candidate_series, candidate_version = "", ""
+
+        score = similarity
+        if candidate_series == target_series:
+            score += 0.2
+        if candidate_version == target_version:
+            score += 0.1
+
+        if score >= min_score:
+            scored_names.append((score, candidate))
+
+    scored_names.sort(key=lambda item: (-item[0], item[1]))
+    return [candidate for _score, candidate in scored_names[:limit]]

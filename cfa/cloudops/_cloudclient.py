@@ -28,7 +28,12 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
-from .batch_helpers import check_mount_format, get_vm_size
+from .batch_helpers import (
+    check_mount_format,
+    get_all_vm_quotas,
+    get_vm_series_quotas,
+    get_vm_size,
+)
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -2377,4 +2382,73 @@ class CloudClient:
         """
         return batch_helpers.get_task_status(
             job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
+        )
+
+    def get_all_vm_quotas(self) -> dict:
+        """Retrieves all available VMs in the Azure account.
+
+        Returns:
+            dict: list of available VM names with their quotas
+        """
+        return get_all_vm_quotas(
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.resource_group,
+            account_name=self.cred.account_name,
+        )
+
+    def get_vm_series_quotas(
+        self,
+        series: str | list[str],
+    ) -> list[dict]:
+        """
+        Returns all available VMs in the account that match the given series.
+
+        Args:
+            series (str | list[str]): VM series to filter, e.g. "D" or "E".
+
+        Returns:
+            list[dict]: list of available VM names with their quotas that match the given series
+        """
+        return get_vm_series_quotas(
+            series=series,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.resource_group,
+            account_name=self.cred.account_name,
+        )
+
+    def get_vm_name(
+        self,
+        series: str = "D",
+        cores: int = 4,
+        amd: bool = False,
+        temp_disk: bool = False,
+        ssd: bool = False,
+        version: int = 5,
+        verify: bool = True,
+    ) -> str:
+        """Get the name of a VM that matches the specified criteria.
+
+        Args:
+            series (str): The VM series (e.g., "D", "E", "F"). Default is "D".
+            cores (int): Minimum number of CPU cores required. Default is 4.
+            amd (bool): Whether to require AMD architecture. Default is False.
+            temp_disk (bool): Whether to require a temporary disk. Default is False.
+            ssd (bool): Whether to require an SSD. Default is False.
+            version (int): Minimum version of the VM series. Default is 5.
+            verify (bool): Whether to verify that the VM exists in the account. Default is True.
+
+        Returns:
+            str: The name of a VM that matches the specified criteria.
+        """
+        return get_vm_size(
+            series=series,
+            cores=cores,
+            amd=amd,
+            temp_disk=temp_disk,
+            ssd=ssd,
+            version=version,
+            verify=verify,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.resource_group,
+            account_name=self.cred.account_name,
         )
