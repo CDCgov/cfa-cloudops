@@ -1628,8 +1628,9 @@ def get_vm_size(size="small"):
 
     Args:
         size (str): A simple descriptor for the desired VM size. Options include
-            "xsmall", "small", "medium", "large", "xlarge". Defaults to
-            "small".
+            "xsmall", "small", "medium", "large", "xlarge",
+            "xsmall_amd", "small_amd", "medium_amd", "large_amd", "xlarge_amd".
+            Defaults to "small".
 
     Returns:
         str: The corresponding Azure VM size string.
