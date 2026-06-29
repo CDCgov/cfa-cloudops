@@ -1845,12 +1845,12 @@ def get_vm_name(
         # check available in quota
         family_name = vm_name_to_family(vm_name)
         quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
-        if not any(quota["name"] == family_name for quota in quotas):
+        if not any(quota.get("name") == family_name for quota in quotas):
             options = find_similar_vm_families(family_name, 4, 0.5, quotas)
-            if options:
-                raise ValueError(
-                    f"VM {vm_name} is not available in the current quota. VM families available: {', '.join(options)}"
-                )
+            hint = f" Similar families: {', '.join(options)}" if options else ""
+            raise ValueError(
+                f"VM {vm_name} is not available in the current quota.{hint}"
+            )
     return vm_name
 
 
