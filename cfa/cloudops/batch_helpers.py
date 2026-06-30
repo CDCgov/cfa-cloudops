@@ -1771,8 +1771,10 @@ def get_vm_series_quotas(
     quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
     output = []
     for s in series:
+        s_norm = s.lower()
         for quota in quotas:
-            if quota["name"].split("standard")[-1].startswith(s):
+            name = (quota.get("name") or "").lower()
+            if name.split("standard")[-1].startswith(s_norm):
                 output.append(quota)
     return output
 
