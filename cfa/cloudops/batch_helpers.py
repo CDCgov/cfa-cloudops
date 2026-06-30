@@ -1739,11 +1739,11 @@ def get_all_vm_quotas(
     account = batch_mgmt_client.batch_account.get(
         resource_group_name=resource_group, account_name=account_name
     )
-    quotas = account.dedicated_core_quota_per_vm_family
+    quotas = account.dedicated_core_quota_per_vm_family or []
     available = [
         {"name": getattr(quota, "name", None), "quota": getattr(quota, "core_quota", 0)}
         for quota in quotas
-        if getattr(quota, "core_quota") > 0
+        if getattr(quota, "core_quota", 0) > 0
     ]
     return available
 
