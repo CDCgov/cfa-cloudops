@@ -1883,7 +1883,7 @@ def get_vm_name(
     series: str = "D",
     cores: int = 4,
     amd: bool = False,
-    temp_disk: bool = False,
+    temp_disk: bool = True,
     ssd: bool = False,
     version: int = 5,
     verify: bool = True,
@@ -1897,7 +1897,7 @@ def get_vm_name(
         series (str, optional): VM series to use, e.g., "D" or "E". Defaults to "D".
         cores (int, optional): Number of cores for the VM. Defaults to 4.
         amd (bool, optional): Whether to use AMD processors. Defaults to False.
-        temp_disk (bool, optional): Whether to include a temporary disk. Defaults to False.
+        temp_disk (bool, optional): Whether to include a temporary disk. Defaults to True.
         ssd (bool, optional): Whether to use SSD storage. Defaults to False.
         version (int, optional): VM version. Defaults to 5.
         verify (bool, optional): Whether to verify the VM name against available quotas. Defaults to True.
