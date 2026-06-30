@@ -1,3 +1,3 @@
 # ContainerAppClient API Reference
 
-::: cfa.cloudops.ContainerAppClient
+::: cfa.cloudops._containerappclient.ContainerAppClient

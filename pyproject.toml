@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "0.5.2"
+version = "0.7.0"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -8,25 +8,22 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10, <4.0"
 dependencies = [
-    "tomli>=2.2.1",
     "tqdm>=4.67.1",
     "pandas>=2.3.2",
-    "polars>=1.33.1",
-    "azure-core>=1.35.1",
-    "azure-mgmt-batch>=18.0.0,<19.0.0", #version 19 introduces breaking changes.
+    "azure-core>=1.38.0",
+    "azure-common>=1.1.28",
+    "azure-mgmt-batch>=19.0.0",
     "azure-mgmt-web>=10.1.0",
     "azure-storage-blob>=12.26.0",
     "azure-identity>=1.25.0",
     "msrest>=0.7.1",
-    "msrestazure>=0.6.4.post1",
+    "msrestazure>=0.6.4",
     "azure-keyvault>=4.2.0",
     "azure-mgmt-compute>=36.0.0",
-    "azure-batch>=14.2.0,<15.0.0",
-    # azure-mgmt-resource<25.0.0: 25.x introduces breaking changes to resource management APIs not yet supported by cfa.cloudops.
-    "azure-mgmt-resource>=24.0.0,<25.0.0",
+    "azure-batch>=15.1.0",
+    "azure-mgmt-resource-subscriptions>=1.0.0b2",
     "azure-mgmt-appcontainers>=4.0.0",
-    "azure-mgmt-authorization>=4.0.0",
-    "python-dotenv>=1.1.1",
+    "python-dotenv>=1.2.2",
     "docker>=7.1.0",
     "pyyaml>=6.0.2",
     "griddler @ git+https://github.com/CDCgov/pygriddler.git",
@@ -34,7 +31,6 @@ dependencies = [
     "toml>=0.10.2",
     "networkx>=3.4.2",
     "anyio>=4.10.0",
-    "aiohttp>=3.12.15",
     "duckdb>=1.4.4"
 ]
 
@@ -82,26 +78,20 @@ pythonpath = ["."]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.9.9",
-    "pytest>=8.3.5",
+    "aiohttp>=3.14.1",
+    "azure-mgmt-authorization>=4.0.0",
+    "coverage-badge>=1.1.2",
+    "ipykernel>=7.1.0",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.16",
+    "mkdocstrings[python]>=0.30.0",
+    "mdx-truly-sane-lists>=1.3",
+    "msrestazure>=0.6.4.post1",
+    "polars>=1.33.1",
+    "pytest>=9.0.3",
     "pytest-asyncio>=1.2.0",
     "pytest-mock>=3.14.0",
     "pytest-cov>=6.1.1",
-    "coverage-badge>=1.1.2"
-]
-
-[project.optional-dependencies]
-dev = [
     "ruff>=0.9.9",
-    "pytest>=8.3.5",
-    "pytest-asyncio>=1.2.0",
-    "pytest-mock>=3.14.0",
-    "pytest-cov>=6.1.1",
-    "coverage-badge>=1.1.2"
+    "tomli>=2.2.1",
 ]
-
-[tool.poetry.group.mkdocs.dependencies]
-mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.16"
-mkdocstrings = { extras = ["python"], version = "^0.30.0" }
-mdx-truly-sane-lists = "^1.3"

@@ -5,19 +5,12 @@ import string
 import time
 from functools import wraps
 
-from azure.batch import BatchServiceClient
 from azure.batch import models as batch_models
-from azure.batch.models import (
-    JobConstraints,
-    MetadataItem,
-    OnAllTasksComplete,
-    OnTaskFailure,
-)
 from metaflow.decorators import StepDecorator
 
 from cfa.cloudops import batch_helpers
 from cfa.cloudops.auth import SPCredentialHandler
-from cfa.cloudops.client import get_batch_management_client
+from cfa.cloudops.client import get_batch_management_client, get_batch_service_client
 from cfa.cloudops.defaults import (
     default_azure_batch_endpoint_subdomain,
     default_azure_batch_location,
@@ -66,10 +59,7 @@ class CFAAzureBatchDecorator(StepDecorator):
             self.job_configuration["Job"].get("task_interval", DEFAULT_TASK_INTERVAL)
         )
         self.__setup_credentials()
-        self.batch_client = BatchServiceClient(
-            credentials=self.cred.batch_service_principal_credentials,
-            batch_url=self.cred.azure_batch_endpoint,
-        )
+        self.batch_client = get_batch_service_client(self.cred)
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.pool_name = pool_name
         self.docker_command = kwargs.get("docker_command")
@@ -120,32 +110,34 @@ class CFAAzureBatchDecorator(StepDecorator):
             _to = datetime.timedelta(minutes=timeout)
 
         on_all_tasks_complete = (
-            OnAllTasksComplete.terminate_job
+            batch_models.BatchAllTasksCompleteMode.TERMINATE_JOB
             if mark_complete_after_tasks_run
-            else OnAllTasksComplete.no_action
+            else batch_models.BatchAllTasksCompleteMode.NO_ACTION
         )
 
-        job_constraints = JobConstraints(
+        job_constraints = batch_models.BatchJobConstraints(
             max_task_retry_count=task_retries,
             max_wall_clock_time=_to,
         )
 
         # add the job
-        job = batch_models.JobAddParameter(
+        job = batch_models.BatchJobCreateOptions(
             id=job_name,
-            pool_info=batch_models.PoolInformation(pool_id=self.pool_name),
+            pool_info=batch_models.BatchPoolInfo(pool_id=self.pool_name),
             uses_task_dependencies=uses_deps,
-            on_all_tasks_complete=on_all_tasks_complete,
-            on_task_failure=OnTaskFailure.perform_exit_options_job_action,
+            all_tasks_complete_mode=on_all_tasks_complete,
+            task_failure_mode=batch_models.BatchTaskFailureMode.PERFORM_EXIT_OPTIONS_JOB_ACTION,
             constraints=job_constraints,
             metadata=[
-                MetadataItem(name="mark_complete", value=mark_complete_after_tasks_run)
+                batch_models.BatchMetadataItem(
+                    name="mark_complete", value=str(mark_complete_after_tasks_run)
+                )
             ],
         )
 
         # Configure task retry settings
         if task_retries > 0:
-            job.constraints = job.constraints or batch_models.JobConstraints()
+            job.constraints = job.constraints or batch_models.BatchJobConstraints()
             job.constraints.max_task_retry_count = task_retries
 
         # Create the job

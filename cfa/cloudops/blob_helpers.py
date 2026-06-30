@@ -853,7 +853,6 @@ def download_folder(
         exclude_extensions = format_extensions(exclude_extensions)
     if include_extensions is not None and exclude_extensions is not None:
         logger.error("Use included_extensions or exclude_extensions, not both.")
-        print("Use included_extensions or exclude_extensions, not both.")
         raise Exception(
             "Use included_extensions or exclude_extensions, not both."
         ) from None

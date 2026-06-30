@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v.0.7.0
+- Updated Azure Batch library to 15.x
+
+## v0.6.3
+- Switch to azure-mgmt-resource-subscriptions (replaces azure-mgmt-resource).
+
+## v0.6.2
+- change ActiveTasks to PendingTasks in autoscale formulas for the expected behavior.
+
+## v0.6.1
+- changed default autoscale formulas to use Pending Tasks instead of Active Tasks.
+
+## v0.6.0
+- Updated Azure Batch integration code to support `azure-mgmt-batch` v19.0.0.
+
+## v0.5.4
+- add ipykernel dependency
+
+## v0.5.3
+- switch most print statements to the logger
+
 ## v0.5.2
 - updated `cfa.cloudops._cloudclient.create_pool` node monitoring to be more configurable by user.
 
