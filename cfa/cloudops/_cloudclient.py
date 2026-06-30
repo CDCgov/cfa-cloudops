@@ -2431,11 +2431,11 @@ class CloudClient:
 
         Args:
             series (str): The VM series (e.g., "D", "E", "F"). Default is "D".
-            cores (int): Minimum number of CPU cores required. Default is 4.
+            cores (int): Number of CPU cores for the VM. Default is 4.
             amd (bool): Whether to require AMD architecture. Default is False.
             temp_disk (bool): Whether to require a temporary disk. Default is False.
             ssd (bool): Whether to require an SSD. Default is False.
-            version (int): Minimum version of the VM series. Default is 5.
+            version (int): VM series version. Default is 5.
             verify (bool): Whether to verify that the VM exists in the account. Default is True.
 
         Returns:
