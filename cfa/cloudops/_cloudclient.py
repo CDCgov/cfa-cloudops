@@ -2456,7 +2456,7 @@ class CloudClient:
         series: str = "D",
         cores: int = 4,
         amd: bool = False,
-        temp_disk: bool = False,
+        temp_disk: bool = True,
         ssd: bool = False,
         version: int = 5,
         verify: bool = True,
@@ -2467,7 +2467,7 @@ class CloudClient:
             series (str): The VM series (e.g., "D", "E", "F"). Default is "D".
             cores (int): Number of CPU cores for the VM. Default is 4.
             amd (bool): Whether to require AMD architecture. Default is False.
-            temp_disk (bool): Whether to require a temporary disk. Default is False.
+            temp_disk (bool): Whether to require a temporary disk. Default is True.
             ssd (bool): Whether to require an SSD. Default is False.
             version (int): VM series version. Default is 5.
             verify (bool): Whether to verify that the VM exists in the account. Default is True.
