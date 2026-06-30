@@ -1838,10 +1838,13 @@ def get_vm_name(
         f"standard_{series.upper()}{cores}{amd_str}{temp_disk_str}{ssd_str}_v{version}"
     )
     if verify:
+        if batch_mgmt_client is None or resource_group is None or account_name is None:
+            raise ValueError(
+                "batch_mgmt_client, resource_group, and account_name must be provided when verify=True."
+            )
         # check available in quota
         family_name = vm_name_to_family(vm_name)
         quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
-
         if not any(quota.get("name") == family_name for quota in quotas):
             options = find_similar_vm_families(family_name, 4, 0.6, quotas)
             suggestions = [construct_vm_name(opt, cores) for opt in options]
