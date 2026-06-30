@@ -41,7 +41,7 @@ The `vm_size` parameter in `create_pool()` can take t-shirt sizes for easier cre
 | large | Standard_D16ads_v5 | 16 | 64 | 128 | 400 | 32,000 |
 | xlarge | Standard_D32ads_v5 | 32 | 128 | 256 | 800 | 64,000|
 
-For more customizability, the method `get_vm_name` can be used to construct the VM name depending on a variety of factors, such as series, cores, processor, temporary storage, SSD storage and version. If the provided attributes do not exist, the method will return any similar VMs in the account with a non-zero quota.
+For more customizability, the method `get_vm_name` can be used to construct the VM name depending on a variety of factors, such as series, cores, processor, temporary storage, SSD storage and version. If the provided attributes are not available in the current quota, the method raises a `ValueError` and includes similar available VMs (if any) in the error message.
 
 
 
