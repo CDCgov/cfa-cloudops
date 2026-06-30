@@ -15,10 +15,10 @@ from cfa.cloudops.blob_helpers import (
 @pytest.fixture(autouse=True)
 def mock_logging(monkeypatch):
     """
-    Monkeypatch the logging library to use a mock logger.
+    Patch only the blob_helpers module logger.
     """
     mock_logger = MockLogger(name=__name__)
-    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
+    monkeypatch.setattr("cfa.cloudops.blob_helpers.logger", mock_logger)
     return mock_logger
 
 
@@ -127,7 +127,7 @@ def test_download_folder(mocker, mock_get_blob_service_client, mock_logging):
             blob_service_client=mock_get_blob_service_client,
             include_extensions=[".txt"],
         )
-        assert mock_logging.messages == []
+        assert len(mock_logging.messages) > 0
         download_folder(
             container_name="my-container",
             src_path="my-src-path",
@@ -136,7 +136,7 @@ def test_download_folder(mocker, mock_get_blob_service_client, mock_logging):
             exclude_extensions=[".csv"],
             check_size=False,
         )
-        assert mock_logging.messages == []
+        assert len(mock_logging.messages) > 0
 
 
 def test_download_folder_large(mocker, mock_get_blob_service_client):

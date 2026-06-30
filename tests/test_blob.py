@@ -24,10 +24,10 @@ from cfa.cloudops.blob import (
 @pytest.fixture(autouse=True)
 def mock_logging(monkeypatch):
     """
-    Monkeypatch the logging library to use a mock logger.
+    Patch only the blob module logger.
     """
     mock_logger = MockLogger(name=__name__)
-    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
+    monkeypatch.setattr("cfa.cloudops.blob.logger", mock_logger)
     return mock_logger
 
 
@@ -191,7 +191,7 @@ async def test__async_download_blob_folder_success(
         max_concurrent_downloads=10,
         exclude_extensions=".parquet",
     )
-    assert mock_logging.messages == []
+    assert len(mock_logging.messages) > 0
 
 
 @pytest.mark.asyncio
@@ -241,7 +241,7 @@ async def test__async_upload_blob_folder_success(
         exclude_extensions=".parquet",
         tags={"env": "test__async_upload_blob_folder_success", "owner": "xop5"},
     )
-    assert mock_logging.messages == []
+    assert len(mock_logging.messages) > 0
 
 
 @pytest.mark.asyncio
@@ -337,7 +337,7 @@ def test_update_blob_protection(mock_blob_service_client, mock_logging):
         blob_service_client=mock_blob_service_client,
         legal_hold=True,
     )
-    assert mock_logging.messages == []
+    assert len(mock_logging.messages) > 0
 
 
 @pytest.mark.asyncio
