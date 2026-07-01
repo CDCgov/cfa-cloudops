@@ -27,7 +27,12 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
-from .batch_helpers import check_mount_format, get_vm_size
+from .batch_helpers import (
+    check_mount_format,
+    get_all_vm_quotas,
+    get_vm_series_quotas,
+    get_vm_size,
+)
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -208,16 +213,17 @@ class CloudClient:
                     how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
-            vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
+            vm_size (str): Azure VM size for the pool nodes (e.g., "standard_D4ads_v5").
                 Defaults to the value from defaults module.
                 VM size can also be given in the form "xsmall", "small", "medium", "large", or "xlarge" for convenience,
                 which will be mapped to specific Azure VM sizes. The sizes map to the following Azure VM sizes:
-                    - "xsmall": "Standard_D2s_v3"
-                    - "small": "Standard_D4s_v3"
-                    - "medium": "Standard_D8s_v3"
-                    - "large": "Standard_D16s_v3"
-                    - "xlarge": "Standard_D32s_v3"
+                    - "xsmall": "standard_D2ads_v5"
+                    - "small": "standard_D4ads_v5"
+                    - "medium": "standard_D8ads_v5"
+                    - "large": "standard_D16ads_v5"
+                    - "xlarge": "standard_D32ads_v5"
                  Note that not all VM sizes may be available in all regions, so ensure the specified size is available in your Azure region.
+                 For help determining available VM sizes, you can use the `get_vm_name` method of this client.
             autoscale (bool): Whether to enable autoscaling (True) or use fixed scaling (False).
                 Default is True.
             autoscale_formula (str): Autoscale formula to use when autoscale=True.
@@ -268,7 +274,7 @@ class CloudClient:
                 client.create_pool(
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
-                    vm_size="Standard_D4s_v3",
+                    vm_size="standard_D4ads_v5",
                     mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
@@ -342,8 +348,19 @@ class CloudClient:
         logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
-        valid_vm_sizes = ["xsmall", "small", "medium", "large", "xlarge"]
-        if vm_size in valid_vm_sizes:
+        valid_vm_sizes = [
+            "xsmall",
+            "small",
+            "medium",
+            "large",
+            "xlarge",
+            "xsmall_amd",
+            "small_amd",
+            "medium_amd",
+            "large_amd",
+            "xlarge_amd",
+        ]
+        if vm_size.lower() in valid_vm_sizes:
             vm_size = get_vm_size(vm_size)
         logger.info(f"Using VM size: {vm_size}")
 
@@ -2409,4 +2426,73 @@ class CloudClient:
         """
         return batch_helpers.get_task_status(
             job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
+        )
+
+    def get_all_vm_quotas(self) -> list[dict]:
+        """Retrieves all available VMs in the Azure account.
+
+        Returns:
+            list[dict]: list of available VM names with their quotas
+        """
+        return get_all_vm_quotas(
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+
+    def get_vm_series_quotas(
+        self,
+        series: str | list[str],
+    ) -> list[dict]:
+        """
+        Returns all available VMs in the account that match the given series.
+
+        Args:
+            series (str | list[str]): VM series to filter, e.g. "D" or "E".
+
+        Returns:
+            list[dict]: list of available VM names with their quotas that match the given series
+        """
+        return get_vm_series_quotas(
+            series=series,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+
+    def get_vm_name(
+        self,
+        series: str = "D",
+        cores: int = 4,
+        amd: bool = False,
+        temp_disk: bool = True,
+        ssd: bool = False,
+        version: int = 5,
+        verify: bool = True,
+    ) -> str:
+        """Get the name of a VM that matches the specified criteria.
+
+        Args:
+            series (str): The VM series (e.g., "D", "E", "F"). Default is "D".
+            cores (int): Number of CPU cores for the VM. Default is 4.
+            amd (bool): Whether to require AMD architecture. Default is False.
+            temp_disk (bool): Whether to require a temporary disk. Default is True.
+            ssd (bool): Whether to require an SSD. Default is False.
+            version (int): VM series version. Default is 5.
+            verify (bool): Whether to verify that the VM exists in the account. Default is True.
+
+        Returns:
+            str: The name of a VM that matches the specified criteria.
+        """
+        return batch_helpers.get_vm_name(
+            series=series,
+            cores=cores,
+            amd=amd,
+            temp_disk=temp_disk,
+            ssd=ssd,
+            version=version,
+            verify=verify,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
         )
