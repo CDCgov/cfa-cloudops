@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## v.0.7.0
+## v0.7.1
+- `create_pool()` allows for empty container image name, which can be determined when adding tasks
+
+## v0.7.0
 - Updated Azure Batch library to 15.x
 
 ## v0.6.3
