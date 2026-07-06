@@ -630,7 +630,7 @@ class CloudClient:
             account_name=self.cred.azure_batch_account,
         )
         if deprecated:
-            logger.warning(
+            print(
                 f"Pool {pool_name} is using a deprecated VM series. Consider updating the pool to a supported VM series."
             )
 
