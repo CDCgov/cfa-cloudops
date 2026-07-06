@@ -2038,8 +2038,8 @@ def construct_vm_name(vm_family_name: str, cores: int) -> str:
 
 
 def check_if_pool_vm_deprecated(
-    pool_name, resource_group, account_name, batch_mgmt_client
-):
+    pool_name: str, resource_group: str, account_name: str, batch_mgmt_client: object
+) -> bool:
     """Check if the VM series used in the pool is deprecated.
 
     Args:
