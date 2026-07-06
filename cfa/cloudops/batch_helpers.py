@@ -242,7 +242,7 @@ def monitor_tasks(
     logger.debug(f"Initial job state: {job.state}")
 
     polling_count = 0
-    while job.state.value != "completed" and not completed:
+    while job.state != batch_models.BatchJobState.COMPLETED and not completed:
         if datetime.datetime.now() < timeout_expiration:
             polling_count += 1
             logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
