@@ -2072,7 +2072,9 @@ def check_if_pool_vm_deprecated(
             or pool_dict.get("properties", {}).get("vm_size")
         )
     if not current_vm:
-        logger.warning(f"Pool '{pool_name}' does not expose vm_size; cannot check VM version.")
+        logger.warning(
+            f"Pool '{pool_name}' does not expose vm_size; cannot check VM version."
+        )
         return False
 
     m = re.search(r"_v(\d+)$", str(current_vm).lower())
