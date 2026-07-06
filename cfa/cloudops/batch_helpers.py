@@ -239,10 +239,10 @@ def monitor_tasks(
 
     logger.debug(f"Getting initial job state for '{job_name}'")
     job = batch_client.get_job(job_name)
-    logger.debug(f"Initial job state: {job.as_dict()['state']}")
+    logger.debug(f"Initial job state: {job.state.value}")
 
     polling_count = 0
-    while job.as_dict()["state"] != "completed" and not completed:
+    while job.state.value != "completed" and not completed:
         if datetime.datetime.now() < timeout_expiration:
             polling_count += 1
             logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
@@ -2035,3 +2035,37 @@ def construct_vm_name(vm_family_name: str, cores: int) -> str:
     vm_attrs, vm_size = "".join(vm_spec).split("v")
     vm_attrs = vm_attrs.lower()
     return f"standard_{vm_series}{cores}{vm_attrs}_v{vm_size}"
+
+
+def check_if_pool_vm_deprecated(
+    pool_name, resource_group, account_name, batch_mgmt_client
+):
+    """Check if the VM series used in the pool is deprecated.
+
+    Args:
+        pool_name (str): Name of the Azure Batch pool.
+        resource_group (str): Name of the Azure resource group containing the Batch account.
+        account_name (str): Name of the Azure Batch account.
+        batch_mgmt_client (BatchManagementClient): Instance of BatchManagementClient for API calls.
+
+    Returns:
+        bool: True if the VM series is deprecated, False otherwise.
+    """
+    logger.debug(f"Checking if pool '{pool_name}' uses a deprecated VM series.")
+    try:
+        pool_info = get_pool_full_info(
+            resource_group, account_name, pool_name, batch_mgmt_client
+        )
+    except Exception as e:
+        logger.debug(f"No pool information found during version check: {e}")
+        pool_info = None
+    if pool_info is None:
+        logger.warning(f"Pool '{pool_name}' not found. Cannot check VM version.")
+        return False
+    current_vm = pool_info.properties.vm_size
+    version = int(current_vm.split("_")[-1][-1])
+    logger.debug(f"Current VM size: {current_vm}, version: {version}")
+    if version < 4:
+        logger.warning("The current VM is too old. Please upgrade to a newer version.")
+        return True
+    return False
