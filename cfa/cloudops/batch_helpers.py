@@ -2062,8 +2062,25 @@ def check_if_pool_vm_deprecated(
     if pool_info is None:
         logger.warning(f"Pool '{pool_name}' not found. Cannot check VM version.")
         return False
-    current_vm = pool_info.properties.vm_size
-    version = int(current_vm.split("_")[-1][-1])
+    current_vm = getattr(pool_info, "vm_size", None)
+    if current_vm is None and hasattr(pool_info, "as_dict"):
+        pool_dict = pool_info.as_dict()
+        current_vm = (
+            pool_dict.get("vm_size")
+            or pool_dict.get("vmSize")
+            or pool_dict.get("properties", {}).get("vmSize")
+            or pool_dict.get("properties", {}).get("vm_size")
+        )
+    if not current_vm:
+        logger.warning(f"Pool '{pool_name}' does not expose vm_size; cannot check VM version.")
+        return False
+
+    m = re.search(r"_v(\d+)$", str(current_vm).lower())
+    if not m:
+        logger.warning(f"Could not parse VM version from size '{current_vm}'.")
+        return False
+
+    version = int(m.group(1))
     logger.debug(f"Current VM size: {current_vm}, version: {version}")
     if version < 4:
         logger.warning("The current VM is too old. Please upgrade to a newer version.")
