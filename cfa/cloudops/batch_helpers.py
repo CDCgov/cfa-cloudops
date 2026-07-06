@@ -239,7 +239,7 @@ def monitor_tasks(
 
     logger.debug(f"Getting initial job state for '{job_name}'")
     job = batch_client.get_job(job_name)
-    logger.debug(f"Initial job state: {job.state.value}")
+    logger.debug(f"Initial job state: {job.state}")
 
     polling_count = 0
     while job.state.value != "completed" and not completed:
