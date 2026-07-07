@@ -358,12 +358,20 @@ def monitor_tasks(
     execution_info = getattr(job, "execution_info", None)
     terminate_reason = getattr(execution_info, "terminate_reason", None)
 
+    exec_dict = None
     if terminate_reason is None:
-        exec_dict = job.get("execution_info") or job.get("executionInfo")
-    if isinstance(exec_dict, dict):
-        terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
-            "terminateReason"
-        )
+        if hasattr(job, "as_dict"):
+            job_dict = job.as_dict()
+        elif isinstance(job, dict):
+            job_dict = job
+        else:
+            job_dict = {}
+
+        exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
+        if isinstance(exec_dict, dict):
+            terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
+                "terminateReason"
+            )
 
     if not isinstance(terminate_reason, str):
         terminate_reason = None
