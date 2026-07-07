@@ -1007,11 +1007,20 @@ class CloudClient:
         if pool_name is None and pool_info is not None:
             pool_name = getattr(pool_info, "pool_id", None)
         if pool_name is None:
-            exec_dict = job_info.get("execution_info") or job_info.get("executionInfo")
+            job_info_dict = (
+                job_info
+                if isinstance(job_info, dict)
+                else job_info.as_dict() if hasattr(job_info, "as_dict") else {}
+            )
+            exec_dict = job_info_dict.get("execution_info") or job_info_dict.get(
+                "executionInfo"
+            )
             if isinstance(exec_dict, dict):
                 pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
             if pool_name is None:
-                pool_dict = job_info.get("pool_info") or job_info.get("poolInfo")
+                pool_dict = job_info_dict.get("pool_info") or job_info_dict.get(
+                    "poolInfo"
+                )
                 if isinstance(pool_dict, dict):
                     pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
 
