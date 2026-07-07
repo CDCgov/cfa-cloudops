@@ -2058,8 +2058,6 @@ def check_if_pool_vm_deprecated(
         logger.warning(f"Pool '{pool_name}' not found. Cannot check VM version.")
         return False
     current_vm = getattr(pool_info, "vm_size", None)
-    if current_vm is None:
-        current_vm = getattr(pool_info, "vm_size", None)
     if not current_vm:
         logger.warning(
             f"Pool '{pool_name}' does not expose vm_size; cannot check VM version."
