@@ -622,6 +622,18 @@ class CloudClient:
             logger.error("Please specify a pool for the job and try again.")
             raise Exception("Please specify a pool for the job and try again.")
 
+        # check if VM deprecated
+        deprecated = batch_helpers.check_if_pool_vm_deprecated(
+            pool_name=pool_name,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+        if deprecated:
+            print(
+                f"Pool {pool_name} is using a deprecated VM series. Consider updating the pool to a supported VM series."
+            )
+
         self.save_logs_to_blob = save_logs_to_blob
 
         if save_logs_to_blob:
