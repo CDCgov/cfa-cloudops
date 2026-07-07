@@ -358,13 +358,12 @@ def monitor_tasks(
     execution_info = getattr(job, "execution_info", None)
     terminate_reason = getattr(execution_info, "terminate_reason", None)
 
-    if terminate_reason is None and hasattr(job, "as_dict"):
-        job_dict = job.as_dict()
-        exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
-        if isinstance(exec_dict, dict):
-            terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
-                "terminateReason"
-            )
+    if terminate_reason is None:
+        exec_dict = job.get("execution_info") or job.get("executionInfo")
+    if isinstance(exec_dict, dict):
+        terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
+            "terminateReason"
+        )
 
     if not isinstance(terminate_reason, str):
         terminate_reason = None
@@ -1073,14 +1072,8 @@ def get_rel_mnt_path(
         return "ERROR!"
 
     mc = getattr(pool_info, "mount_configuration", None)
-    if mc is None and hasattr(pool_info, "as_dict"):
-        pool_dict = pool_info.as_dict()
-        mc = (
-            pool_dict.get("mount_configuration")
-            or pool_dict.get("mountConfiguration")
-            or pool_dict.get("properties", {}).get("mountConfiguration")
-            or []
-        )
+    if mc is None:
+        mc = pool_info.mount_configuration or []
     mc = mc or []
     logger.debug(f"Searching through {len(mc)} mount configurations")
 
@@ -1212,14 +1205,8 @@ def get_pool_mounts(
     mounts = []
     try:
         mc = getattr(pool_info, "mount_configuration", None)
-        if mc is None and hasattr(pool_info, "as_dict"):
-            pool_dict = pool_info.as_dict()
-            mc = (
-                pool_dict.get("mount_configuration")
-                or pool_dict.get("mountConfiguration")
-                or pool_dict.get("properties", {}).get("mountConfiguration")
-                or []
-            )
+        if mc is None:
+            mc = pool_info.mount_configuration or []
         mc = mc or []
         logger.debug(f"Processing {len(mc)} mount configurations")
 
@@ -2063,14 +2050,8 @@ def check_if_pool_vm_deprecated(
         logger.warning(f"Pool '{pool_name}' not found. Cannot check VM version.")
         return False
     current_vm = getattr(pool_info, "vm_size", None)
-    if current_vm is None and hasattr(pool_info, "as_dict"):
-        pool_dict = pool_info.as_dict()
-        current_vm = (
-            pool_dict.get("vm_size")
-            or pool_dict.get("vmSize")
-            or pool_dict.get("properties", {}).get("vmSize")
-            or pool_dict.get("properties", {}).get("vm_size")
-        )
+    if current_vm is None:
+        current_vm = getattr(pool_info, "vm_size", None)
     if not current_vm:
         logger.warning(
             f"Pool '{pool_name}' does not expose vm_size; cannot check VM version."
