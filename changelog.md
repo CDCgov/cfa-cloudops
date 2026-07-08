@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.7.2
+- add a deprecation warning when jobs are created on pools using a v3 VM
+
+## v0.7.1
+- `create_pool()` allows for empty container image name, which can be determined when adding tasks
+
+## v0.7.0
+- Updated Azure Batch library to 15.x
+
+## v0.6.3
+- Switch to azure-mgmt-resource-subscriptions (replaces azure-mgmt-resource).
+
+## v0.6.2
+- change ActiveTasks to PendingTasks in autoscale formulas for the expected behavior.
+
+## v0.6.1
+- changed default autoscale formulas to use Pending Tasks instead of Active Tasks.
+
+## v0.6.0
+- Updated Azure Batch integration code to support `azure-mgmt-batch` v19.0.0.
+
+## v0.5.4
+- add ipykernel dependency
+
+## v0.5.3
+- switch most print statements to the logger
+
+## v0.5.2
+- updated `cfa.cloudops._cloudclient.create_pool` node monitoring to be more configurable by user.
+
+## v0.5.1
+- Modified `cfa.cloudops.batch_helpers._generate_command_for_saving_logs` to copy data from standard input to standard output and standard error files
+
+## v0.5.0
+- mark job complete when all tasks run by default.
+
+## v0.4.1
+- add owner and created datetime tags to pools and jobs by default
+
+## v0.4.0
+- remove upper limits on non-problem dependencies
+
+## v0.3.23
+- added function to check environment
+
+## v0.3.22
+- added support for deployment slots in  `FunctionAppClient` module
+
+## v0.3.21
+- added metadata lookup methods for Azure Function Apps to the `FunctionAppClient` module
+
+## v0.3.20
+- Added managed identity login to `list_acr_tags`
+
+## v0.3.19
+- reverted to snake_cake notation for reading batch mount properties
+
+## v0.3.18
+- updated log messages in `FunctionAppClient` module to store the correct class name
+
+## v0.3.17
+- set a maximum version for libraries to avoid breaking changes from updates
+
+## v0.3.16
+- add a get_task_status() function to CloudClient to get point in time task status
+
+## v0.3.15
+- set an upper limit for azure-mgmt-batch package to undo its breaking changes
+
+## v0.3.14
+- fixed defect in `batch_helpers.get_rel_mnt_path` function for getting optional mount configuration in a pool
+
+## v0.3.13
+- add documentation for VM t-shirt sizing
+
+## v0.3.12
+- added concurrency control and function app management with in-memory DuckDB database to FunctionAppClient
+
+## v0.3.11
+- add list_acr_tags() function to CloudClient
+
+## v0.3.10
+- save stderr and stdout to separate files when `save_logs_to_blob` is used for CloudClient
+
+## v0.3.9
+- check number of upload files after exclusions accounted for
+
+## v0.3.8
+- add tshirt sizing capability for vm sizes when creating a pool
+
+## v0.3.7
+- updated upload progress reporting to use a tqdm-based progress bar
+
+## v0.3.6
+- add `FunctionAppClient` for managing Azure Function Apps
+
 ## v0.3.5
 - fixed defect in `monitor_tasks` method when `download_task_output` is set to `True`
 

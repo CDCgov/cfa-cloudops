@@ -9,7 +9,7 @@ from azure.mgmt.appcontainers.models import (
     JobExecutionContainer,
     JobExecutionTemplate,
 )
-from azure.mgmt.resource import SubscriptionClient
+from azure.mgmt.resource.subscriptions import SubscriptionClient
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +286,6 @@ class ContainerAppClient:
                 )
                 logger.info(f"Started job '{job_name}' with custom template.")
                 logger.debug("Job start request submitted successfully.")
-                print(f"Started job {job_name}.")
             except Exception as e:
                 logger.error(f"Failed to start job {job_name}: {e}")
                 raise
@@ -311,9 +310,6 @@ class ContainerAppClient:
                 job_name=job_name,
                 job_execution_name=job_execution_name,
             ).result()
-            print(
-                f"Job execution '{job_execution_name}' for job '{job_name}' stopped successfully."
-            )
             logger.info(
                 f"Stopped job execution '{job_execution_name}' for job '{job_name}'."
             )

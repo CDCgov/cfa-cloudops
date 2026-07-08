@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import subprocess as sp
@@ -349,3 +350,101 @@ def format_rel_path(rel_path: str) -> str:
 
     logger.debug(f"Final formatted path: '{rel_path}'")
     return rel_path
+
+
+def list_acr_tags(registry_name: str, repo_name: str) -> list[str]:
+    """List all tags for a given repository in Azure Container Registry.
+
+    Uses the Azure CLI to query the specified Azure Container Registry (ACR) and
+    repository for all available tags. Returns a list of tag strings.
+
+    Args:
+        registry_name (str): Name of the Azure Container Registry (without .azurecr.io).
+        repo_name (str): Name of the repository within the container registry.
+
+    Returns:
+        list[str]: A list of tag strings available in the specified ACR repository.
+
+    Example:
+        Get tags for a repository:
+
+            tags = list_acr_tags(registry_name="myregistry", repo_name="batch-app")
+            print(tags)  # Output might be: ["latest", "v1.0", "v1.1"]
+
+    Note:
+        This function requires the Azure CLI to be installed and authenticated.
+        The returned tags can be used to identify available images in the ACR repository.
+    """
+    logger.info(
+        f"Listing tags for ACR repository: {registry_name}.azurecr.io/{repo_name}"
+    )
+    # Check whether Azure CLI is already authenticated before attempting login.
+    auth_check = sp.run(
+        ["az", "account", "show", "--output", "none"],
+        capture_output=True,
+        text=True,
+    )
+
+    if auth_check.returncode != 0:
+        auth_check_error = auth_check.stderr.strip() if auth_check.stderr else ""
+        if auth_check_error:
+            logger.debug(f"Azure CLI account check stderr: {auth_check_error}")
+        logger.info("Azure CLI account check failed; attempting managed identity login")
+        login_result = sp.run(
+            ["az", "login", "--identity", "--output", "none"],
+            capture_output=True,
+            text=True,
+        )
+
+        if login_result.returncode != 0:
+            login_error = (
+                login_result.stderr.strip() if login_result.stderr else "Unknown error"
+            )
+            logger.warning(
+                "Managed identity login failed; checking for an existing Azure CLI session. "
+                f"az login --identity error: {login_error}"
+            )
+
+            account_show_result = sp.run(
+                ["az", "account", "show", "--output", "none"],
+                capture_output=True,
+                text=True,
+            )
+            if account_show_result.returncode != 0:
+                raise Exception(
+                    "Azure CLI authentication failed: managed identity login was unsuccessful "
+                    "and no existing authenticated session was found. "
+                    f"az login --identity error: {login_error}"
+                )
+
+            logger.info(
+                "Managed identity login failed, but an existing Azure CLI session is "
+                "authenticated; proceeding with the existing session."
+            )
+    # get tags command
+    acr_tags_command = [
+        "az",
+        "acr",
+        "repository",
+        "show-tags",
+        "--name",
+        registry_name,
+        "--repository",
+        repo_name,
+        "--output",
+        "json",
+    ]
+    logger.debug(f"Executing command to list ACR tags: {acr_tags_command}")
+    result = sp.run(acr_tags_command, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        logger.error(f"Failed to list tags for {registry_name}.azurecr.io/{repo_name}")
+        logger.error(f"Error output: {result.stderr}")
+        error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+        raise Exception(
+            f"Could not list tags for {registry_name}.azurecr.io/{repo_name}: {error_msg}"
+        )
+
+    tags = json.loads(result.stdout.strip())
+    logger.debug(f"Retrieved tags: {tags}")
+    return tags

@@ -6,16 +6,18 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import anyio
-from azure.batch import models
 from azure.identity import ManagedIdentityCredential
+from azure.mgmt.batch import models
 from azure.storage.blob import (
     BlobImmutabilityPolicyMode,
     BlobServiceClient,
     ImmutabilityPolicy,
     aio,
 )
+from tqdm import tqdm
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -101,10 +103,8 @@ def create_storage_container_if_not_exists(
         )
         container_client.create_container()
         logger.info(f"Container '{blob_storage_container_name}' created.")
-        print("Container [{}] created.".format(blob_storage_container_name))
     else:
         logger.info(f"Container '{blob_storage_container_name}' already exists.")
-        print("Container [{}] already exists.".format(blob_storage_container_name))
 
 
 def upload_to_storage_container(
@@ -150,7 +150,6 @@ def upload_to_storage_container(
         ...     local_root_dir="/local/path",
         ...     remote_root_dir="uploads"
         ... )
-        Uploading file 0 of 2
         Uploaded 2 files to blob storage container
     """
     logger.debug(f"Starting upload to container '{blob_storage_container_name}'")
@@ -169,11 +168,7 @@ def upload_to_storage_container(
             policy_mode=BlobImmutabilityPolicyMode.UNLOCKED,
         )
 
-    for i_file, file_path in enumerate(file_paths):
-        if i_file % (1 + int(n_total_files / 10)) == 0:
-            print("Uploading file {} of {}".format(i_file, n_total_files))
-            logger.debug(f"Upload progress: {i_file}/{n_total_files} files completed")
-
+    for file_path in tqdm(file_paths, desc="Uploading files"):
         local_file_path = os.path.join(local_root_dir, file_path)
         remote_file_path = os.path.join(remote_root_dir, file_path)
 
@@ -206,7 +201,6 @@ def upload_to_storage_container(
     logger.info(
         f"Uploaded {n_total_files} file(s) to container '{blob_storage_container_name}'."
     )
-    print("Uploaded {} files to blob storage container".format(n_total_files))
 
 
 def download_from_storage_container(
@@ -266,7 +260,6 @@ def download_from_storage_container(
 
     for i_file, file_path in enumerate(file_paths):
         if i_file % (1 + int(n_total_files / 10)) == 0:
-            print(f"Downloading file {i_file} of {n_total_files}")
             logger.debug(f"Download progress: {i_file}/{n_total_files} files completed")
 
         local_file_path = os.path.join(local_root_dir, file_path)
@@ -288,15 +281,12 @@ def download_from_storage_container(
     logger.info(
         f"Downloaded {n_total_files} file(s) from container '{blob_storage_container_name}'."
     )
-    print(f"Downloaded {n_total_files} files from blob storage container")
 
 
 def get_node_mount_config(
     storage_containers: str | list[str],
     account_names: str | list[str],
-    identity_references: (
-        models.ComputeNodeIdentityReference | list[models.ComputeNodeIdentityReference]
-    ),
+    identity_references: Any,
     shared_relative_mount_path: str = "",
     mount_names: list[str] = None,
     blobfuse_options: str | list[str] = "",
@@ -338,7 +328,7 @@ def get_node_mount_config(
             storage_containers and isn't exactly 1.
 
     Example:
-        >>> from azure.batch import models
+        >>> from azure.mgmt.batch import models
         >>> identity_ref = models.ComputeNodeIdentityReference(
         ...     resource_id="/subscriptions/.../resourceGroups/.../providers/..."
         ... )
@@ -435,10 +425,33 @@ def get_node_mount_config(
         blob_str = " -o direct_io"
         logger.debug("Caching disabled - adding direct_io option")
 
+    def _to_mgmt_identity_reference(
+        identity_reference: Any,
+    ) -> models.ComputeNodeIdentityReference:
+        if isinstance(identity_reference, models.ComputeNodeIdentityReference):
+            return identity_reference
+
+        resource_id = None
+        if isinstance(identity_reference, str):
+            resource_id = identity_reference
+        elif isinstance(identity_reference, dict):
+            resource_id = identity_reference.get("resource_id")
+        else:
+            resource_id = getattr(identity_reference, "resource_id", None)
+
+        if not resource_id:
+            raise TypeError(
+                "Each identity reference must be a ComputeNodeIdentityReference, "
+                "a dict containing 'resource_id', or a resource_id string."
+            )
+
+        return models.ComputeNodeIdentityReference(resource_id=resource_id)
+
     mount_configs = []
     for account_name, container_name, relative_mount_path, identity_reference in zip(
         account_names, storage_containers, relative_mount_paths, identity_references
     ):
+        mgmt_identity_reference = _to_mgmt_identity_reference(identity_reference)
         logger.debug(
             f"Creating mount config: container '{container_name}' from account '{account_name}' -> '{relative_mount_path}'"
         )
@@ -450,7 +463,7 @@ def get_node_mount_config(
                     container_name=container_name,
                     relative_mount_path=relative_mount_path,
                     blobfuse_options=blobfuse_options + blob_str,
-                    identity_reference=identity_reference,
+                    identity_reference=mgmt_identity_reference,
                     **kwargs,
                 )
             )
@@ -677,7 +690,7 @@ async def _async_download_blob_folder(
         f"Found {len(matching_blobs)} matching blobs, total size: {total_size} bytes"
     )
 
-    print(f"Total size of files to download: {total_size / gb:.2f} GB")
+    logger.info(f"Total size of files to download: {total_size / gb:.2f} GB")
     if total_size > 2 * gb and check_size:
         print("Warning: Total size of files to download is greater than 2 GB.")
         cont = input("Continue? [Y/n]: ")

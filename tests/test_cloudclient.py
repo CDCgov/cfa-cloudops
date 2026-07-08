@@ -19,10 +19,10 @@ def mock_env_vars(monkeypatch):
 @pytest.fixture(autouse=True)
 def mock_logging(monkeypatch):
     """
-    Monkeypatch the logging library to use a mock logger.
+    Patch only the CloudClient module logger to avoid interfering with pytest logging.
     """
     mock_logger = MockLogger(name=__name__)
-    monkeypatch.setattr("logging.getLogger", lambda name=None: mock_logger)
+    monkeypatch.setattr("cfa.cloudops._cloudclient.logger", mock_logger)
     return mock_logger
 
 
@@ -502,7 +502,7 @@ def test_list_available_images(
     mock_batch_service_client,
     cloud_client_with_service_principal,
 ):
-    mock_batch_service_client.account.list_supported_images.return_value = FAKE_IMAGES
+    mock_batch_service_client.list_supported_images.return_value = FAKE_IMAGES
     result = cloud_client_with_service_principal.list_available_images(
         operating_system="linux"
     )
@@ -520,4 +520,65 @@ def test_run_dag(cloud_client_with_service_principal, mock_logging):
     t3.after(t1)
     t4.after([t2, t3])
     cloud_client_with_service_principal.run_dag(t1, t2, t3, t4, job_name="dag_job")
-    assert mock_logging.messages == []
+    assert len(mock_logging.messages) > 0
+
+
+def test_get_all_vm_quotas_delegates_to_helper(cloud_client_with_service_principal):
+    expected = [{"name": "standardDADSv5Family", "quota": 64}]
+    with patch(
+        "cfa.cloudops._cloudclient.get_all_vm_quotas", return_value=expected
+    ) as mock_helper:
+        result = cloud_client_with_service_principal.get_all_vm_quotas()
+
+    assert result == expected
+    mock_helper.assert_called_once_with(
+        batch_mgmt_client=cloud_client_with_service_principal.batch_mgmt_client,
+        resource_group=cloud_client_with_service_principal.cred.azure_resource_group_name,
+        account_name=cloud_client_with_service_principal.cred.azure_batch_account,
+    )
+
+
+def test_get_vm_series_quotas_delegates_to_helper(cloud_client_with_service_principal):
+    expected = [{"name": "standardEADSv5Family", "quota": 24}]
+    with patch(
+        "cfa.cloudops._cloudclient.get_vm_series_quotas", return_value=expected
+    ) as mock_helper:
+        result = cloud_client_with_service_principal.get_vm_series_quotas(series=["E"])
+
+    assert result == expected
+    mock_helper.assert_called_once_with(
+        series=["E"],
+        batch_mgmt_client=cloud_client_with_service_principal.batch_mgmt_client,
+        resource_group=cloud_client_with_service_principal.cred.azure_resource_group_name,
+        account_name=cloud_client_with_service_principal.cred.azure_batch_account,
+    )
+
+
+def test_get_vm_name_delegates_to_batch_helpers(cloud_client_with_service_principal):
+    with patch(
+        "cfa.cloudops._cloudclient.batch_helpers.get_vm_name",
+        return_value="standard_D8ads_v5",
+    ) as mock_helper:
+        result = cloud_client_with_service_principal.get_vm_name(
+            series="D",
+            cores=8,
+            amd=True,
+            temp_disk=True,
+            ssd=True,
+            version=5,
+            verify=False,
+        )
+
+    assert result == "standard_D8ads_v5"
+    mock_helper.assert_called_once_with(
+        series="D",
+        cores=8,
+        amd=True,
+        temp_disk=True,
+        ssd=True,
+        version=5,
+        verify=False,
+        batch_mgmt_client=cloud_client_with_service_principal.batch_mgmt_client,
+        resource_group=cloud_client_with_service_principal.cred.azure_resource_group_name,
+        account_name=cloud_client_with_service_principal.cred.azure_batch_account,
+    )

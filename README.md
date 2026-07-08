@@ -12,8 +12,13 @@
 ## Created by Ryan Raasch (Peraton) for CFA
 
 # Outline
+- [Updates](#updates)
 - [Description](#description)
 - [Getting Started](#getting-started)
+
+# Updates
+
+- As of version 0.5.0, jobs will be marked as completed by default when all tasks complete.
 
 # Description
 The `cfa-cloudops` python module is intended to ease the challenge of working in the cloud (currently limited to Azure) for data scientists at CFA. Typically, it takes deep knowledge to authenticate and complex coding patterns to interact with the cloud via python, which takes away time and resources from data scientists doing predictions, modeling, and more impactful work. `cfa-cloudops` simplifies many repeated workflows when interacting with the cloud and unifies CFA's approach in developer interaction with the cloud. For example, creating a pool and running jobs in Azure may take several credentials and different clients  to complete, but with `cfa-cloudops`, this is reduced to a small number of functions with only a few user-provided parameters.
@@ -29,8 +34,15 @@ pip install git+https://github.com/CDCgov/cfa-cloudops.git
 ```
 
 View the documentation [here](docs/index.md) for more help getting started with the package.
+There is also an example [repo](https://github.com/cdcent/cfa-cloudops-example) with example function calls and a script that checks for proper credential set up.
 
-To build documentation locally, clone this repo, navigate to the root of this repo, then run `poetry run mkdocs serve`.
+To build documentation locally, clone this repo, navigate to the root of this repo, then run `uv run mkdocs serve`.
+
+To run tests with `uv`, use the project test command:
+
+```bash
+uv run test
+```
 
 
 ## Public Domain Standard Notice

@@ -7,6 +7,8 @@ import os
 
 from azure.mgmt.batch import models
 
+from .util import get_date_time, get_user
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,11 +48,11 @@ def remaining_task_autoscale_formula(
     // is adjusted based on the number of tasks in the queue.
     // Note that both comments and line breaks are acceptable in formula strings.
 
-    // Get pending tasks for the past 15 minutes.
-    $samples = $ActiveTasks.GetSamplePercent(TimeInterval_Minute * {task_sample_interval_minutes});
+    // Get pending tasks for the past {task_sample_interval_minutes} minutes.
+    $samples = $PendingTasks.GetSamplePercent(TimeInterval_Minute * {task_sample_interval_minutes});
     // If we have fewer than 70 percent data points, we use the last sample point, otherwise we use the maximum of last sample point and the history average.
-    $tasks = $samples < 70 ? max(0, $ActiveTasks.GetSample(1)) :
-    max( $ActiveTasks.GetSample(1), avg($ActiveTasks.GetSample(TimeInterval_Minute * {task_sample_interval_minutes})));
+    $tasks = $samples < 70 ? max(0, $PendingTasks.GetSample(1)) :
+    max( $PendingTasks.GetSample(1), avg($PendingTasks.GetSample(TimeInterval_Minute * {task_sample_interval_minutes})));
     // If number of pending tasks is not 0, set targetVM to pending tasks, otherwise half of current dedicated.
     $targetVMs = $tasks > 0 ? $tasks : max(0, $TargetDedicatedNodes / 2);
     // The pool size is capped at {max_number_vms}, if target VM value is more than that, set it to {max_number_vms}.
@@ -107,7 +109,7 @@ default_vm_configuration = models.VirtualMachineConfiguration(
 )
 
 
-default_vm_size = "standard_d4s_v3"  # 4 core D-series VM
+default_vm_size = "standard_d4ds_v5"  # 4 core D-series VM
 
 default_autoscale_evaluation_interval = "PT5M"
 
@@ -128,13 +130,16 @@ default_pool_config_dict = dict(
         virtual_machine_configuration=default_vm_configuration
     ),
     vm_size=default_vm_size,
-    target_node_communication_mode="Simplified",
     scale_settings=models.ScaleSettings(
         auto_scale=models.AutoScaleSettings(
             formula=default_autoscale_formula,
             evaluation_interval=default_autoscale_evaluation_interval,
         )
     ),
+    metadata=[
+        models.MetadataItem(name="owner", value=get_user()),
+        models.MetadataItem(name="datetime_created", value=get_date_time()),
+    ],
 )
 
 default_kv_keys = [

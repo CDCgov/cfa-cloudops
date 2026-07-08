@@ -1,9 +1,12 @@
 import csv
 import datetime
+import json
 import logging
 import os
+import re
 import time
 import uuid
+from difflib import SequenceMatcher
 from pathlib import Path
 from zoneinfo import ZoneInfo as zi
 
@@ -11,19 +14,30 @@ import azure.batch.models as batch_models
 import griddler
 import yaml
 from azure.batch.models import (
+    AutoUserScope,
+    AutoUserSpecification,
+    BatchJobActionKind,
+    BatchTaskConstraints,
     DependencyAction,
+    ElevationLevel,
     ExitCodeMapping,
     ExitConditions,
     ExitOptions,
-    JobAction,
-    TaskConstraints,
+    UserIdentity,
+)
+from azure.mgmt.batch import BatchManagementClient
+
+from cfa.cloudops.task import (
+    get_container_settings,
+    get_task_config,
+    output_task_files_to_blob,
 )
 
 logger = logging.getLogger(__name__)
 
-AZ_MOUNT_DIR = "$AZ_BATCH_NODE_MOUNTS_DIR"
+AZ_MOUNT_DIR = "/mnt/batch/tasks/fsmounts"
 NO_EXIT_OPTIONS = ExitOptions(
-    dependency_action=DependencyAction.satisfy, job_action=JobAction.none
+    dependency_action=DependencyAction.SATISFY, job_action=BatchJobActionKind.NONE
 )
 NO_EXIT_CONDITIONS = ExitConditions(
     exit_codes=[
@@ -35,7 +49,7 @@ NO_EXIT_CONDITIONS = ExitConditions(
     default=NO_EXIT_OPTIONS,
 )
 TERMMINATE_EXIT_OPTIONS = ExitOptions(
-    dependency_action=DependencyAction.block, job_action=JobAction.none
+    dependency_action=DependencyAction.BLOCK, job_action=BatchJobActionKind.NONE
 )
 TERMMINATE_EXIT_CONDITIONS = ExitConditions(
     exit_codes=[
@@ -62,7 +76,6 @@ def _generate_command_for_saving_logs(
     command_line: str,
     job_name: str,
     task_id: str,
-    save_logs_rel_path: str,
     logs_folder: str = "logs",
 ) -> str:
     """Generate a command line that saves stdout and stderr to log files.
@@ -71,17 +84,15 @@ def _generate_command_for_saving_logs(
         command_line (str): Original command line to execute.
         job_name (str): Name/ID of the job.
         task_id (str): ID of the task.
-        save_logs_rel_path (str): Relative path where logs should be saved.
-        logs_folder (str): Subfolder name within the save_logs_rel_path to store logs. Defaults to "logs".
+        logs_folder (str): Subfolder name to store logs. Defaults to "logs".
     """
     t = datetime.datetime.now(zi("America/New_York"))
     s_time = t.strftime("%Y%m%d_%H%M%S")
-    if not save_logs_rel_path.startswith("/"):
-        save_logs_rel_path = "/" + save_logs_rel_path
-    _folder = f"{save_logs_rel_path}/{logs_folder}/"
-    sout = f"{_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
-    logger.debug(f"Logs will be saved to: '{sout}'")
-    return f"""/bin/bash -c "mkdir -p {_folder}; {command_line} 2>&1 | tee {sout}" """
+    stdout_file = f"/{logs_folder}/stdout_{job_name}_{task_id}_{s_time}.txt"
+    stderr_file = f"/{logs_folder}/stderr_{job_name}_{task_id}_{s_time}.txt"
+    logger.debug(f"Stdout will be saved to: '{stdout_file}'")
+    logger.debug(f"Stderr will be saved to: '{stderr_file}'")
+    return f"""/bin/bash -c "mkdir -p /{logs_folder}; {command_line} > >(tee {stdout_file}) 2> >(tee {stderr_file})" """
 
 
 def _generate_mount_string(mounts):
@@ -102,10 +113,10 @@ def _generate_task_dependencies(depends_on, depends_on_range):
     task_deps = None
     if depends_on is not None:
         depends_on = [depends_on] if isinstance(depends_on, str) else depends_on
-        task_deps = batch_models.TaskDependencies(task_ids=depends_on)
+        task_deps = batch_models.BatchTaskDependencies(task_ids=depends_on)
 
     if depends_on_range is not None:
-        task_deps = batch_models.TaskDependencies(
+        task_deps = batch_models.BatchTaskDependencies(
             task_id_ranges=[
                 batch_models.TaskIdRange(
                     start=int(depends_on_range[0]),
@@ -122,12 +133,12 @@ def _download_task_file(
     """Download specified file from completed Batch task as a stream and save it to a local file after decoding it.
 
     Args:
-        batch_client (object): Azure Batch service client instance for API calls.
+        batch_client (object): Azure Batch service client instance (`azure.batch.BatchClient`) for API calls.
         job_name (str): Name/ID of the job to monitor. The job must exist and be active.
         task_id (str): Name/ID of the task to monitor.
         file_name (str): File name to download from task (e.g. stdout.txt)
     """
-    stream = batch_client.file.get_from_task(job_name, task_id, file_name)
+    stream = batch_client.download_task_file(job_name, task_id, file_name)
     with open(
         os.path.join(f"{job_name}_output", f"{task_id}_{file_name}"),
         "w",
@@ -158,7 +169,7 @@ def monitor_tasks(
         job_name (str): Name/ID of the job to monitor. The job must exist and be active.
         timeout (int): Maximum time in minutes to monitor before timing out. If None,
             defaults to 480 minutes (8 hours).
-        batch_client (object): Azure Batch service client instance for API calls.
+        batch_client (object): Azure Batch service client instance (`azure.batch.BatchClient`) for API calls.
         download_task_output (bool): Whether to download stdout and stderr from each
             completed task. If True, saves output files to a directory named
             "{job_name}_output". Defaults to False.
@@ -214,7 +225,7 @@ def monitor_tasks(
     # as tasks complete, print which complete
     # print remaining number of tasks
     logger.debug(f"Retrieving initial task list for job '{job_name}'")
-    tasks = list(batch_client.task.list(job_name))
+    tasks = list(batch_client.list_tasks(job_name))
 
     # get total tasks
     total_tasks = len([task for task in tasks])
@@ -227,31 +238,37 @@ def monitor_tasks(
     completions, incompletions, running, successes, failures = 0, 0, 0, 0, 0
 
     logger.debug(f"Getting initial job state for '{job_name}'")
-    job = batch_client.job.get(job_name)
-    logger.debug(f"Initial job state: {job.as_dict()['state']}")
+    job = batch_client.get_job(job_name)
+    logger.debug(f"Initial job state: {job.state}")
 
     polling_count = 0
-    while job.as_dict()["state"] != "completed" and not completed:
+    while job.state != batch_models.BatchJobState.COMPLETED and not completed:
         if datetime.datetime.now() < timeout_expiration:
             polling_count += 1
             logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
             time.sleep(5)  # Polling interval
 
-            logger.debug(f"Retrieving current task list (poll #{polling_count})")
-            tasks = list(batch_client.task.list(job_name))
+            tasks = list(batch_client.list_tasks(job_name))
+            logger.debug(f"Retrieved {len(tasks)} tasks for job '{job_name}'")
 
             incomplete_tasks = [
-                task for task in tasks if task.state != batch_models.TaskState.completed
+                task
+                for task in tasks
+                if task.state != batch_models.BatchTaskState.COMPLETED
             ]
             incompletions = len(incomplete_tasks)
 
             completed_tasks = [
-                task for task in tasks if task.state == batch_models.TaskState.completed
+                task
+                for task in tasks
+                if task.state == batch_models.BatchTaskState.COMPLETED
             ]
             completions = len(completed_tasks)
 
             running_tasks = [
-                task for task in tasks if task.state == batch_models.TaskState.running
+                task
+                for task in tasks
+                if task.state == batch_models.BatchTaskState.RUNNING
             ]
             running = len(running_tasks)
 
@@ -260,9 +277,17 @@ def monitor_tasks(
             successes = 0
 
             for task in completed_tasks:
-                if task.as_dict()["execution_info"]["result"] == "failure":
+                execution_info = getattr(task, "execution_info", None) or getattr(
+                    task, "executionInfo", None
+                )
+                result = getattr(execution_info, "result", None)
+                result = getattr(result, "value", result)
+                if isinstance(result, str):
+                    result = result.lower()
+
+                if result == "failure":
                     failures += 1
-                elif task.as_dict()["execution_info"]["result"] == "success":
+                elif result == "success":
                     successes += 1
                 if download_task_output:
                     os.makedirs(f"{job_name}_output", exist_ok=True)
@@ -273,7 +298,7 @@ def monitor_tasks(
                         _download_task_file(
                             batch_client, job_name, task.id, "stderr.txt"
                         )
-                        print(f"\nOutput saved from task {task.id}")
+                        logger.info(f"Output saved from task {task.id}")
                         previously_completed.append(task.id)
             _runtime = str(datetime.datetime.now() - start_time).split(".")[0]
             print(
@@ -306,7 +331,7 @@ def monitor_tasks(
                 )
                 completed = True
                 break
-            job = batch_client.job.get(job_name)
+            job = batch_client.get_job(job_name)
         else:
             logger.warning(f"Monitoring timeout reached after {timeout} minutes")
             logger.debug(
@@ -328,17 +353,29 @@ def monitor_tasks(
 
     # get terminate reason
     logger.debug("Checking for job termination reason")
-    if "terminate_reason" in job.as_dict()["execution_info"].keys():
-        terminate_reason = job.as_dict()["execution_info"]["terminate_reason"]
+    terminate_reason = None
+
+    execution_info = getattr(job, "execution_info", None)
+    terminate_reason = getattr(execution_info, "terminate_reason", None)
+
+    if terminate_reason is None and hasattr(job, "as_dict"):
+        job_dict = job.as_dict()
+        exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
+        if isinstance(exec_dict, dict):
+            terminate_reason = exec_dict.get("terminate_reason") or exec_dict.get(
+                "terminateReason"
+            )
+
+    if not isinstance(terminate_reason, str):
+        terminate_reason = None
+
+    if terminate_reason is not None:
         logger.debug(f"Job terminate reason: {terminate_reason}")
     else:
-        terminate_reason = None
         logger.debug("No job termination reason found")
 
     runtime = end_time - start_time
     logger.info(f"Monitoring ended: {end_time}. Total elapsed time: {runtime}.")
-    print("\n")
-    print("-" * 50)
     return {
         "completed": completed,
         "elapsed time": runtime,
@@ -400,9 +437,7 @@ def download_job_stats(
         logger.debug(f"Using custom filename: {file_name}")
 
     logger.debug("Retrieving task list from batch service")
-    r = batch_service_client.task.list(
-        job_id=job_name,
-    )
+    r = batch_service_client.list_tasks(job_name)
     logger.debug("Task list retrieved successfully")
 
     fields = [
@@ -438,8 +473,7 @@ def download_job_stats(
             writer.writerow(fields)
             logger.debug(f"Wrote task {item.id} statistics to CSV")
 
-    logger.debug(f"Job statistics download completed. File saved as: {file_name}.csv")
-    print(f"Downloaded job statistics report to {file_name}.csv.")
+    logger.info(f"Job statistics download completed. File saved as: {file_name}.csv")
 
 
 def check_job_exists(job_name: str, batch_client: object):
@@ -475,7 +509,7 @@ def check_job_exists(job_name: str, batch_client: object):
         slower for accounts with many jobs. The check is case-sensitive.
     """
     job_list = []
-    for job in batch_client.job.list():
+    for job in batch_client.list_jobs():
         job_list.append(job.id)
 
     if job_name in job_list:
@@ -522,11 +556,11 @@ def get_completed_tasks(job_name: str, batch_client: object):
         detailed success/failure information.
     """
     logger.debug("Pulling in task information.")
-    tasks = [task for task in batch_client.task.list(job_name)]
+    tasks = [task for task in batch_client.list_tasks(job_name)]
     total_tasks = len(tasks)
 
     completed_tasks = [
-        task for task in tasks if task.state == batch_models.TaskState.completed
+        task for task in tasks if task.state == batch_models.BatchTaskState.COMPLETED
     ]
     num_c_tasks = len(completed_tasks)
 
@@ -566,8 +600,8 @@ def check_job_complete(job_name: str, batch_client: object) -> bool:
         or monitor_tasks() to get detailed success/failure information.
     """
     logger.debug(f"Checking completion status for job: {job_name}")
-    job = batch_client.job.get(job_name)
-    is_complete = job.state == batch_models.JobState.completed
+    job = batch_client.get_job(job_name)
+    is_complete = job.state == batch_models.BatchJobState.COMPLETED
     logger.debug(
         f"Job {job_name} completion status: {is_complete} (state: {job.state})"
     )
@@ -614,7 +648,7 @@ def get_job_state(job_name: str, batch_client: object) -> str:
         terminated. The exact states depend on the Azure Batch service version.
     """
     logger.debug(f"Retrieving state for job: {job_name}")
-    job = batch_client.job.get(job_name)
+    job = batch_client.get_job(job_name)
     state = str(job.state)
     logger.debug(f"Job {job_name} current state: {state}")
     return state
@@ -1038,19 +1072,42 @@ def get_rel_mnt_path(
         )
         return "ERROR!"
 
-    mc = pool_info.as_dict()["mount_configuration"]
+    mc = getattr(pool_info, "mount_configuration", None)
+    if mc is None and hasattr(pool_info, "as_dict"):
+        pool_dict = pool_info.as_dict()
+        mc = (
+            pool_dict.get("mount_configuration")
+            or pool_dict.get("mountConfiguration")
+            or pool_dict.get("properties", {}).get("mountConfiguration")
+            or []
+        )
+    mc = mc or []
     logger.debug(f"Searching through {len(mc)} mount configurations")
 
     for m in mc:
-        if m["azure_blob_file_system_configuration"]["container_name"] == blob_name:
-            rel_mnt_path = m["azure_blob_file_system_configuration"][
-                "relative_mount_path"
-            ]
+        abfs = getattr(m, "azure_blob_file_system_configuration", None)
+        if abfs is None and isinstance(m, dict):
+            abfs = m.get("azure_blob_file_system_configuration") or m.get(
+                "azureBlobFileSystemConfiguration"
+            )
+
+        if abfs is None:
+            continue
+
+        container_name = (
+            getattr(abfs, "container_name", None)
+            if not isinstance(abfs, dict)
+            else abfs.get("container_name") or abfs.get("containerName")
+        )
+        if container_name == blob_name:
+            rel_mnt_path = (
+                getattr(abfs, "relative_mount_path", None)
+                if not isinstance(abfs, dict)
+                else abfs.get("relative_mount_path") or abfs.get("relativeMountPath")
+            )
             logger.debug(f"Found mount path '{rel_mnt_path}' for blob '{blob_name}'")
             return rel_mnt_path
-    logger.error(f"could not find blob {blob_name} mounted to pool.")
-    logger.info(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
-    print(f"could not find blob {blob_name} mounted to pool.")
+    logger.error(f"Could not find blob '{blob_name}' mounted to pool '{pool_name}'.")
     return "ERROR!"
 
 
@@ -1147,29 +1204,48 @@ def get_pool_mounts(
             batch_mgmt_client=batch_mgmt_client,
         )
     except Exception:
-        logger.error("could not retrieve pool information.")
-        logger.info(
+        logger.error(
             f"Could not retrieve pool info for pool '{pool_name}' in resource group '{resource_group_name}'."
         )
-        print(f"could not retrieve pool info for {pool_name}.")
         return None
 
     mounts = []
     try:
-        mc = pool_info.as_dict()["mount_configuration"]
+        mc = getattr(pool_info, "mount_configuration", None)
+        if mc is None and hasattr(pool_info, "as_dict"):
+            pool_dict = pool_info.as_dict()
+            mc = (
+                pool_dict.get("mount_configuration")
+                or pool_dict.get("mountConfiguration")
+                or pool_dict.get("properties", {}).get("mountConfiguration")
+                or []
+            )
+        mc = mc or []
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
-            mount_info = {
-                "source": m["azure_blob_file_system_configuration"][
-                    "relative_mount_path"
-                ],
-                "target": m["azure_blob_file_system_configuration"][
-                    "relative_mount_path"
-                ],
-            }
-            mounts.append(mount_info)
-            logger.debug(f"Added mount: {mount_info}")
+            abfs = getattr(m, "azure_blob_file_system_configuration", None)
+            if abfs is None and isinstance(m, dict):
+                abfs = m.get("azure_blob_file_system_configuration") or m.get(
+                    "azureBlobFileSystemConfiguration"
+                )
+
+            if abfs is not None:
+                rel_mount_path = (
+                    getattr(abfs, "relative_mount_path", None)
+                    if not isinstance(abfs, dict)
+                    else abfs.get("relative_mount_path")
+                    or abfs.get("relativeMountPath")
+                )
+                if not rel_mount_path:
+                    continue
+
+                mount_info = {
+                    "source": rel_mount_path,
+                    "target": rel_mount_path,
+                }
+                mounts.append(mount_info)
+                logger.debug(f"Added mount: {mount_info}")
 
         logger.debug(f"Successfully retrieved {len(mounts)} mount configurations")
     except Exception as e:
@@ -1183,9 +1259,10 @@ def add_task(
     job_name: str,
     task_id_base: str,
     command_line: str,
-    save_logs_rel_path: str | None = None,
     logs_folder: str = "stdout_stderr",
     name_suffix: str = "",
+    blob_container: str | None = None,
+    blob_storage_account: str | None = None,
     mounts: list[dict] | None = None,
     depends_on: str | list[str] | None = None,
     depends_on_range: tuple | None = None,
@@ -1208,11 +1285,13 @@ def add_task(
             and task_id_max unless task_id_ints is True).
         command_line (str | list[str]): Command to execute in the task. Can be a string
             or list of strings that will be joined.
-        save_logs_rel_path (str, optional): Relative path where stdout/stderr logs should
-            be saved. If None, logs are not saved to blob storage.
         logs_folder (str): Name of the folder to create for saving logs. Defaults to
             "stdout_stderr".
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
+        blob_container (str, optional): Name of Azure blob storage container where the logs
+            should be uploaded.
+        blob_storage_account (str, optional): Name of Azure blob storage account where the logs
+            should be uploaded. If blob_container is specified, it should exist in the storage account.
         mounts (list[dict], optional): List of mount configurations as dicts
             of {"source": <container_name>, "target": <relative_mount_path>).
         depends_on (str | list[str], optional): Task ID(s) that this task depends on.
@@ -1251,7 +1330,6 @@ def add_task(
                 task_id_base="analyze",
                 command_line=["python", "analyze.py", "--input", "/data/input.csv"],
                 depends_on=["preprocess-task-1", "preprocess-task-2"],
-                save_logs_rel_path="/logs",
                 timeout=120,
                 batch_client=batch_client,
                 full_container_name="myregistry.azurecr.io/analyzer:v1.0"
@@ -1280,10 +1358,10 @@ def add_task(
 
     # Add a task to the job
     logger.debug("Creating user identity with admin privileges")
-    user_identity = batch_models.UserIdentity(
-        auto_user=batch_models.AutoUserSpecification(
-            scope=batch_models.AutoUserScope.pool,
-            elevation_level=batch_models.ElevationLevel.admin,
+    user_identity = UserIdentity(
+        auto_user=AutoUserSpecification(
+            scope=AutoUserScope.POOL,
+            elevation_level=ElevationLevel.ADMIN,
         )
     )
 
@@ -1294,6 +1372,7 @@ def add_task(
 
     logger.debug("Creating mount configuration string.")
     mount_str = _generate_mount_string(mounts)
+    logger.debug(f"Resolved task mounts for job '{job_name}': {mounts}")
 
     if task_id_ints:
         task_id = str(task_id_max + 1)
@@ -1301,29 +1380,6 @@ def add_task(
     else:
         task_id = f"{task_id_base}-{name_suffix}-{str(task_id_max + 1)}"
         logger.debug(f"Generated string-based task ID: '{task_id}'")
-
-    if save_logs_rel_path is not None:
-        if save_logs_rel_path == "ERROR!":
-            logger.warning("could not find rel path")
-            print(
-                "could not find rel path. Stdout and stderr will not be saved to blob storage."
-            )
-            full_cmd = cmd_str
-        else:
-            logger.debug(
-                f"Configuring log saving to path: '{save_logs_rel_path}' in folder: '{logs_folder}'"
-            )
-            full_cmd = _generate_command_for_saving_logs(
-                command_line=cmd_str,
-                job_name=job_name,
-                task_id=task_id,
-                save_logs_rel_path=save_logs_rel_path,
-                logs_folder=logs_folder,
-            )
-            logger.debug(f"Modified command for log capture: '{full_cmd}'")
-    else:
-        logger.debug("No log saving configured - using command as-is")
-        full_cmd = cmd_str
 
     # add constraints
     if timeout is None:
@@ -1333,9 +1389,8 @@ def add_task(
         _to = datetime.timedelta(minutes=timeout)
         logger.debug(f"Task timeout constraint set to {timeout} minutes")
 
-    task_constraints = TaskConstraints(max_wall_clock_time=_to)
-    command_line = full_cmd
-    logger.debug(f"Final command line for task {task_id}: '{command_line}'")
+    task_constraints = BatchTaskConstraints(max_wall_clock_time=_to)
+    logger.debug(f"Command line for task {task_id}: '{cmd_str}'")
 
     # if full container name is none, pull info from job
     container_name = f"{job_name}_{str(task_id_max + 1)}"
@@ -1343,17 +1398,31 @@ def add_task(
     logger.debug(
         f"Container settings: image='{full_container_name}', run_options='{container_run_options}'"
     )
+    logger.debug(f"Task '{task_id}' container run options: {container_run_options}")
 
     # Create the task parameter
     logger.debug("Creating task parameter object")
-    task_param = batch_models.TaskAddParameter(
-        id=task_id,
-        command_line=command_line,
-        container_settings=batch_models.TaskContainerSettings(
-            image_name=full_container_name,
-            container_run_options=container_run_options,
-            working_directory="containerImageDefault",
-        ),
+    output_files = None
+    if blob_container and blob_storage_account:
+        formatted_date = datetime.date.today().strftime("%Y-%m-%d")
+        output_file = output_task_files_to_blob(
+            file_pattern="../std*.txt",
+            blob_container=blob_container,
+            blob_account=blob_storage_account,
+            path=f"{logs_folder}/{formatted_date}/{task_id}",
+            upload_condition="taskCompletion",
+        )
+        output_files = [output_file]
+    container_settings = get_container_settings(
+        container_image_name=full_container_name,
+        additional_options=container_run_options,
+        working_directory="containerImageDefault",
+    )
+    new_task = get_task_config(
+        task_id=task_id,
+        base_call=cmd_str,
+        output_files=output_files,
+        container_settings=container_settings,
         user_identity=user_identity,
         constraints=task_constraints,
         depends_on=task_deps,
@@ -1363,7 +1432,7 @@ def add_task(
 
     # Add the task to the job
     logger.debug(f"Submitting task '{task_id}' to Azure Batch service")
-    batch_client.task.add(job_id=job_name, task=task_param)
+    batch_client.create_task(job_name, new_task)
     logger.debug(f"Task '{task_id}' successfully added to job '{job_name}'")
     return task_id
 
@@ -1373,10 +1442,12 @@ def add_task_collection(
     task_id_base: str,
     tasks: list[dict],
     name_suffix: str = "",
+    blob_container: str | None = None,
+    blob_storage_account: str | None = None,
     batch_client: object | None = None,
     task_id_max: int = 0,
     task_id_ints: bool = False,
-) -> batch_models.TaskAddCollectionResult:
+) -> batch_models.BatchCreateTaskCollectionResult:
     """Add a list of tasks to an Azure Batch job with comprehensive configuration options.
 
     Creates and adds a list of tasks to the specified job with support for dependencies,
@@ -1390,10 +1461,6 @@ def add_task_collection(
         tasks (list[dict]): List of task configuration dicts. Each dict can contain:
             - command_line (str | list[str]): Command to execute in the task. Can be a string
             or list of strings that will be joined.
-            - save_logs_rel_path (str, optional): Relative path where stdout/stderr logs should
-                be saved. If None, logs are not saved to blob storage.
-            - logs_folder (str): Name of the folder to create for saving logs. Defaults to
-                "stdout_stderr".
             - mounts (list[dict], optional): List of mount configurations as dicts
                 of {"source": <container_name>, "target": <relative_mount_path>).
             - depends_on (str | list[str], optional): Task ID(s) that this task depends on.
@@ -1406,6 +1473,10 @@ def add_task_collection(
                 no timeout is set.
             - full_container_name (str, optional): Full container image name to use for the task.
         name_suffix (str): Suffix to append to the task ID for uniqueness. Defaults to "".
+        blob_container (str, optional): Name of Azure blob storage container where the logs
+            should be uploaded.
+        blob_storage_account (str, optional): Name of Azure blob storage account where the logs
+            should be uploaded. If blob_container is specified, it should exist in the storage account.
         batch_client (object): Azure Batch service client instance for API calls.
         task_id_max (int): Current maximum task ID number for generating unique task IDs.
             Defaults to 0.
@@ -1435,7 +1506,6 @@ def add_task_collection(
                     {
                         "command_line": ["python", "analyze.py", "--input", "/data/input.csv"],
                         "depends_on": ["preprocess-task-1", "preprocess-task-2"],
-                        "save_logs_rel_path": "/logs",
                         "timeout": 120,
                         "run_dependent_tasks_on_fail": False,
                         "full_container_name": "myregistry.azurecr.io/analyzer:v1.0"
@@ -1443,7 +1513,6 @@ def add_task_collection(
                     {
                         "command_line": "python foo.py",
                         "depends_on": ["preprocess-task-2"],
-                        "save_logs_rel_path": "/logs",
                         "mounts": [
                             {"source": "data-container", "target": "/data"},
                             {"source": "config-container", "target": "/config"},
@@ -1452,7 +1521,6 @@ def add_task_collection(
                     },
                 ],
                 batch_client=batch_client,
-
             )
 
     Note:
@@ -1467,14 +1535,27 @@ def add_task_collection(
 
     # Add a task to the job
     logger.debug("Creating user identity with admin privileges")
-    user_identity = batch_models.UserIdentity(
-        auto_user=batch_models.AutoUserSpecification(
-            scope=batch_models.AutoUserScope.pool,
-            elevation_level=batch_models.ElevationLevel.admin,
+    user_identity = UserIdentity(
+        auto_user=AutoUserSpecification(
+            scope=AutoUserScope.POOL,
+            elevation_level=ElevationLevel.ADMIN,
         )
     )
 
     logger.debug("Creating task collection")
+
+    output_files = None
+    if blob_container and blob_storage_account:
+        formatted_date = datetime.date.today().strftime("%Y-%m-%d")
+        output_file = output_task_files_to_blob(
+            file_pattern="../std*.txt",
+            blob_container=blob_container,
+            blob_account=blob_storage_account,
+            path=f"stdout_stderr/{formatted_date}",
+            upload_condition="taskCompletion",
+        )
+        output_files = [output_file]
+
     tasks_to_add = []
     for n, task in enumerate(tasks):
         if task_id_ints:
@@ -1486,19 +1567,6 @@ def add_task_collection(
 
         command_line = task["command_line"]
 
-        logs_folder = task.get("logs_folder", "stdout_stderr")
-        save_logs_rel_path = task.get("save_logs_rel_path")
-        if save_logs_rel_path is not None:
-            full_command = _generate_command_for_saving_logs(
-                command_line=command_line,
-                job_name=job_name,
-                task_id=task_id,
-                save_logs_rel_path=save_logs_rel_path,
-                logs_folder=logs_folder,
-            )
-        else:
-            full_command = command_line
-
         run_dependent_tasks_on_fail = task.get("run_dependent_tasks_on_fail", False)
         exit_conditions = _generate_exit_conditions(run_dependent_tasks_on_fail)
 
@@ -1508,23 +1576,37 @@ def add_task_collection(
 
         timeout = task.get("timeout")
         _to = datetime.timedelta(minutes=timeout) if timeout else None
-        task_constraints = TaskConstraints(max_wall_clock_time=_to)
+        task_constraints = BatchTaskConstraints(max_wall_clock_time=_to)
 
         mounts = task.get("mounts", [])
         mount_str = _generate_mount_string(mounts)
+        logger.debug(f"Resolved task collection mounts for task '{task_id}': {mounts}")
 
         # if full container name is none, pull info from job
         container_name = f"{job_name}_{str(task_id_max + 1)}"
         container_run_options = f"--name={container_name} --rm " + mount_str
+        logger.debug(
+            f"Task collection entry '{task_id}' container run options: {container_run_options}"
+        )
 
-        new_task = batch_models.TaskAddParameter(
-            id=task_id,
-            command_line=full_command,
-            container_settings=batch_models.TaskContainerSettings(
-                image_name=task["full_container_name"],
-                container_run_options=container_run_options,
-                working_directory="containerImageDefault",
-            ),
+        container_image_name = task.get("full_container_name") or task.get(
+            "container_image_name"
+        )
+        if container_image_name is None:
+            raise ValueError(
+                "Each task in add_task_collection must include either 'full_container_name' or 'container_image_name'."
+            )
+
+        container_settings = get_container_settings(
+            container_image_name=container_image_name,
+            additional_options=container_run_options,
+            working_directory="containerImageDefault",
+        )
+        new_task = get_task_config(
+            task_id=task_id,
+            base_call=command_line,
+            output_files=output_files,
+            container_settings=container_settings,
             user_identity=user_identity,
             constraints=task_constraints,
             depends_on=task_deps,
@@ -1535,9 +1617,12 @@ def add_task_collection(
 
     # Add the task list to job
     logger.debug(
-        f"Adding '{len(tasks_to_add)}' to job '{job_name}' i Azure Batch service"
+        f"Adding '{len(tasks_to_add)}' to job '{job_name}' in Azure Batch service"
     )
-    result = batch_client.task.add_collection(job_id=job_name, value=tasks_to_add)
+
+    result = batch_client.create_task_collection(
+        job_name, batch_models.BatchTaskGroup(task_values=tasks_to_add)
+    )
     logger.debug(f"Successfully added {len(tasks_to_add)}' tasks job '{job_name}'")
     return result
 
@@ -1617,3 +1702,389 @@ def check_mount_format(mount: str) -> str:
     mount = mount.name
     logger.info(f"Formatted mount: {mount}")
     return mount
+
+
+def get_vm_size(size="small"):
+    """Get the Azure VM size based on a simple size descriptor.
+
+    Args:
+        size (str): A simple descriptor for the desired VM size. Options include
+            "xsmall", "small", "medium", "large", "xlarge",
+            "xsmall_amd", "small_amd", "medium_amd", "large_amd", "xlarge_amd".
+            Defaults to "small".
+
+    Returns:
+        str: The corresponding Azure VM size string.
+
+    Example:
+        Get a small VM size:
+
+            vm_size = get_vm_size("small")
+            print(vm_size)  # Output: "Standard_D4ads_v5"
+
+        Get a medium VM size:
+
+            vm_size = get_vm_size("medium")
+            print(vm_size)  # Output: "Standard_D8ads_v5"
+
+        Get a large VM size:
+
+            vm_size = get_vm_size("large")
+            print(vm_size)  # Output: "Standard_D16ads_v5"
+    """
+    logger.debug(f"Getting VM size for descriptor: {size}")
+    size_mapping = {
+        "xsmall": "Standard_D2ads_v5",
+        "small": "Standard_D4ads_v5",
+        "medium": "Standard_D8ads_v5",
+        "large": "Standard_D16ads_v5",
+        "xlarge": "Standard_D32ads_v5",
+        "xsmall_amd": "Standard_D2ads_v5",
+        "small_amd": "Standard_D4ads_v5",
+        "medium_amd": "Standard_D8ads_v5",
+        "large_amd": "Standard_D16ads_v5",
+        "xlarge_amd": "Standard_D32ads_v5",
+    }
+    vm_size = size_mapping.get(size.lower())
+    if vm_size is None:
+        logger.error(
+            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xsmall_amd', 'small_amd', 'medium_amd', 'large_amd', 'xlarge_amd'."
+        )
+        raise ValueError(
+            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xsmall_amd', 'small_amd', 'medium_amd', 'large_amd', 'xlarge_amd'."
+        )
+    logger.info(f"Selected VM size: {vm_size} for descriptor: {size}")
+    return vm_size
+
+
+def get_task_status(
+    job_name: str, task_id: str | None = None, batch_client=None
+) -> str:
+    """Get the status of a task or all tasks in a job.
+
+    Args:
+        job_name (str): The name of the job.
+        task_id (str | None, optional): The ID of the task. If None, returns the status of all tasks. Defaults to None.
+        batch_client (_type_, optional): The batch client to use. Defaults to None.
+
+    Raises:
+        ValueError: If the job does not exist.
+        ValueError: If the specified task does not exist in the job.
+
+    Returns:
+        str: A JSON string containing the status information of the specified task(s).
+    """
+    if batch_client is None:
+        raise ValueError("Batch client must be provided to get task status.")
+    if not check_job_exists(job_name, batch_client):
+        raise ValueError(f"Job {job_name} does not exist.")
+
+    tasks = list(batch_client.list_tasks(job_name))
+    if task_id is not None:
+        task = next((t for t in tasks if t.id == task_id), None)
+        if task is None:
+            raise ValueError(f"Task {task_id} does not exist in job {job_name}.")
+        return json.dumps(
+            {
+                "id": task.id,
+                "state": getattr(task.state, "value", str(task.state)),
+                "exit_code": getattr(task.execution_info, "exit_code", None),
+            }
+        )
+    out_json = []
+    for task in tasks:
+        out_json.append(
+            {
+                "id": task.id,
+                "state": getattr(task.state, "value", str(task.state)),
+                "exit_code": getattr(task.execution_info, "exit_code", None),
+            }
+        )
+
+    return json.dumps(out_json)
+
+
+def get_all_vm_quotas(
+    batch_mgmt_client: BatchManagementClient, resource_group: str, account_name: str
+) -> list[dict]:
+    """Returns all available VMs in the account.
+
+    Args:
+        batch_mgmt_client (BatchManagementClient): instance of Azure BatchManagementClient
+        resource_group (str): name of the resource group
+        account_name (str): name of the batch account
+
+    Returns:
+        list[dict]: list of available VM names with their quotas
+    """
+    account = batch_mgmt_client.batch_account.get(
+        resource_group_name=resource_group, account_name=account_name
+    )
+    quotas = account.dedicated_core_quota_per_vm_family or []
+    available = [
+        {"name": getattr(quota, "name", None), "quota": getattr(quota, "core_quota", 0)}
+        for quota in quotas
+        if getattr(quota, "core_quota", 0) > 0
+    ]
+    return available
+
+
+def get_vm_series_quotas(
+    series: str | list[str],
+    batch_mgmt_client: BatchManagementClient,
+    resource_group: str,
+    account_name: str,
+):
+    """
+    Returns all available VMs in the account that match the given series.
+
+    Args:
+        series (str | list[str]): VM series to filter, e.g. "D" or "E".
+        batch_mgmt_client (BatchManagementClient): instance of Azure BatchManagementClient
+        resource_group (str): name of the resource group
+        account_name (str): name of the batch account
+
+    Returns:
+        list[dict]: list of available VM names with their quotas that match the given series
+    """
+    if isinstance(series, str):
+        series = [series]
+    quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+    output = []
+    for s in series:
+        s_norm = s.lower()
+        for quota in quotas:
+            name = (quota.get("name") or "").lower()
+            if name.split("standard")[-1].startswith(s_norm):
+                output.append(quota)
+    return output
+
+
+def vm_name_to_family(vm_name: str) -> str:
+    """Convert a VM name like 'standard_D4ads_v5' to 'standardDADSv5Family'.
+
+    Args:
+        vm_name (str): The VM name to convert, e.g., 'standard_D4ads_v5'.
+
+    Returns:
+        str: The corresponding VM family name.
+    """
+    match = re.fullmatch(r"standard_([A-Za-z]+)(\d+)([A-Za-z0-9_]*)_v(\d+)", vm_name)
+    if not match:
+        raise ValueError(f"Unexpected vm_name format: {vm_name}")
+
+    series, _cores, attrs, version = match.groups()
+    attrs = attrs.replace("_", "").upper()
+
+    return f"standard{series.upper()}{attrs}v{version}Family"
+
+
+def get_vm_name(
+    series: str = "D",
+    cores: int = 4,
+    amd: bool = False,
+    temp_disk: bool = True,
+    ssd: bool = False,
+    version: int = 5,
+    verify: bool = True,
+    batch_mgmt_client: BatchManagementClient | None = None,
+    resource_group: str | None = None,
+    account_name: str | None = None,
+) -> str:
+    """Construct usable VM name by providing VM characteristics.
+
+    Args:
+        series (str, optional): VM series to use, e.g., "D" or "E". Defaults to "D".
+        cores (int, optional): Number of cores for the VM. Defaults to 4.
+        amd (bool, optional): Whether to use AMD processors. Defaults to False.
+        temp_disk (bool, optional): Whether to include a temporary disk. Defaults to True.
+        ssd (bool, optional): Whether to use SSD storage. Defaults to False.
+        version (int, optional): VM version. Defaults to 5.
+        verify (bool, optional): Whether to verify the VM name against available quotas. Defaults to True.
+        batch_mgmt_client (BatchManagementClient | None, optional): Batch management client instance. Defaults to None.
+        resource_group (str | None, optional): Resource group name. Defaults to None.
+        account_name (str | None, optional): Batch account name. Defaults to None.
+
+    Raises:
+        ValueError: If the VM name is not available in the current quota.
+
+    Returns:
+        str: The constructed VM name.
+    """
+
+    amd_str = "a" if amd else ""
+    temp_disk_str = "d" if temp_disk else ""
+    ssd_str = "s" if ssd else ""
+    vm_name = (
+        f"standard_{series.upper()}{cores}{amd_str}{temp_disk_str}{ssd_str}_v{version}"
+    )
+    if verify:
+        if batch_mgmt_client is None or resource_group is None or account_name is None:
+            raise ValueError(
+                "batch_mgmt_client, resource_group, and account_name must be provided when verify=True."
+            )
+        # check available in quota
+        family_name = vm_name_to_family(vm_name)
+        quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+        if not any(quota.get("name") == family_name for quota in quotas):
+            options = find_similar_vm_families(family_name, 4, 0.6, quotas)
+            suggestions = [construct_vm_name(opt, cores) for opt in options]
+            hint = (
+                f" Similar available VMs: {', '.join(suggestions)}"
+                if suggestions
+                else ""
+            )
+            raise ValueError(
+                f"VM {vm_name} is not available in the current quota.{hint}"
+            )
+    return vm_name
+
+
+def get_vm_components(vm) -> tuple[str, str, str]:
+    """Extract VM components from the VM name.
+
+    Args:
+        vm (str): The VM name.
+
+    Returns:
+        tuple[str, str, str]: A tuple containing the series, attributes, and version of the VM.
+    """
+    vm_attrs = vm.lower().split("standard")[-1].split("family")[0]
+    vm_split = vm_attrs.split("v")
+    version = int(vm_split[-1])
+    instance = vm_split[0]
+    if len(instance) == 1:
+        series = instance
+        attr = ""
+    else:
+        series = instance[0]
+        attr = instance[1:]
+    return series.upper(), attr, str(version)
+
+
+def find_similar_vm_families(
+    family_name: str,
+    limit: int = 10,
+    min_score: float = 0.5,
+    quotas: list[dict] | None = None,
+    batch_mgmt_client: BatchManagementClient | None = None,
+    resource_group: str | None = None,
+    account_name: str | None = None,
+) -> list[str]:
+    """Return quota family names that are closest to the requested family name.
+
+    Args:
+        family_name (str): The requested VM family name, like "standardDADSv5Family".
+        limit (int, optional): The maximum number of similar family names to return. Defaults to 10.
+        min_score (float, optional): The minimum similarity score required to consider a family name. Defaults to 0.5.
+        quotas (list[dict] | None, optional): A list of quota dictionaries. If None, fetches all VM quotas. Defaults to None.
+
+    Returns:
+        list[str]: A list of similar VM family names.
+    """
+    if quotas is None:
+        quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+
+    available_names = [quota["name"] for quota in quotas if quota.get("name")]
+    if not available_names:
+        return []
+
+    def normalize(name: str) -> str:
+        return "".join(ch for ch in name.lower() if ch.isalnum())
+
+    target_norm = normalize(family_name)
+    target_series, _target_attrs, target_version = get_vm_components(family_name)
+
+    scored_names = []
+    for candidate in available_names:
+        candidate_norm = normalize(candidate)
+        similarity = SequenceMatcher(None, target_norm, candidate_norm).ratio()
+
+        try:
+            candidate_series, _candidate_attrs, candidate_version = get_vm_components(
+                candidate
+            )
+        except (IndexError, ValueError):
+            candidate_series, candidate_version = "", ""
+
+        score = similarity
+        if candidate_series == target_series:
+            score += 0.2
+        if candidate_version == target_version:
+            score += 0.1
+
+        if score >= min_score:
+            scored_names.append((score, candidate))
+
+    scored_names.sort(key=lambda item: (-item[0], item[1]))
+    return [candidate for _score, candidate in scored_names[:limit]]
+
+
+def construct_vm_name(vm_family_name: str, cores: int) -> str:
+    """Construct a VM name from the family name and number of cores.
+
+    Args:
+        vm_family_name (str): The VM family name, like "standardDADSv5Family".
+        cores (int): The number of cores for the VM.
+
+    Returns:
+        str: The constructed VM name.
+    """
+    vm_spec = list(vm_family_name.split("standard")[-1].split("Family")[0])
+    vm_series = vm_spec.pop(0)
+    vm_attrs, vm_size = "".join(vm_spec).split("v")
+    vm_attrs = vm_attrs.lower()
+    return f"standard_{vm_series}{cores}{vm_attrs}_v{vm_size}"
+
+
+def check_if_pool_vm_deprecated(
+    pool_name: str, resource_group: str, account_name: str, batch_mgmt_client: object
+) -> bool:
+    """Check if the VM series used in the pool is deprecated.
+
+    Args:
+        pool_name (str): Name of the Azure Batch pool.
+        resource_group (str): Name of the Azure resource group containing the Batch account.
+        account_name (str): Name of the Azure Batch account.
+        batch_mgmt_client (BatchManagementClient): Instance of BatchManagementClient for API calls.
+
+    Returns:
+        bool: True if the VM series is deprecated, False otherwise.
+    """
+    logger.debug(f"Checking if pool '{pool_name}' uses a deprecated VM series.")
+    try:
+        pool_info = get_pool_full_info(
+            resource_group, account_name, pool_name, batch_mgmt_client
+        )
+    except Exception as e:
+        logger.debug(f"No pool information found during version check: {e}")
+        pool_info = None
+    if pool_info is None:
+        logger.warning(f"Pool '{pool_name}' not found. Cannot check VM version.")
+        return False
+    current_vm = getattr(pool_info, "vm_size", None)
+    if current_vm is None and hasattr(pool_info, "as_dict"):
+        pool_dict = pool_info.as_dict()
+        current_vm = (
+            pool_dict.get("vm_size")
+            or pool_dict.get("vmSize")
+            or pool_dict.get("properties", {}).get("vmSize")
+            or pool_dict.get("properties", {}).get("vm_size")
+        )
+    if not current_vm:
+        logger.warning(
+            f"Pool '{pool_name}' does not expose vm_size; cannot check VM version."
+        )
+        return False
+
+    m = re.search(r"_v(\d+)$", str(current_vm).lower())
+    if not m:
+        logger.warning(f"Could not parse VM version from size '{current_vm}'.")
+        return False
+
+    version = int(m.group(1))
+    logger.debug(f"Current VM size: {current_vm}, version: {version}")
+    if version < 4:
+        logger.warning("The current VM is too old. Please upgrade to a newer version.")
+        return True
+    return False

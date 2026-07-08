@@ -1,4 +1,5 @@
-import builtins
+import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -8,12 +9,19 @@ from azure.storage.blob import BlobProperties
 from cfa.cloudops.batch_helpers import (
     add_task,
     check_mount_format,
+    construct_vm_name,
     download_job_stats,
+    get_all_vm_quotas,
     get_args_from_yaml,
     get_full_container_image_name,
     get_pool_mounts,
     get_rel_mnt_path,
+    get_task_status,
+    get_vm_name,
+    get_vm_series_quotas,
+    get_vm_size,
     monitor_tasks,
+    vm_name_to_family,
 )
 
 
@@ -46,13 +54,13 @@ def test_monitor_tasks_all_successful():
     mock_batch_client = MagicMock()
     mock_tasks = [
         MagicMock(
-            state=models.TaskState.completed, execution_info=MagicMock(exit_code=0)
+            state=models.BatchTaskState.COMPLETED, execution_info=MagicMock(exit_code=0)
         ),
         MagicMock(
-            state=models.TaskState.completed, execution_info=MagicMock(exit_code=0)
+            state=models.BatchTaskState.COMPLETED, execution_info=MagicMock(exit_code=0)
         ),
     ]
-    mock_batch_client.task.list.return_value = mock_tasks
+    mock_batch_client.list_tasks.return_value = mock_tasks
 
     with patch("time.sleep", return_value=None):
         all_successful = monitor_tasks(
@@ -60,6 +68,21 @@ def test_monitor_tasks_all_successful():
         )
 
     assert all_successful["completed"] is True
+
+
+def test_monitor_tasks_missing_job_execution_info():
+    mock_batch_client = MagicMock()
+    mock_batch_client.get_job.return_value = MagicMock(
+        as_dict=MagicMock(return_value={"state": "completed"})
+    )
+    mock_batch_client.list_tasks.return_value = []
+
+    result = monitor_tasks(
+        job_name="my-job", timeout=30, batch_client=mock_batch_client
+    )
+
+    assert result["completed"] is True
+    assert result["terminate_reason"] is None
 
 
 def test_add_task():
@@ -74,8 +97,8 @@ def test_add_task():
         command_line=command_line,
     )
 
-    mock_batch_client.task.add.assert_called_once()
-    added_task = mock_batch_client.task.add.call_args[1]["task"]
+    mock_batch_client.create_task.assert_called_once()
+    added_task = mock_batch_client.create_task.call_args[0][1]
     assert added_task.id == "task-base--1"
     assert added_task.command_line == command_line
 
@@ -86,7 +109,7 @@ def test_add_task():
         command_line=command_line,
         depends_on=["task-base--0"],
     )
-    added_task = mock_batch_client.task.add.call_args[1]["task"]
+    added_task = mock_batch_client.create_task.call_args[0][1]
     assert added_task.id == "task-base--1"
     assert added_task.command_line == command_line
 
@@ -97,9 +120,8 @@ def test_add_task():
         command_line=command_line,
         depends_on=["task-base--0"],
         run_dependent_tasks_on_fail=True,
-        save_logs_rel_path="/logs/task-logs/",
     )
-    added_task = mock_batch_client.task.add.call_args[1]["task"]
+    added_task = mock_batch_client.create_task.call_args[0][1]
     assert added_task.id == "task-base--1"
     assert added_task.command_line.startswith("/bin/bash")
 
@@ -110,10 +132,9 @@ def test_add_task():
         command_line=command_line,
         depends_on=["task-base--0"],
         run_dependent_tasks_on_fail=True,
-        save_logs_rel_path="ERROR!",
         mounts=[{"source": "my-source", "target": "/mnt/data"}],
     )
-    added_task = mock_batch_client.task.add.call_args[1]["task"]
+    added_task = mock_batch_client.create_task.call_args[0][1]
     assert added_task.id == "task-base--1"
     assert added_task.command_line.startswith("/bin/bash")
 
@@ -132,15 +153,16 @@ def test_get_pool_mounts():
 
 def test_download_job_stats():
     mock_batch_client = MagicMock()
+    mock_batch_client.list_tasks.return_value = []
     file_name = "/tmp/job-stats.json"
-    with patch.object(builtins, "print", return_value=True) as mock_print:
+    with patch("cfa.cloudops.batch_helpers.logger") as mock_logger:
         download_job_stats(
             batch_service_client=mock_batch_client,
             job_name="my-job",
             file_name=file_name,
         )
-        mock_print.assert_called_with(
-            f"Downloaded job statistics report to {file_name}.csv."
+        mock_logger.info.assert_called_with(
+            f"Job statistics download completed. File saved as: {file_name}.csv"
         )
 
 
@@ -242,3 +264,201 @@ def test_check_mount_format():
             str(excinfo.value)
             == "Invalid mount format: /mnt/data/files/. Mount path should not contain internal slashes."
         )
+
+
+def test_get_task_status_requires_batch_client():
+    with pytest.raises(ValueError) as excinfo:
+        get_task_status(job_name="my-job", batch_client=None)
+    assert str(excinfo.value) == "Batch client must be provided to get task status."
+
+
+def test_get_task_status_job_does_not_exist():
+    mock_batch_client = MagicMock()
+    mock_batch_client.list_jobs.return_value = []
+
+    with pytest.raises(ValueError) as excinfo:
+        get_task_status(job_name="missing-job", batch_client=mock_batch_client)
+    assert str(excinfo.value) == "Job missing-job does not exist."
+
+
+def test_get_task_status_all_tasks():
+    mock_batch_client = MagicMock()
+    mock_batch_client.list_jobs.return_value = [MagicMock(id="my-job")]
+
+    mock_batch_client.list_tasks.return_value = [
+        MagicMock(
+            id="t1",
+            state=models.BatchTaskState.RUNNING,
+            execution_info=MagicMock(exit_code=None),
+        ),
+        MagicMock(
+            id="t2",
+            state=models.BatchTaskState.COMPLETED,
+            execution_info=MagicMock(exit_code=0),
+        ),
+        MagicMock(
+            id="t3",
+            state="active",
+            execution_info=None,
+        ),
+    ]
+
+    result = get_task_status(job_name="my-job", batch_client=mock_batch_client)
+    payload = json.loads(result)
+
+    assert isinstance(payload, list)
+    assert {item["id"] for item in payload} == {"t1", "t2", "t3"}
+    assert {item["state"] for item in payload} == {"running", "completed", "active"}
+    assert next(item["exit_code"] for item in payload if item["id"] == "t3") is None
+
+
+def test_get_task_status_single_task():
+    mock_batch_client = MagicMock()
+    mock_batch_client.list_jobs.return_value = [MagicMock(id="my-job")]
+
+    mock_batch_client.list_tasks.return_value = [
+        MagicMock(
+            id="t1",
+            state=models.BatchTaskState.COMPLETED,
+            execution_info=MagicMock(exit_code=0),
+        ),
+        MagicMock(
+            id="t2",
+            state=models.BatchTaskState.COMPLETED,
+            execution_info=MagicMock(exit_code=1),
+        ),
+    ]
+
+    result = get_task_status(
+        job_name="my-job", task_id="t2", batch_client=mock_batch_client
+    )
+    payload = json.loads(result)
+
+    assert payload == {"id": "t2", "state": "completed", "exit_code": 1}
+
+
+def test_get_task_status_unknown_task_id():
+    mock_batch_client = MagicMock()
+    mock_batch_client.list_jobs.return_value = [MagicMock(id="my-job")]
+    mock_batch_client.list_tasks.return_value = [
+        MagicMock(
+            id="t1",
+            state=models.BatchTaskState.COMPLETED,
+            execution_info=MagicMock(exit_code=0),
+        )
+    ]
+
+    with pytest.raises(ValueError) as excinfo:
+        get_task_status(
+            job_name="my-job", task_id="nope", batch_client=mock_batch_client
+        )
+    assert str(excinfo.value) == "Task nope does not exist in job my-job."
+
+
+def test_get_vm_size_valid_and_invalid():
+    assert get_vm_size("Small") == "Standard_D4ads_v5"
+
+    with pytest.raises(ValueError) as excinfo:
+        get_vm_size("tiny")
+    assert "Invalid size descriptor" in str(excinfo.value)
+
+
+def test_get_all_vm_quotas_filters_positive_quotas_only():
+    mock_batch_mgmt_client = MagicMock()
+    mock_batch_mgmt_client.batch_account.get.return_value = SimpleNamespace(
+        dedicated_core_quota_per_vm_family=[
+            SimpleNamespace(name="standardDADSv5Family", core_quota=32),
+            SimpleNamespace(name="standardEASv5Family", core_quota=0),
+            SimpleNamespace(name="standardFsv2Family", core_quota=-2),
+        ]
+    )
+
+    result = get_all_vm_quotas(
+        batch_mgmt_client=mock_batch_mgmt_client,
+        resource_group="rg",
+        account_name="acct",
+    )
+
+    assert result == [{"name": "standardDADSv5Family", "quota": 32}]
+
+
+def test_get_vm_series_quotas_for_str_and_list():
+    mock_batch_mgmt_client = MagicMock()
+    mock_batch_mgmt_client.batch_account.get.return_value = SimpleNamespace(
+        dedicated_core_quota_per_vm_family=[
+            SimpleNamespace(name="standardDADSv5Family", core_quota=48),
+            SimpleNamespace(name="standardEADSv5Family", core_quota=24),
+            SimpleNamespace(name="standardFsv2Family", core_quota=16),
+        ]
+    )
+
+    d_series = get_vm_series_quotas(
+        series="d",
+        batch_mgmt_client=mock_batch_mgmt_client,
+        resource_group="rg",
+        account_name="acct",
+    )
+    de_series = get_vm_series_quotas(
+        series=["D", "e"],
+        batch_mgmt_client=mock_batch_mgmt_client,
+        resource_group="rg",
+        account_name="acct",
+    )
+
+    assert d_series == [{"name": "standardDADSv5Family", "quota": 48}]
+    assert {item["name"] for item in de_series} == {
+        "standardDADSv5Family",
+        "standardEADSv5Family",
+    }
+
+
+def test_vm_name_to_family_and_construct_vm_name():
+    vm_name = "standard_D4ads_v5"
+    family = vm_name_to_family(vm_name)
+    assert family == "standardDADSv5Family"
+    assert construct_vm_name(family, cores=4) == vm_name
+
+    with pytest.raises(ValueError) as excinfo:
+        vm_name_to_family("bad_vm")
+    assert "Unexpected vm_name format" in str(excinfo.value)
+
+
+def test_get_vm_name_no_verify_and_verify_errors():
+    assert (
+        get_vm_name(
+            series="D", cores=4, amd=True, temp_disk=True, ssd=True, verify=False
+        )
+        == "standard_D4ads_v5"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        get_vm_name(series="D", verify=True)
+    assert "must be provided when verify=True" in str(excinfo.value)
+
+
+def test_get_vm_name_verify_unavailable_has_suggestions():
+    mock_batch_mgmt_client = MagicMock()
+    mock_batch_mgmt_client.batch_account.get.return_value = SimpleNamespace(
+        dedicated_core_quota_per_vm_family=[
+            SimpleNamespace(name="standardDASv5Family", core_quota=16),
+            SimpleNamespace(name="standardDDSv5Family", core_quota=32),
+        ]
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        get_vm_name(
+            series="D",
+            cores=4,
+            amd=True,
+            temp_disk=True,
+            ssd=True,
+            verify=True,
+            batch_mgmt_client=mock_batch_mgmt_client,
+            resource_group="rg",
+            account_name="acct",
+        )
+
+    assert "VM standard_D4ads_v5 is not available in the current quota." in str(
+        excinfo.value
+    )
+    assert "Similar available VMs:" in str(excinfo.value)
