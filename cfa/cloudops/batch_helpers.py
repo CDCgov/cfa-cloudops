@@ -1212,10 +1212,7 @@ def get_pool_mounts(
 
     mounts = []
     try:
-        mc = getattr(pool_info, "mount_configuration", None)
-        if mc is None:
-            mc = pool_info.mount_configuration or []
-        mc = mc or []
+        mc = getattr(pool_info, "mount_configuration", None) or []
         logger.debug(f"Processing {len(mc)} mount configurations")
 
         for m in mc:
