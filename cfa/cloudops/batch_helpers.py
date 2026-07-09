@@ -3,8 +3,10 @@ import datetime
 import json
 import logging
 import os
+import re
 import time
 import uuid
+from difflib import SequenceMatcher
 from pathlib import Path
 from zoneinfo import ZoneInfo as zi
 
@@ -23,6 +25,7 @@ from azure.batch.models import (
     ExitOptions,
     UserIdentity,
 )
+from azure.mgmt.batch import BatchManagementClient
 
 from cfa.cloudops.task import (
     get_container_settings,
@@ -236,10 +239,10 @@ def monitor_tasks(
 
     logger.debug(f"Getting initial job state for '{job_name}'")
     job = batch_client.get_job(job_name)
-    logger.debug(f"Initial job state: {job.as_dict()['state']}")
+    logger.debug(f"Initial job state: {job.state}")
 
     polling_count = 0
-    while job.as_dict()["state"] != "completed" and not completed:
+    while job.state != batch_models.BatchJobState.COMPLETED and not completed:
         if datetime.datetime.now() < timeout_expiration:
             polling_count += 1
             logger.debug(f"Polling iteration {polling_count}: sleeping 5 seconds")
@@ -1706,7 +1709,9 @@ def get_vm_size(size="small"):
 
     Args:
         size (str): A simple descriptor for the desired VM size. Options include
-            "xsmall", "small", "medium", "large", "xlarge". Defaults to "small".
+            "xsmall", "small", "medium", "large", "xlarge",
+            "xsmall_amd", "small_amd", "medium_amd", "large_amd", "xlarge_amd".
+            Defaults to "small".
 
     Returns:
         str: The corresponding Azure VM size string.
@@ -1715,33 +1720,38 @@ def get_vm_size(size="small"):
         Get a small VM size:
 
             vm_size = get_vm_size("small")
-            print(vm_size)  # Output: "Standard_D4s_v3"
+            print(vm_size)  # Output: "Standard_D4ads_v5"
 
         Get a medium VM size:
 
             vm_size = get_vm_size("medium")
-            print(vm_size)  # Output: "Standard_D8s_v3"
+            print(vm_size)  # Output: "Standard_D8ads_v5"
 
         Get a large VM size:
 
             vm_size = get_vm_size("large")
-            print(vm_size)  # Output: "Standard_D16s_v3"
+            print(vm_size)  # Output: "Standard_D16ads_v5"
     """
     logger.debug(f"Getting VM size for descriptor: {size}")
     size_mapping = {
-        "xsmall": "Standard_D2s_v3",
-        "small": "Standard_D4s_v3",
-        "medium": "Standard_D8s_v3",
-        "large": "Standard_D16s_v3",
-        "xlarge": "Standard_D32s_v3",
+        "xsmall": "Standard_D2ads_v5",
+        "small": "Standard_D4ads_v5",
+        "medium": "Standard_D8ads_v5",
+        "large": "Standard_D16ads_v5",
+        "xlarge": "Standard_D32ads_v5",
+        "xsmall_amd": "Standard_D2ads_v5",
+        "small_amd": "Standard_D4ads_v5",
+        "medium_amd": "Standard_D8ads_v5",
+        "large_amd": "Standard_D16ads_v5",
+        "xlarge_amd": "Standard_D32ads_v5",
     }
     vm_size = size_mapping.get(size.lower())
     if vm_size is None:
         logger.error(
-            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge'."
+            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xsmall_amd', 'small_amd', 'medium_amd', 'large_amd', 'xlarge_amd'."
         )
         raise ValueError(
-            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge'."
+            f"Invalid size descriptor: {size}. Valid options are 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xsmall_amd', 'small_amd', 'medium_amd', 'large_amd', 'xlarge_amd'."
         )
     logger.info(f"Selected VM size: {vm_size} for descriptor: {size}")
     return vm_size
@@ -1792,3 +1802,289 @@ def get_task_status(
         )
 
     return json.dumps(out_json)
+
+
+def get_all_vm_quotas(
+    batch_mgmt_client: BatchManagementClient, resource_group: str, account_name: str
+) -> list[dict]:
+    """Returns all available VMs in the account.
+
+    Args:
+        batch_mgmt_client (BatchManagementClient): instance of Azure BatchManagementClient
+        resource_group (str): name of the resource group
+        account_name (str): name of the batch account
+
+    Returns:
+        list[dict]: list of available VM names with their quotas
+    """
+    account = batch_mgmt_client.batch_account.get(
+        resource_group_name=resource_group, account_name=account_name
+    )
+    quotas = account.dedicated_core_quota_per_vm_family or []
+    available = [
+        {"name": getattr(quota, "name", None), "quota": getattr(quota, "core_quota", 0)}
+        for quota in quotas
+        if getattr(quota, "core_quota", 0) > 0
+    ]
+    return available
+
+
+def get_vm_series_quotas(
+    series: str | list[str],
+    batch_mgmt_client: BatchManagementClient,
+    resource_group: str,
+    account_name: str,
+):
+    """
+    Returns all available VMs in the account that match the given series.
+
+    Args:
+        series (str | list[str]): VM series to filter, e.g. "D" or "E".
+        batch_mgmt_client (BatchManagementClient): instance of Azure BatchManagementClient
+        resource_group (str): name of the resource group
+        account_name (str): name of the batch account
+
+    Returns:
+        list[dict]: list of available VM names with their quotas that match the given series
+    """
+    if isinstance(series, str):
+        series = [series]
+    quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+    output = []
+    for s in series:
+        s_norm = s.lower()
+        for quota in quotas:
+            name = (quota.get("name") or "").lower()
+            if name.split("standard")[-1].startswith(s_norm):
+                output.append(quota)
+    return output
+
+
+def vm_name_to_family(vm_name: str) -> str:
+    """Convert a VM name like 'standard_D4ads_v5' to 'standardDADSv5Family'.
+
+    Args:
+        vm_name (str): The VM name to convert, e.g., 'standard_D4ads_v5'.
+
+    Returns:
+        str: The corresponding VM family name.
+    """
+    match = re.fullmatch(r"standard_([A-Za-z]+)(\d+)([A-Za-z0-9_]*)_v(\d+)", vm_name)
+    if not match:
+        raise ValueError(f"Unexpected vm_name format: {vm_name}")
+
+    series, _cores, attrs, version = match.groups()
+    attrs = attrs.replace("_", "").upper()
+
+    return f"standard{series.upper()}{attrs}v{version}Family"
+
+
+def get_vm_name(
+    series: str = "D",
+    cores: int = 4,
+    amd: bool = False,
+    temp_disk: bool = True,
+    ssd: bool = False,
+    version: int = 5,
+    verify: bool = True,
+    batch_mgmt_client: BatchManagementClient | None = None,
+    resource_group: str | None = None,
+    account_name: str | None = None,
+) -> str:
+    """Construct usable VM name by providing VM characteristics.
+
+    Args:
+        series (str, optional): VM series to use, e.g., "D" or "E". Defaults to "D".
+        cores (int, optional): Number of cores for the VM. Defaults to 4.
+        amd (bool, optional): Whether to use AMD processors. Defaults to False.
+        temp_disk (bool, optional): Whether to include a temporary disk. Defaults to True.
+        ssd (bool, optional): Whether to use SSD storage. Defaults to False.
+        version (int, optional): VM version. Defaults to 5.
+        verify (bool, optional): Whether to verify the VM name against available quotas. Defaults to True.
+        batch_mgmt_client (BatchManagementClient | None, optional): Batch management client instance. Defaults to None.
+        resource_group (str | None, optional): Resource group name. Defaults to None.
+        account_name (str | None, optional): Batch account name. Defaults to None.
+
+    Raises:
+        ValueError: If the VM name is not available in the current quota.
+
+    Returns:
+        str: The constructed VM name.
+    """
+
+    amd_str = "a" if amd else ""
+    temp_disk_str = "d" if temp_disk else ""
+    ssd_str = "s" if ssd else ""
+    vm_name = (
+        f"standard_{series.upper()}{cores}{amd_str}{temp_disk_str}{ssd_str}_v{version}"
+    )
+    if verify:
+        if batch_mgmt_client is None or resource_group is None or account_name is None:
+            raise ValueError(
+                "batch_mgmt_client, resource_group, and account_name must be provided when verify=True."
+            )
+        # check available in quota
+        family_name = vm_name_to_family(vm_name)
+        quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+        if not any(quota.get("name") == family_name for quota in quotas):
+            options = find_similar_vm_families(family_name, 4, 0.6, quotas)
+            suggestions = [construct_vm_name(opt, cores) for opt in options]
+            hint = (
+                f" Similar available VMs: {', '.join(suggestions)}"
+                if suggestions
+                else ""
+            )
+            raise ValueError(
+                f"VM {vm_name} is not available in the current quota.{hint}"
+            )
+    return vm_name
+
+
+def get_vm_components(vm) -> tuple[str, str, str]:
+    """Extract VM components from the VM name.
+
+    Args:
+        vm (str): The VM name.
+
+    Returns:
+        tuple[str, str, str]: A tuple containing the series, attributes, and version of the VM.
+    """
+    vm_attrs = vm.lower().split("standard")[-1].split("family")[0]
+    vm_split = vm_attrs.split("v")
+    version = int(vm_split[-1])
+    instance = vm_split[0]
+    if len(instance) == 1:
+        series = instance
+        attr = ""
+    else:
+        series = instance[0]
+        attr = instance[1:]
+    return series.upper(), attr, str(version)
+
+
+def find_similar_vm_families(
+    family_name: str,
+    limit: int = 10,
+    min_score: float = 0.5,
+    quotas: list[dict] | None = None,
+    batch_mgmt_client: BatchManagementClient | None = None,
+    resource_group: str | None = None,
+    account_name: str | None = None,
+) -> list[str]:
+    """Return quota family names that are closest to the requested family name.
+
+    Args:
+        family_name (str): The requested VM family name, like "standardDADSv5Family".
+        limit (int, optional): The maximum number of similar family names to return. Defaults to 10.
+        min_score (float, optional): The minimum similarity score required to consider a family name. Defaults to 0.5.
+        quotas (list[dict] | None, optional): A list of quota dictionaries. If None, fetches all VM quotas. Defaults to None.
+
+    Returns:
+        list[str]: A list of similar VM family names.
+    """
+    if quotas is None:
+        quotas = get_all_vm_quotas(batch_mgmt_client, resource_group, account_name)
+
+    available_names = [quota["name"] for quota in quotas if quota.get("name")]
+    if not available_names:
+        return []
+
+    def normalize(name: str) -> str:
+        return "".join(ch for ch in name.lower() if ch.isalnum())
+
+    target_norm = normalize(family_name)
+    target_series, _target_attrs, target_version = get_vm_components(family_name)
+
+    scored_names = []
+    for candidate in available_names:
+        candidate_norm = normalize(candidate)
+        similarity = SequenceMatcher(None, target_norm, candidate_norm).ratio()
+
+        try:
+            candidate_series, _candidate_attrs, candidate_version = get_vm_components(
+                candidate
+            )
+        except (IndexError, ValueError):
+            candidate_series, candidate_version = "", ""
+
+        score = similarity
+        if candidate_series == target_series:
+            score += 0.2
+        if candidate_version == target_version:
+            score += 0.1
+
+        if score >= min_score:
+            scored_names.append((score, candidate))
+
+    scored_names.sort(key=lambda item: (-item[0], item[1]))
+    return [candidate for _score, candidate in scored_names[:limit]]
+
+
+def construct_vm_name(vm_family_name: str, cores: int) -> str:
+    """Construct a VM name from the family name and number of cores.
+
+    Args:
+        vm_family_name (str): The VM family name, like "standardDADSv5Family".
+        cores (int): The number of cores for the VM.
+
+    Returns:
+        str: The constructed VM name.
+    """
+    vm_spec = list(vm_family_name.split("standard")[-1].split("Family")[0])
+    vm_series = vm_spec.pop(0)
+    vm_attrs, vm_size = "".join(vm_spec).split("v")
+    vm_attrs = vm_attrs.lower()
+    return f"standard_{vm_series}{cores}{vm_attrs}_v{vm_size}"
+
+
+def check_if_pool_vm_deprecated(
+    pool_name: str, resource_group: str, account_name: str, batch_mgmt_client: object
+) -> bool:
+    """Check if the VM series used in the pool is deprecated.
+
+    Args:
+        pool_name (str): Name of the Azure Batch pool.
+        resource_group (str): Name of the Azure resource group containing the Batch account.
+        account_name (str): Name of the Azure Batch account.
+        batch_mgmt_client (BatchManagementClient): Instance of BatchManagementClient for API calls.
+
+    Returns:
+        bool: True if the VM series is deprecated, False otherwise.
+    """
+    logger.debug(f"Checking if pool '{pool_name}' uses a deprecated VM series.")
+    try:
+        pool_info = get_pool_full_info(
+            resource_group, account_name, pool_name, batch_mgmt_client
+        )
+    except Exception as e:
+        logger.debug(f"No pool information found during version check: {e}")
+        pool_info = None
+    if pool_info is None:
+        logger.warning(f"Pool '{pool_name}' not found. Cannot check VM version.")
+        return False
+    current_vm = getattr(pool_info, "vm_size", None)
+    if current_vm is None and hasattr(pool_info, "as_dict"):
+        pool_dict = pool_info.as_dict()
+        current_vm = (
+            pool_dict.get("vm_size")
+            or pool_dict.get("vmSize")
+            or pool_dict.get("properties", {}).get("vmSize")
+            or pool_dict.get("properties", {}).get("vm_size")
+        )
+    if not current_vm:
+        logger.warning(
+            f"Pool '{pool_name}' does not expose vm_size; cannot check VM version."
+        )
+        return False
+
+    m = re.search(r"_v(\d+)$", str(current_vm).lower())
+    if not m:
+        logger.warning(f"Could not parse VM version from size '{current_vm}'.")
+        return False
+
+    version = int(m.group(1))
+    logger.debug(f"Current VM size: {current_vm}, version: {version}")
+    if version < 4:
+        logger.warning("The current VM is too old. Please upgrade to a newer version.")
+        return True
+    return False

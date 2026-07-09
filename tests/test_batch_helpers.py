@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -8,13 +9,19 @@ from azure.storage.blob import BlobProperties
 from cfa.cloudops.batch_helpers import (
     add_task,
     check_mount_format,
+    construct_vm_name,
     download_job_stats,
+    get_all_vm_quotas,
     get_args_from_yaml,
     get_full_container_image_name,
     get_pool_mounts,
     get_rel_mnt_path,
     get_task_status,
+    get_vm_name,
+    get_vm_series_quotas,
+    get_vm_size,
     monitor_tasks,
+    vm_name_to_family,
 )
 
 
@@ -346,3 +353,112 @@ def test_get_task_status_unknown_task_id():
             job_name="my-job", task_id="nope", batch_client=mock_batch_client
         )
     assert str(excinfo.value) == "Task nope does not exist in job my-job."
+
+
+def test_get_vm_size_valid_and_invalid():
+    assert get_vm_size("Small") == "Standard_D4ads_v5"
+
+    with pytest.raises(ValueError) as excinfo:
+        get_vm_size("tiny")
+    assert "Invalid size descriptor" in str(excinfo.value)
+
+
+def test_get_all_vm_quotas_filters_positive_quotas_only():
+    mock_batch_mgmt_client = MagicMock()
+    mock_batch_mgmt_client.batch_account.get.return_value = SimpleNamespace(
+        dedicated_core_quota_per_vm_family=[
+            SimpleNamespace(name="standardDADSv5Family", core_quota=32),
+            SimpleNamespace(name="standardEASv5Family", core_quota=0),
+            SimpleNamespace(name="standardFsv2Family", core_quota=-2),
+        ]
+    )
+
+    result = get_all_vm_quotas(
+        batch_mgmt_client=mock_batch_mgmt_client,
+        resource_group="rg",
+        account_name="acct",
+    )
+
+    assert result == [{"name": "standardDADSv5Family", "quota": 32}]
+
+
+def test_get_vm_series_quotas_for_str_and_list():
+    mock_batch_mgmt_client = MagicMock()
+    mock_batch_mgmt_client.batch_account.get.return_value = SimpleNamespace(
+        dedicated_core_quota_per_vm_family=[
+            SimpleNamespace(name="standardDADSv5Family", core_quota=48),
+            SimpleNamespace(name="standardEADSv5Family", core_quota=24),
+            SimpleNamespace(name="standardFsv2Family", core_quota=16),
+        ]
+    )
+
+    d_series = get_vm_series_quotas(
+        series="d",
+        batch_mgmt_client=mock_batch_mgmt_client,
+        resource_group="rg",
+        account_name="acct",
+    )
+    de_series = get_vm_series_quotas(
+        series=["D", "e"],
+        batch_mgmt_client=mock_batch_mgmt_client,
+        resource_group="rg",
+        account_name="acct",
+    )
+
+    assert d_series == [{"name": "standardDADSv5Family", "quota": 48}]
+    assert {item["name"] for item in de_series} == {
+        "standardDADSv5Family",
+        "standardEADSv5Family",
+    }
+
+
+def test_vm_name_to_family_and_construct_vm_name():
+    vm_name = "standard_D4ads_v5"
+    family = vm_name_to_family(vm_name)
+    assert family == "standardDADSv5Family"
+    assert construct_vm_name(family, cores=4) == vm_name
+
+    with pytest.raises(ValueError) as excinfo:
+        vm_name_to_family("bad_vm")
+    assert "Unexpected vm_name format" in str(excinfo.value)
+
+
+def test_get_vm_name_no_verify_and_verify_errors():
+    assert (
+        get_vm_name(
+            series="D", cores=4, amd=True, temp_disk=True, ssd=True, verify=False
+        )
+        == "standard_D4ads_v5"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        get_vm_name(series="D", verify=True)
+    assert "must be provided when verify=True" in str(excinfo.value)
+
+
+def test_get_vm_name_verify_unavailable_has_suggestions():
+    mock_batch_mgmt_client = MagicMock()
+    mock_batch_mgmt_client.batch_account.get.return_value = SimpleNamespace(
+        dedicated_core_quota_per_vm_family=[
+            SimpleNamespace(name="standardDASv5Family", core_quota=16),
+            SimpleNamespace(name="standardDDSv5Family", core_quota=32),
+        ]
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        get_vm_name(
+            series="D",
+            cores=4,
+            amd=True,
+            temp_disk=True,
+            ssd=True,
+            verify=True,
+            batch_mgmt_client=mock_batch_mgmt_client,
+            resource_group="rg",
+            account_name="acct",
+        )
+
+    assert "VM standard_D4ads_v5 is not available in the current quota." in str(
+        excinfo.value
+    )
+    assert "Similar available VMs:" in str(excinfo.value)

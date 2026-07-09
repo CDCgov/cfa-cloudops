@@ -27,7 +27,12 @@ from .auth import (
     EnvCredentialHandler,
     SPCredentialHandler,
 )
-from .batch_helpers import check_mount_format, get_vm_size
+from .batch_helpers import (
+    check_mount_format,
+    get_all_vm_quotas,
+    get_vm_series_quotas,
+    get_vm_size,
+)
 from .blob import create_storage_container_if_not_exists, get_node_mount_config
 from .blob_helpers import upload_files_in_folder
 from .client import (
@@ -208,16 +213,17 @@ class CloudClient:
                     how you reference the mount path in your container.
             container_image_name (str, optional): Docker container image name to use for tasks.
                 Should be in the format "registry/image:tag" or just "image:tag" for Docker Hub.
-            vm_size (str): Azure VM size for the pool nodes (e.g., "Standard_D4s_v3").
+            vm_size (str): Azure VM size for the pool nodes (e.g., "standard_D4ads_v5").
                 Defaults to the value from defaults module.
                 VM size can also be given in the form "xsmall", "small", "medium", "large", or "xlarge" for convenience,
                 which will be mapped to specific Azure VM sizes. The sizes map to the following Azure VM sizes:
-                    - "xsmall": "Standard_D2s_v3"
-                    - "small": "Standard_D4s_v3"
-                    - "medium": "Standard_D8s_v3"
-                    - "large": "Standard_D16s_v3"
-                    - "xlarge": "Standard_D32s_v3"
+                    - "xsmall": "standard_D2ads_v5"
+                    - "small": "standard_D4ads_v5"
+                    - "medium": "standard_D8ads_v5"
+                    - "large": "standard_D16ads_v5"
+                    - "xlarge": "standard_D32ads_v5"
                  Note that not all VM sizes may be available in all regions, so ensure the specified size is available in your Azure region.
+                 For help determining available VM sizes, you can use the `get_vm_name` method of this client.
             autoscale (bool): Whether to enable autoscaling (True) or use fixed scaling (False).
                 Default is True.
             autoscale_formula (str): Autoscale formula to use when autoscale=True.
@@ -268,7 +274,7 @@ class CloudClient:
                 client.create_pool(
                     pool_name="data-processing-pool",
                     container_image_name="python:3.9",
-                    vm_size="Standard_D4s_v3",
+                    vm_size="standard_D4ads_v5",
                     mounts=["input-data", "output-results"],
                     autoscale=False,
                     dedicated_nodes=5,
@@ -342,8 +348,19 @@ class CloudClient:
         logger.debug(f"Validated pool name: {pool_name}")
 
         # validate vm size
-        valid_vm_sizes = ["xsmall", "small", "medium", "large", "xlarge"]
-        if vm_size in valid_vm_sizes:
+        valid_vm_sizes = [
+            "xsmall",
+            "small",
+            "medium",
+            "large",
+            "xlarge",
+            "xsmall_amd",
+            "small_amd",
+            "medium_amd",
+            "large_amd",
+            "xlarge_amd",
+        ]
+        if vm_size.lower() in valid_vm_sizes:
             vm_size = get_vm_size(vm_size)
         logger.info(f"Using VM size: {vm_size}")
 
@@ -447,18 +464,17 @@ class CloudClient:
                 container_image_names=[container_image_name],
             )
             logger.debug(f"Set container image: {container_image_name}")
-
-            # Add container registry if available
-            if hasattr(self.cred, "azure_container_registry"):
-                container_config.container_registries = [
-                    self.cred.azure_container_registry
-                ]
-                logger.debug("Added azure container registry to client configuration.")
-
-            d.assign_container_config(pool_config, container_config)
         else:
-            logger.error("container_image_name not provided.")
-            raise ValueError("container_image_name not provided.")
+            container_config = models.ContainerConfiguration(
+                type="dockerCompatible", container_image_names=[]
+            )
+
+        # Add container registry if available
+        if hasattr(self.cred, "azure_container_registry"):
+            container_config.container_registries = [self.cred.azure_container_registry]
+            logger.debug("Added azure container registry to client configuration.")
+
+        d.assign_container_config(pool_config, container_config)
 
         # Configure availability zones in the virtual machine configuration
         # Set node placement configuration for zonal deployment
@@ -605,6 +621,18 @@ class CloudClient:
         else:
             logger.error("Please specify a pool for the job and try again.")
             raise Exception("Please specify a pool for the job and try again.")
+
+        # check if VM deprecated
+        deprecated = batch_helpers.check_if_pool_vm_deprecated(
+            pool_name=pool_name,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+        if deprecated:
+            print(
+                f"Pool {pool_name} is using a deprecated VM series. Consider updating the pool to a supported VM series."
+            )
 
         self.save_logs_to_blob = save_logs_to_blob
 
@@ -810,7 +838,7 @@ class CloudClient:
         depends_on: str | None = None,
         depends_on_range: tuple | None = None,
         run_dependent_tasks_on_fail: bool = False,
-        container_image_name: str = None,
+        container_image_name: str | None = None,
         timeout: int | None = None,
     ):
         """
@@ -830,8 +858,8 @@ class CloudClient:
             depends_on (str | list[str], optional): Task ID or list of task IDs this task depends on. Default is None.
             depends_on_range (tuple, optional): Range of task IDs this task depends on. Default is None.
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
-            container_image_name (str, optional): Container image to use for the task. Default is None.
-            timeout (int, optional): Maximum time in minutes for the task to run. Default is None.
+            container_image_name (str | None, optional): Container image to use for the task. Default is None.
+            timeout (int | None, optional): Maximum time in minutes for the task to run. Default is None.
         """
         logger.debug(f"Adding task to job: {job_name}")
         # get pool info for related job
@@ -873,9 +901,19 @@ class CloudClient:
                     pool_info.deployment_configuration.virtual_machine_configuration
                 )
                 logger.debug("Generated VM config.")
+
                 pool_container = vm_config.container_configuration.container_image_names
-                container_name = pool_container[0].split("://")[-1]
-                logger.debug(f"Container name set to {container_name}.")
+                try:
+                    if pool_container is not None and len(pool_container) > 0:
+                        container_name = pool_container[0].split("://")[-1]
+                        logger.debug(f"Container name set to {container_name}.")
+                    else:
+                        raise ValueError(
+                            "No container image found in pool configuration and no container image name provided."
+                        )
+                except Exception as e:
+                    logger.error(f"No container image found or provided: {str(e)}")
+                    raise
             else:
                 container_name = self.full_container_name
                 logger.debug(f"Container name set to {container_name}.")
@@ -2400,4 +2438,73 @@ class CloudClient:
         """
         return batch_helpers.get_task_status(
             job_name=job_name, task_id=task_id, batch_client=self.batch_service_client
+        )
+
+    def get_all_vm_quotas(self) -> list[dict]:
+        """Retrieves all available VMs in the Azure account.
+
+        Returns:
+            list[dict]: list of available VM names with their quotas
+        """
+        return get_all_vm_quotas(
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+
+    def get_vm_series_quotas(
+        self,
+        series: str | list[str],
+    ) -> list[dict]:
+        """
+        Returns all available VMs in the account that match the given series.
+
+        Args:
+            series (str | list[str]): VM series to filter, e.g. "D" or "E".
+
+        Returns:
+            list[dict]: list of available VM names with their quotas that match the given series
+        """
+        return get_vm_series_quotas(
+            series=series,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
+        )
+
+    def get_vm_name(
+        self,
+        series: str = "D",
+        cores: int = 4,
+        amd: bool = False,
+        temp_disk: bool = True,
+        ssd: bool = False,
+        version: int = 5,
+        verify: bool = True,
+    ) -> str:
+        """Get the name of a VM that matches the specified criteria.
+
+        Args:
+            series (str): The VM series (e.g., "D", "E", "F"). Default is "D".
+            cores (int): Number of CPU cores for the VM. Default is 4.
+            amd (bool): Whether to require AMD architecture. Default is False.
+            temp_disk (bool): Whether to require a temporary disk. Default is True.
+            ssd (bool): Whether to require an SSD. Default is False.
+            version (int): VM series version. Default is 5.
+            verify (bool): Whether to verify that the VM exists in the account. Default is True.
+
+        Returns:
+            str: The name of a VM that matches the specified criteria.
+        """
+        return batch_helpers.get_vm_name(
+            series=series,
+            cores=cores,
+            amd=amd,
+            temp_disk=temp_disk,
+            ssd=ssd,
+            version=version,
+            verify=verify,
+            batch_mgmt_client=self.batch_mgmt_client,
+            resource_group=self.cred.azure_resource_group_name,
+            account_name=self.cred.azure_batch_account,
         )
