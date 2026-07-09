@@ -227,6 +227,7 @@ class FunctionAppClient:
             )
             self.method = "sp"
             logger.info("Using service principal credentials.")
+        self.update_function_database = kwargs.get("update_function_database", True)
         self.conn = None
 
     def _get_database_connection(self):
@@ -539,10 +540,10 @@ class FunctionAppClient:
             self._add_user_package_to_deployment(user_package)
 
             # Check if the current production slot is healthy (i.e. something was deployed to it)
-            # If yes, then first clone the rollback slot to rollback_previous
+            # If yes, then first clone the rollback slot to rollbackprevious
             # Then delete the rollback stage and clone production to rollback
-            # Delete the rollback_previous if all went okay
-            # Otherwise restore production from backup, clone rollback from rollback_previous and delete rollback_previous
+            # Delete the rollbackprevious if all went okay
+            # Otherwise restore production from backup, clone rollback from rollbackprevious and delete rollbackprevious
             if FunctionAppClient.get_health_check_flag(
                 self.function_app_name,
                 self.cred.azure_resource_group_name,
@@ -561,9 +562,9 @@ class FunctionAppClient:
                 ]
                 if rollback_slot_exists:
                     logger.info(
-                        "FunctionAppClient._publish_function(): Rollback slot already exists. Cloning it to Rollback_Previous slot"
+                        "FunctionAppClient._publish_function(): Rollback slot already exists. Cloning it to rollbackprevious slot"
                     )
-                    self._clone_deployment_slot("rollback_previous", "rollback")
+                    self._clone_deployment_slot("rollbackprevious", "rollback")
                     self._delete_deployment_slot("rollback")
 
                 self._clone_deployment_slot("rollback")
@@ -607,6 +608,12 @@ class FunctionAppClient:
                     "FunctionAppClient._publish_function(): Production slot is healthy after deployment. Cloning production to backup slot"
                 )
 
+                if not current_slots:
+                    current_slots = FunctionAppClient.list_slots(
+                        self.function_app_name,
+                        self.cred.azure_resource_group_name,
+                        self.cred.azure_subscription_id,
+                    )
                 backup_slot_exists = [
                     True
                     for (slot_name, _, slot_enabled, _, _) in current_slots
@@ -621,12 +628,11 @@ class FunctionAppClient:
                 rollback_prev_slot_exists = [
                     True
                     for (slot_name, _, slot_enabled, _, _) in current_slots
-                    if slot_name.lower()
-                    == f"{self.function_app_name}/rollback_previous"
+                    if slot_name.lower() == f"{self.function_app_name}/rollbackprevious"
                     and slot_enabled
                 ]
                 if rollback_prev_slot_exists:
-                    self._delete_deployment_slot("rollback_previous")
+                    self._delete_deployment_slot("rollbackprevious")
 
             else:
                 current_slots = FunctionAppClient.list_slots(
@@ -646,18 +652,17 @@ class FunctionAppClient:
                 rollback_prev_slot_exists = [
                     True
                     for (slot_name, _, slot_enabled, _, _) in current_slots
-                    if slot_name.lower()
-                    == f"{self.function_app_name}/rollback_previous"
+                    if slot_name.lower() == f"{self.function_app_name}/rollbackprevious"
                     and slot_enabled
                 ]
                 if rollback_prev_slot_exists:
                     self._clone_deployment_slot(
-                        slot_name="rollback", source_slot="rollback_previous"
+                        slot_name="rollback", source_slot="rollbackprevious"
                     )
                     self._swap_deployment_slot(
-                        source_slot="rollback_previous", target_slot="production"
+                        source_slot="rollbackprevious", target_slot="production"
                     )
-                    self._delete_deployment_slot("rollback_previous")
+                    self._delete_deployment_slot("rollbackprevious")
 
             return True
 
@@ -747,7 +752,7 @@ class FunctionAppClient:
                 "FunctionAppClient.deploy_function(): Deployment did not complete because Function App publish operation failed."
             )
             return False
-        if not self._allocate_function_app():
+        if self.update_function_database and not self._allocate_function_app():
             logger.error(
                 "FunctionAppClient.deploy_function(): Unable to assign function app to user provided application."
             )
