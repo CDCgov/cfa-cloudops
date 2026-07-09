@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.7.3
+- Push penultimate deployments to `rollbackprevious` slot of Azure Function Apps
+
 ## v0.7.2
 - add a deprecation warning when jobs are created on pools using a v3 VM
 
