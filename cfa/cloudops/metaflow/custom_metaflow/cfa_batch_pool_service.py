@@ -40,7 +40,7 @@ class CFABatchPoolService:
         self.cred = SPCredentialHandler(
             azure_tenant_id=self.attributes["AZURE_TENANT_ID"],
             azure_subscription_id=self.attributes["AZURE_SUBSCRIPTION_ID"],
-            azure_sp_client_id=self.attributes["AZURE_SP_CLIENT_ID"],
+            azure_client_id=self.attributes["AZURE_CLIENT_ID"],
             azure_client_secret=self.attributes["AZURE_CLIENT_SECRET"],
             azure_keyvault_endpoint=self.attributes["AZURE_KEYVAULT_ENDPOINT"],
             azure_keyvault_sp_secret_id=self.attributes["AZURE_KEYVAULT_SP_SECRET_ID"],

@@ -715,6 +715,9 @@ def delete_pool(
         pool_name=pool_name,
     )
     logger.info(f"Pool deletion initiated for '{pool_name}'.")
+    logger.warning(
+        "Pool deletion may take a few seconds to complete. Recreating a pool with the same name may fail until deletion is fully processed."
+    )
     return poller
 
 
