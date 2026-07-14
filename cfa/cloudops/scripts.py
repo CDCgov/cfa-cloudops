@@ -160,9 +160,6 @@ def create_job():
         help="Name of the resource pool to use",
     )
     parser.add_argument(
-        "-dep", "--uses_deps", action="store_true", help="Use dependencies"
-    )
-    parser.add_argument(
         "-s",
         "--save_logs_to_blob",
         type=str,
@@ -222,7 +219,6 @@ def create_job():
     client.create_job(
         job_name=args.job_name,
         pool_name=args.pool_name,
-        uses_deps=args.uses_deps,
         save_logs_to_blob=args.save_logs_to_blob,
         logs_folder=args.logs_folder,
         task_retries=args.task_retries,
