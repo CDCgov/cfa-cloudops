@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.7.5
+
+- removes --uses_deps arg from create_job cli command
+
 ## v0.7.4
 - Upgrade Ubuntu node to 24.04
 
