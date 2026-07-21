@@ -1178,6 +1178,7 @@ class CloudClient:
         exclude_patterns: str | list | None = None,
         location_in_blob: str = ".",
         force_upload: bool = False,
+        exist_ok: bool = False,
         legal_hold: bool = False,
         immutability_lock_days: int = 0,
     ) -> list[str]:
@@ -1206,6 +1207,9 @@ class CloudClient:
             force_upload (bool, optional): Whether to force upload files even if they
                 already exist in the container with the same size. Default is False
                 (skip existing files with same size).
+            exist_ok (bool, optional): If False, raise an error when location_in_blob
+                does not already exist in the container. If True, continue upload and
+                allow creating a new virtual path implicitly. Default is False.
             legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs
                 which prevents deletion or modification of the blobs.
             immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
@@ -1253,6 +1257,7 @@ class CloudClient:
                 location_in_blob=location_in_blob,
                 blob_service_client=self.blob_service_client,
                 force_upload=force_upload,
+                exist_ok=exist_ok,
                 legal_hold=legal_hold,
                 immutability_lock_days=immutability_lock_days,
             )

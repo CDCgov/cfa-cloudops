@@ -64,6 +64,7 @@ def upload_files_in_folder(
     location_in_blob: str = ".",
     blob_service_client=None,
     force_upload: bool = True,
+    exist_ok: bool = False,
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
@@ -91,6 +92,9 @@ def upload_files_in_folder(
         blob_service_client: Azure Blob service client instance for API calls.
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
+        exist_ok (bool, optional): If False, raise an error when location_in_blob
+            does not already exist in the container. If True, continue upload and
+            allow creating a new virtual path implicitly. Default is False.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
             which prevents deletion or modification of the blobs.
@@ -167,6 +171,22 @@ def upload_files_in_folder(
         ) from None
     # check number of files if force_upload False
     logger.debug(f"Blob container {container_name} found. Uploading files...")
+
+    normalized_blob_location = location_in_blob.strip().strip("/")
+    if normalized_blob_location and normalized_blob_location != ".":
+        blob_prefix = f"{normalized_blob_location}/"
+        if not check_virtual_directory_existence(container_client, blob_prefix):
+            if exist_ok:
+                logger.warning(
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'. Proceeding because exist_ok=True."
+                )
+            else:
+                logger.error(
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'."
+                )
+                raise ValueError(
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'."
+                )
 
     # get all files in folder
     file_list = []
@@ -550,6 +570,9 @@ def check_virtual_directory_existence(
         first_blob = next(blobs)
         logger.debug(f"{first_blob.name} found.")
         return True
+    except StopIteration:
+        logger.debug(f"No blobs found with prefix '{vdir_path}'.")
+        return False
     except Exception as e:
         logger.error(repr(e))
         raise e
