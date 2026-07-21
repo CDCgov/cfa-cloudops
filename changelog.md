@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## v0.7.4
+- Upgrade Ubuntu node to 24.04
+
 ## v0.7.3
 - Push penultimate deployments to `rollbackprevious` slot of Azure Function Apps
 
 ## v0.7.2
-- add a deprecation warning when jobs are created on pools using a v3 VM
+- Add a deprecation warning when jobs are created on pools using a v3 VM
 
 ## v0.7.1
 - `create_pool()` allows for empty container image name, which can be determined when adding tasks
