@@ -248,6 +248,36 @@ def upload_files_in_folder(
         logger.debug(f"Excluded {excluded_by_pattern} files due to pattern matching")
 
     logger.debug(f"Final upload list contains {len(final_list)} files")
+
+    if normalized_blob_location == ".":
+        # For root uploads, subfolder files imply virtual directory prefixes.
+        # Validate these parent paths unless create_new_folder allows implicit creation.
+        parent_virtual_dirs = {
+            os.path.dirname(file).replace("\\", "/").strip("/")
+            for file in final_list
+            if os.path.dirname(file) not in ("", ".")
+        }
+        missing_parent_dirs = []
+        for parent_vdir in sorted(parent_virtual_dirs):
+            if not check_virtual_directory_existence(
+                container_client, f"{parent_vdir}/"
+            ):
+                missing_parent_dirs.append(parent_vdir)
+
+        if missing_parent_dirs:
+            missing_parent_dirs_txt = ", ".join(missing_parent_dirs)
+            if create_new_folder:
+                logger.info(
+                    f"Parent virtual directory(s) '{missing_parent_dirs_txt}' do not exist in container '{container_name}'. Proceeding because create_new_folder=True."
+                )
+            else:
+                logger.error(
+                    f"Parent virtual directory(s) '{missing_parent_dirs_txt}' do not exist in container '{container_name}'."
+                )
+                raise ValueError(
+                    f"Parent virtual directory(s) '{missing_parent_dirs_txt}' do not exist in container '{container_name}'."
+                )
+
     # check if files should be force uploaded
     if not force_upload:
         fnum_sum = len(final_list)
