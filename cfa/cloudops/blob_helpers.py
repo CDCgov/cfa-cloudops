@@ -64,7 +64,7 @@ def upload_files_in_folder(
     location_in_blob: str = ".",
     blob_service_client=None,
     force_upload: bool = True,
-    exist_ok: bool = False,
+    create_new_folder: bool = False,
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
@@ -92,9 +92,9 @@ def upload_files_in_folder(
         blob_service_client: Azure Blob service client instance for API calls.
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
-        exist_ok (bool, optional): If False, raise an error when location_in_blob
-            does not already exist in the container. If True, continue upload and
-            allow creating a new virtual path implicitly. Default is False.
+        create_new_folder (bool, optional): If True, allow creating a new virtual
+            path implicitly when location_in_blob does not exist. If False, raise
+            an error when the path is missing. Default is False.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
             which prevents deletion or modification of the blobs.
@@ -176,9 +176,9 @@ def upload_files_in_folder(
     if normalized_blob_location and normalized_blob_location != ".":
         blob_prefix = f"{normalized_blob_location}/"
         if not check_virtual_directory_existence(container_client, blob_prefix):
-            if exist_ok:
+            if create_new_folder:
                 logger.warning(
-                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'. Proceeding because exist_ok=True."
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'. Proceeding because create_new_folder=True."
                 )
             else:
                 logger.error(

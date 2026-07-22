@@ -109,7 +109,7 @@ def test_upload_files_in_folder_missing_blob_location(mocker):
     upload_mock.assert_not_called()
 
 
-def test_upload_files_in_folder_missing_blob_location_exist_ok(mocker):
+def test_upload_files_in_folder_missing_blob_location_create_new_folder(mocker):
     mock_blob_client = MagicMock()
     mock_container_client = MagicMock()
     mock_container_client.exists.return_value = True
@@ -124,7 +124,7 @@ def test_upload_files_in_folder_missing_blob_location_exist_ok(mocker):
                 container_name="my-container",
                 folder="/folder",
                 location_in_blob="missing/path",
-                exist_ok=True,
+                create_new_folder=True,
             )
 
     assert files == ["file1.txt"]
