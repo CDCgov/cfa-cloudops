@@ -77,8 +77,8 @@ def remaining_task_autoscale_formula(
 # image defaults
 default_image_publisher = "microsoft-dsvm"
 default_image_offer = "ubuntu-hpc"
-default_image_sku = "2204"
-default_node_agent_sku_id = "batch.node.ubuntu 22.04"
+default_image_sku = "2404"
+default_node_agent_sku_id = "batch.node.ubuntu 24.04"
 
 # batch info
 default_azure_batch_resource_url = "https://batch.core.windows.net/"
@@ -109,7 +109,7 @@ default_vm_configuration = models.VirtualMachineConfiguration(
 )
 
 
-default_vm_size = "standard_d4ds_v5"  # 4 core D-series VM
+default_vm_size = "standard_d4ads_v5"  # 4 core D-series VM
 
 default_autoscale_evaluation_interval = "PT5M"
 
