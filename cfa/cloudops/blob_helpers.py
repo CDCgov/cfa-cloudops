@@ -179,7 +179,7 @@ def upload_files_in_folder(
     else:
         # Ensure subsequent upload logic uses the same canonical path that was validated.
         location_in_blob = normalized_blob_location
-        if not check_virtual_directory_existence(container_client, blob_prefix):
+        if not check_virtual_directory_existence(container_client, location_in_blob):
             if create_new_folder:
                 logger.warning(
                     f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'. Proceeding because create_new_folder=True."
