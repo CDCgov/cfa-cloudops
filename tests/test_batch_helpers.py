@@ -11,6 +11,7 @@ from cfa.cloudops.batch_helpers import (
     check_mount_format,
     construct_vm_name,
     download_job_stats,
+    find_similar_vm_families,
     get_all_vm_quotas,
     get_args_from_yaml,
     get_full_container_image_name,
@@ -462,3 +463,19 @@ def test_get_vm_name_verify_unavailable_has_suggestions():
         excinfo.value
     )
     assert "Similar available VMs:" in str(excinfo.value)
+
+
+def test_find_similar_vm_families_versionless_target():
+    # A version-less family name like "standardDFamily" has no numeric version
+    # component, so get_vm_components raises ValueError on it. The candidate
+    # branch already guards this call; the target branch must too, otherwise
+    # asking for suggestions crashes instead of returning them.
+    quotas = [
+        {"name": "standardDASv5Family"},
+        {"name": "standardDDSv5Family"},
+    ]
+
+    for family in ("standardDFamily", "standardMSFamily"):
+        result = find_similar_vm_families(family, quotas=quotas)
+        assert isinstance(result, list)
+        assert all(name in {q["name"] for q in quotas} for name in result)
