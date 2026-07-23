@@ -172,9 +172,13 @@ def upload_files_in_folder(
     # check number of files if force_upload False
     logger.debug(f"Blob container {container_name} found. Uploading files...")
 
-    normalized_blob_location = location_in_blob.strip().strip("/")
-    if normalized_blob_location and normalized_blob_location != ".":
-        blob_prefix = f"{normalized_blob_location}/"
+    normalized_blob_location = (location_in_blob or ".").strip().strip("/")
+    if not normalized_blob_location or normalized_blob_location == ".":
+        normalized_blob_location = "."
+        location_in_blob = "."
+    else:
+        # Ensure subsequent upload logic uses the same canonical path that was validated.
+        location_in_blob = normalized_blob_location
         if not check_virtual_directory_existence(container_client, blob_prefix):
             if create_new_folder:
                 logger.warning(
