@@ -907,10 +907,8 @@ class CloudClient:
                     container_name = pool_container[0].split("://")[-1]
                     logger.debug(f"Container name set to {container_name}.")
                 else:
-                    container_name = None
-                    logger.warning(
-                        "No container image found in pool configuration and no container image name provided. "
-                        "Proceeding without an explicit task container image."
+                    raise ValueError(
+                        "No container image found in pool configuration and no container image name provided."
                     )
             else:
                 container_name = self.full_container_name
