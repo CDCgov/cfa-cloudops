@@ -103,6 +103,41 @@ client = CloudClient(
 ```
 
 #### Example
-In practice, there are a few steps required for using CloudClient in GitHub Actions. In your repo, create a workflow file that contains the steps for your workflow. The workflow will need to run on a self-hosted runner with access to Azure in order to pull information from Azure back to the runner. We also need to use OIDC federated login with the `azure/login@v2` action. Secrets typically found in your .env file will need to be added as secrets to your GitHub repository, especially AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_SUBSCRIPTION_ID. In each action step, the appropriate environment variables will need to be loaded in the `env:` section of the action. Then the correct Python version and requirements can be loaded. Lastly, you can run a Python script using `cfa-cloudops` and the `use_federated` parameter mentioned above.
+In practice, there are a few steps required for using CloudClient in GitHub Actions. In your repo, create a workflow file that contains the steps for your workflow. The workflow will need to run on a self-hosted runner with access to Azure in order to pull information from Azure back to the runner. We also need to use OIDC federated login with the `azure/login@v3` action. Secrets typically found in your .env file will need to be added as secrets to your GitHub repository, especially AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_SUBSCRIPTION_ID. In each action step, the appropriate environment variables will need to be loaded in the `env:` section of the action. Then the correct Python version and requirements can be loaded. Lastly, you can run a Python script using `cfa-cloudops` and the `use_federated` parameter mentioned above.
 
 For a specific example, check [here](https://github.com/cdcent/cfa-cloudops-example).
+
+## Checking Credentials
+
+If you want to quickly verify that the active credential can access your Azure subscription(s), use `check_credentials`.
+
+This method attempts to list subscriptions visible to the current credential and logs subscription information. It is useful for validating `.env` values, Key Vault setup, or federated login before creating pools/jobs.
+
+### Example
+
+```python
+client = CloudClient()
+client.check_credentials()
+```
+
+## Retrieving Secrets from Key Vault
+
+If you need a single secret value at runtime, use `get_kv_secret`.
+
+Inputs:
+
+- `secret_name`: the secret key to retrieve
+- `keyvault`: the Key Vault name (without `.vault.azure.net`)
+
+This returns the secret value if found, or `None` if the lookup fails.
+
+### Example
+
+```python
+client = CloudClient(keyvault="my-key-vault")
+token = client.get_kv_secret(
+    secret_name="my-secret-name", #pragma: allowlist secret
+    keyvault="my-key-vault"
+)
+print(token is not None)
+```

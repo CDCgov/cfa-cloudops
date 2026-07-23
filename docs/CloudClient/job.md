@@ -141,6 +141,31 @@ client.add_task_collection(
 )
 ```
 
+## Adding Tasks from YAML
+
+When task creation logic is easier to express in a config file, use `add_tasks_from_yaml`.
+
+This method reads a YAML file, constructs one command per task using the supplied `base_cmd`, and submits the tasks to an existing job.
+
+Arguments:
+
+- `job_name`: existing job ID
+- `base_cmd`: command prefix to prepend to each task definition from YAML
+- `file_path`: path to YAML file
+- additional keyword arguments are passed through to `add_task_collection`
+
+### Example
+
+```python
+client = CloudClient()
+client.add_tasks_from_yaml(
+    job_name="mounted-job",
+    base_cmd="python3 run_task.py",
+    file_path="./task_config.yaml",
+    container_image_name="python:3.11"
+)
+```
+
 ## Monitoring Jobs
 
 Once jobs are running (or not), we can monitor them in the terminal. This prints status output every few seconds, including elapsed monitoring time and the number of completed, remaining, successful, and failed tasks. This is done by using the `monitor_job` method of the `CloudClient` object. It takes the following inputs:
@@ -189,6 +214,30 @@ If checking a current status of a job (rather than continuous monitoring), you s
 If we wanted to check the current status of our job specified above, we could run the following:
 ```python
 client.check_job_status("running-job-example")
+```
+
+## Checking Task Status
+
+If you need task-level status details rather than only job-level state, use `get_task_status`.
+
+Behavior:
+
+- provide only `job_name` to retrieve status for all tasks in the job
+- provide both `job_name` and `task_id` to retrieve one task status
+
+### Example
+
+```python
+client = CloudClient()
+
+# all tasks in a job
+all_status = client.get_task_status(job_name="running-job-example")
+
+# a specific task
+task_status = client.get_task_status(
+    job_name="running-job-example",
+    task_id="running-job-example--1"
+)
 ```
 
 ## Download Job Statistics
