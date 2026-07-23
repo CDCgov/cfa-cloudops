@@ -475,6 +475,11 @@ def upload_folder():
         action="store_true",
         help="Force upload even if files exist",
     )
+    parser.add_argument(
+        "--create_new_folder",
+        action="store_true",
+        help="Allow upload to create location_in_blob if it does not already exist",
+    )
     args = parser.parse_args()
     client = CloudClient(
         dotenv_path=args.dotenv_path,
@@ -488,6 +493,7 @@ def upload_folder():
         exclude_extensions=args.exclude_extensions,
         location_in_blob=args.location_in_blob,
         force_upload=args.force_upload,
+        create_new_folder=args.create_new_folder,
     )
 
 

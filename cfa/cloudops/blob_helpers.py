@@ -64,6 +64,7 @@ def upload_files_in_folder(
     location_in_blob: str = ".",
     blob_service_client=None,
     force_upload: bool = True,
+    create_new_folder: bool = False,
     tags: dict = None,
     legal_hold: bool = False,
     immutability_lock_days: int = 0,
@@ -91,6 +92,9 @@ def upload_files_in_folder(
         blob_service_client: Azure Blob service client instance for API calls.
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
+        create_new_folder (bool, optional): If True, allow creating a new virtual
+            path implicitly when location_in_blob does not exist. If False, raise
+            an error when the path is missing. Default is False.
         tags: dict (optional): A dictionary of tags to apply to the uploaded blobs.
         legal_hold (bool, optional): Whether to set a legal hold on the uploaded blobs
             which prevents deletion or modification of the blobs.
@@ -168,6 +172,26 @@ def upload_files_in_folder(
     # check number of files if force_upload False
     logger.debug(f"Blob container {container_name} found. Uploading files...")
 
+    normalized_blob_location = (location_in_blob or ".").strip().strip("/")
+    if not normalized_blob_location or normalized_blob_location == ".":
+        normalized_blob_location = "."
+        location_in_blob = "."
+    else:
+        # Ensure subsequent upload logic uses the same canonical path that was validated.
+        location_in_blob = normalized_blob_location
+        if not check_virtual_directory_existence(container_client, location_in_blob):
+            if create_new_folder:
+                logger.warning(
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'. Proceeding because create_new_folder=True."
+                )
+            else:
+                logger.error(
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'."
+                )
+                raise ValueError(
+                    f"Target virtual directory '{location_in_blob}' does not exist in container '{container_name}'."
+                )
+
     # get all files in folder
     file_list = []
     # check if folder is valid
@@ -228,6 +252,36 @@ def upload_files_in_folder(
         logger.debug(f"Excluded {excluded_by_pattern} files due to pattern matching")
 
     logger.debug(f"Final upload list contains {len(final_list)} files")
+
+    if normalized_blob_location == ".":
+        # For root uploads, subfolder files imply virtual directory prefixes.
+        # Validate these parent paths unless create_new_folder allows implicit creation.
+        parent_virtual_dirs = {
+            os.path.dirname(file).replace("\\", "/").strip("/")
+            for file in final_list
+            if os.path.dirname(file) not in ("", ".")
+        }
+        missing_parent_dirs = []
+        for parent_vdir in sorted(parent_virtual_dirs):
+            if not check_virtual_directory_existence(
+                container_client, f"{parent_vdir}/"
+            ):
+                missing_parent_dirs.append(parent_vdir)
+
+        if missing_parent_dirs:
+            missing_parent_dirs_txt = ", ".join(missing_parent_dirs)
+            if create_new_folder:
+                logger.info(
+                    f"Parent virtual directory(s) '{missing_parent_dirs_txt}' do not exist in container '{container_name}'. Proceeding because create_new_folder=True."
+                )
+            else:
+                logger.error(
+                    f"Parent virtual directory(s) '{missing_parent_dirs_txt}' do not exist in container '{container_name}'."
+                )
+                raise ValueError(
+                    f"Parent virtual directory(s) '{missing_parent_dirs_txt}' do not exist in container '{container_name}'."
+                )
+
     # check if files should be force uploaded
     if not force_upload:
         fnum_sum = len(final_list)
@@ -550,6 +604,9 @@ def check_virtual_directory_existence(
         first_blob = next(blobs)
         logger.debug(f"{first_blob.name} found.")
         return True
+    except StopIteration:
+        logger.debug(f"No blobs found with prefix '{vdir_path}'.")
+        return False
     except Exception as e:
         logger.error(repr(e))
         raise e
