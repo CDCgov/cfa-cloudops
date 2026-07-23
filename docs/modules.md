@@ -21,11 +21,11 @@ This class is discussed in detail [here](./CloudClient/index.md).
 
 ## auth
 
-This module assists with authentication to the Cloud. It contains a base class called `CredentialHandler`, which holds and creates various Azure information and credentials. This class should not be called directly. The following three classes are built on the `CredentialHandler` and should be used for authentication to the Cloud:
+This module assists with authentication to the Cloud. It contains a base class called `CredentialHandler`, which holds and creates various Azure information and credentials. This class should not be called directly. The following three classes are built on `CredentialHandler` and should be used for authentication to the Cloud:
 
 - EnvCredentialHandler: uses a managed identity to authenticate to the Cloud based on environment variables or values in a .env file.
 - SPCredentialHandler: uses a service principal to authenticate to the Cloud based on environment variables or values in a .env file.
-- FederatedCredentialHandler: uses a federated token credential to authenticate to the Cloud based on environment variables or values in a .env file. This is credential method is preferred when using `cfa-cloudops` via GitHub Actions.
+- DefaultCredentialHandler: uses default/federated credentials to authenticate to the Cloud based on environment variables or values in a .env file. This method is preferred when using `cfa-cloudops` via GitHub Actions.
 
 These handlers are discussed in more detail [here](./CloudClient/authentication.md).
 
