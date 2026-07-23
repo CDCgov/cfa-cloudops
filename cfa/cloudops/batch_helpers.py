@@ -1993,7 +1993,10 @@ def find_similar_vm_families(
         return "".join(ch for ch in name.lower() if ch.isalnum())
 
     target_norm = normalize(family_name)
-    target_series, _target_attrs, target_version = get_vm_components(family_name)
+    try:
+        target_series, _target_attrs, target_version = get_vm_components(family_name)
+    except (IndexError, ValueError):
+        target_series, target_version = "", ""
 
     scored_names = []
     for candidate in available_names:
