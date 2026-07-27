@@ -416,31 +416,40 @@ def test_add_task(
         with patch(
             "cfa.cloudops.batch_helpers.get_rel_mnt_path", return_value="/mnt/logs/"
         ):
-            result = cloud_client_with_service_principal.add_task(
-                job_name=job_name,
-                command_line="echo Hello World",
-                container_image_name="my-image:latest",
-            )
-            assert result is True
-            result = cloud_client_with_service_principal.add_task(
-                job_name=job_name,
-                command_line="echo Hello World",
-            )
-            assert result is True
-            cloud_client_with_service_principal.save_logs_to_blob = True
-            result = cloud_client_with_service_principal.add_task(
-                job_name=job_name,
-                command_line="echo Hello World",
-                mount_pairs=mount_pairs,
-            )
-            assert result is True
-            cloud_client_with_service_principal.full_container_name = "my-container"
-            result = cloud_client_with_service_principal.add_task(
-                job_name=job_name,
-                command_line="echo Hello World",
-                mount_pairs=mount_pairs,
-            )
-            assert result is True
+            # add_task now validates that a container image can be resolved from pool
+            mock_pool_info = MagicMock()
+            (
+                mock_pool_info.deployment_configuration.virtual_machine_configuration.container_configuration.container_image_names
+            ) = ["myregistry.azurecr.io/my-image:latest"]
+            with patch(
+                "cfa.cloudops.batch_helpers.get_pool_full_info",
+                return_value=mock_pool_info,
+            ):
+                result = cloud_client_with_service_principal.add_task(
+                    job_name=job_name,
+                    command_line="echo Hello World",
+                    container_image_name="my-image:latest",
+                )
+                assert result is True
+                result = cloud_client_with_service_principal.add_task(
+                    job_name=job_name,
+                    command_line="echo Hello World",
+                )
+                assert result is True
+                cloud_client_with_service_principal.save_logs_to_blob = True
+                result = cloud_client_with_service_principal.add_task(
+                    job_name=job_name,
+                    command_line="echo Hello World",
+                    mount_pairs=mount_pairs,
+                )
+                assert result is True
+                cloud_client_with_service_principal.full_container_name = "my-container"
+                result = cloud_client_with_service_principal.add_task(
+                    job_name=job_name,
+                    command_line="echo Hello World",
+                    mount_pairs=mount_pairs,
+                )
+                assert result is True
 
 
 def test_add_task_collection(
@@ -512,6 +521,7 @@ def test_list_available_images(
 
 def test_run_dag(cloud_client_with_service_principal, mock_logging):
     cloud_client_with_service_principal.create_job("dag_job", pool_name="test_pool")
+    cloud_client_with_service_principal.full_container_name = "my-image:latest"
     t1 = Task("python step1.py")
     t2 = Task("python step2.py")
     t3 = Task("python step3.py")
