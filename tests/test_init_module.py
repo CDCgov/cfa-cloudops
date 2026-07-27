@@ -35,7 +35,7 @@ def test_cloudops_getattr_unknown_symbol(monkeypatch):
         cloudops.__getattr__("DoesNotExist")
 
 
-@pytest.mark.parametrize("log_output", ["both", "file", "std", "stdout"]) 
+@pytest.mark.parametrize("log_output", ["both", "file", "std", "stdout"])
 def test_cloudops_log_output_variants(monkeypatch, log_output):
     made_dirs = []
 
