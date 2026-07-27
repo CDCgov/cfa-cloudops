@@ -1,6 +1,5 @@
 import importlib
 import sys
-from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
@@ -13,10 +12,16 @@ def svc_mod(monkeypatch):
     fake_examples = {
         "examples": ModuleType("examples"),
         "examples.metaflow": ModuleType("examples.metaflow"),
-        "examples.metaflow.azure_batch_decorator": ModuleType("examples.metaflow.azure_batch_decorator"),
+        "examples.metaflow.azure_batch_decorator": ModuleType(
+            "examples.metaflow.azure_batch_decorator"
+        ),
         "examples.metaflow.plugins": ModuleType("examples.metaflow.plugins"),
-        "examples.metaflow.plugins.metadata_providers": ModuleType("examples.metaflow.plugins.metadata_providers"),
-        "examples.metaflow.plugins.metadata_providers.local": ModuleType("examples.metaflow.plugins.metadata_providers.local"),
+        "examples.metaflow.plugins.metadata_providers": ModuleType(
+            "examples.metaflow.plugins.metadata_providers"
+        ),
+        "examples.metaflow.plugins.metadata_providers.local": ModuleType(
+            "examples.metaflow.plugins.metadata_providers.local"
+        ),
     }
 
     class FakeAzureBatchDecorator:
@@ -25,8 +30,12 @@ def svc_mod(monkeypatch):
     class FakeLocalMetadataProvider:
         pass
 
-    fake_examples["examples.metaflow.azure_batch_decorator"].AzureBatchDecorator = FakeAzureBatchDecorator
-    fake_examples["examples.metaflow.plugins.metadata_providers.local"].LocalMetadataProvider = FakeLocalMetadataProvider
+    fake_examples[
+        "examples.metaflow.azure_batch_decorator"
+    ].AzureBatchDecorator = FakeAzureBatchDecorator
+    fake_examples[
+        "examples.metaflow.plugins.metadata_providers.local"
+    ].LocalMetadataProvider = FakeLocalMetadataProvider
 
     for name, mod in fake_examples.items():
         monkeypatch.setitem(sys.modules, name, mod)
@@ -130,7 +139,9 @@ def test_local_run_experiment_pool_exists_docker_errors_and_yaml(monkeypatch):
             def get(name):
                 raise RuntimeError("missing image")
 
-    monkeypatch.setattr(local_automation.docker, "from_env", lambda timeout=8: FakeDockerEnv())
+    monkeypatch.setattr(
+        local_automation.docker, "from_env", lambda timeout=8: FakeDockerEnv()
+    )
     monkeypatch.setattr(
         local_automation.toml,
         "load",
@@ -164,7 +175,9 @@ def test_local_run_tasks_client_creation_failure(monkeypatch):
 def test_local_run_tasks_missing_pool_name(monkeypatch):
     fake = FakeLocalClient()
     monkeypatch.setattr(local_automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(local_automation.toml, "load", lambda _: {"job": {}, "task": []})
+    monkeypatch.setattr(
+        local_automation.toml, "load", lambda _: {"job": {}, "task": []}
+    )
 
     assert local_automation.run_tasks("tasks.toml") is None
 
@@ -212,7 +225,7 @@ def test_batch_pool_service_init(monkeypatch, svc_mod):
         "AZURE_TENANT_ID": "tenant",
         "AZURE_SUBSCRIPTION_ID": "sub",
         "AZURE_SP_CLIENT_ID": "cid",
-        "AZURE_CLIENT_SECRET": "secret",
+        "AZURE_CLIENT_SECRET": "secret",  # pragma: allowlist secret
         "AZURE_KEYVAULT_ENDPOINT": "kv",
         "AZURE_KEYVAULT_SP_SECRET_ID": "sid",
         "AZURE_RESOURCE_GROUP": "rg",
@@ -221,7 +234,9 @@ def test_batch_pool_service_init(monkeypatch, svc_mod):
         "AZURE_BATCH_ACCOUNT": "batch",
     }
     monkeypatch.setattr(svc_mod, "dotenv_values", lambda _: attrs)
-    monkeypatch.setattr(svc_mod.toml, "load", lambda _: {"Pool": {"parallel_pool_limit": "2"}})
+    monkeypatch.setattr(
+        svc_mod.toml, "load", lambda _: {"Pool": {"parallel_pool_limit": "2"}}
+    )
 
     cred = SimpleNamespace(compute_node_identity_reference="idref")
     monkeypatch.setattr(svc_mod, "SPCredentialHandler", lambda **kwargs: cred)
@@ -261,14 +276,22 @@ def test_batch_pool_service_setup_pools_branches(monkeypatch, svc_mod):
 def test_batch_pool_service_setup_pool_paths(monkeypatch, svc_mod):
     svc = svc_mod.CFABatchPoolService.__new__(svc_mod.CFABatchPoolService)
     svc.batch_pools = []
-    svc.cred = SimpleNamespace(azure_resource_group_name="rg", azure_batch_account="acct")
+    svc.cred = SimpleNamespace(
+        azure_resource_group_name="rg", azure_batch_account="acct"
+    )
     svc.batch_mgmt_client = "bmc"
 
     create_calls = []
     monkeypatch.setattr(svc_mod.bh, "check_pool_exists", lambda *a, **k: True)
     monkeypatch.setattr(svc, "_CFABatchPoolService__create_containers", lambda: "mc")
-    monkeypatch.setattr(svc, "_CFABatchPoolService__create_pool_configuration", lambda n, m: "pc")
-    monkeypatch.setattr(svc, "_CFABatchPoolService__create_pool", lambda n, p: create_calls.append((n, p)))
+    monkeypatch.setattr(
+        svc, "_CFABatchPoolService__create_pool_configuration", lambda n, m: "pc"
+    )
+    monkeypatch.setattr(
+        svc,
+        "_CFABatchPoolService__create_pool",
+        lambda n, p: create_calls.append((n, p)),
+    )
 
     svc._CFABatchPoolService__setup_pool("pool-a")
     assert svc.batch_pools == ["pool-a"]
@@ -324,7 +347,9 @@ def test_batch_pool_service_create_pool_configuration(monkeypatch, svc_mod):
         )
     )
 
-    monkeypatch.setattr(svc_mod, "get_default_pool_config", lambda **kwargs: fake_pool_cfg)
+    monkeypatch.setattr(
+        svc_mod, "get_default_pool_config", lambda **kwargs: fake_pool_cfg
+    )
     monkeypatch.setattr(
         svc,
         "_CFABatchPoolService__setup_fixedscale_configuration",
@@ -332,7 +357,9 @@ def test_batch_pool_service_create_pool_configuration(monkeypatch, svc_mod):
     )
 
     assigned = []
-    monkeypatch.setattr(svc_mod, "assign_container_config", lambda p, c: assigned.append((p, c)))
+    monkeypatch.setattr(
+        svc_mod, "assign_container_config", lambda p, c: assigned.append((p, c))
+    )
 
     monkeypatch.setattr(
         svc_mod,
@@ -355,7 +382,9 @@ def test_batch_pool_service_create_pool_configuration(monkeypatch, svc_mod):
 
 def test_batch_pool_service_create_pool_and_delete(monkeypatch, svc_mod):
     svc = svc_mod.CFABatchPoolService.__new__(svc_mod.CFABatchPoolService)
-    svc.cred = SimpleNamespace(azure_resource_group_name="rg", azure_batch_account="acct")
+    svc.cred = SimpleNamespace(
+        azure_resource_group_name="rg", azure_batch_account="acct"
+    )
     calls = []
 
     class PoolAPI:
@@ -377,7 +406,9 @@ def test_batch_pool_service_create_pool_and_delete(monkeypatch, svc_mod):
 
     svc.batch_pools = ["p1", "p2"]
     deleted = []
-    monkeypatch.setattr(svc_mod.bh, "delete_pool", lambda **kwargs: deleted.append(kwargs["pool_name"]))
+    monkeypatch.setattr(
+        svc_mod.bh, "delete_pool", lambda **kwargs: deleted.append(kwargs["pool_name"])
+    )
     assert svc.delete_all_pools() is True
     assert deleted == ["p1", "p2"]
 

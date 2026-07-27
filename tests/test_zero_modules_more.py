@@ -4,15 +4,17 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-from cfa.cloudops import autoscale
 from cfa.cloudops import _containerappclient as container_mod
 from cfa.cloudops import _function_app_client as func_mod
+from cfa.cloudops import autoscale
 
 
 def test_autoscale_formulas_exposed():
     assert "maxNumberofVMs = 10" in autoscale.dev_autoscale_formula
     assert "maxNumberofVMs = 25" in autoscale.prod_autoscale_formula
-    assert "$NodeDeallocationOption = taskcompletion;" in autoscale.dev_autoscale_formula
+    assert (
+        "$NodeDeallocationOption = taskcompletion;" in autoscale.dev_autoscale_formula
+    )
 
 
 def test_containerappclient_methods_without_constructor():
@@ -20,7 +22,6 @@ def test_containerappclient_methods_without_constructor():
     client.resource_group = "rg"
     client.job_name = "job1"
 
-    c1 = SimpleNamespace(name="job1")
     c2 = SimpleNamespace(name="job2")
     job_template = SimpleNamespace(
         containers=[
@@ -149,7 +150,9 @@ def test_function_app_classmethods_and_validation(monkeypatch):
         additional_properties={"tags": ["one"]},
         health_check_path="/health",
     )
-    monkeypatch.setattr(func_mod.FunctionAppClient, "get_configuration", lambda *a, **k: fake_cfg)
+    monkeypatch.setattr(
+        func_mod.FunctionAppClient, "get_configuration", lambda *a, **k: fake_cfg
+    )
 
     assert func_mod.FunctionAppClient.get_tags("f") == ["one"]
     assert func_mod.FunctionAppClient.get_health_check_flag("f") is True
@@ -157,12 +160,16 @@ def test_function_app_classmethods_and_validation(monkeypatch):
     monkeypatch.delenv("AZURE_RESOURCE_GROUP", raising=False)
     monkeypatch.delenv("AZURE_SUBSCRIPTION_ID", raising=False)
     with pytest.raises(ValueError, match="Resource group"):
-        func_mod.FunctionAppClient.list_functions("f", resource_group=None, subscription_id="sub")
+        func_mod.FunctionAppClient.list_functions(
+            "f", resource_group=None, subscription_id="sub"
+        )
 
     monkeypatch.setenv("AZURE_RESOURCE_GROUP", "rg")
     monkeypatch.delenv("AZURE_SUBSCRIPTION_ID", raising=False)
     with pytest.raises(ValueError, match="Subscription ID"):
-        func_mod.FunctionAppClient.list_slots("f", resource_group=None, subscription_id=None)
+        func_mod.FunctionAppClient.list_slots(
+            "f", resource_group=None, subscription_id=None
+        )
 
 
 def test_function_app_init_and_database_connection(monkeypatch):
@@ -185,13 +192,15 @@ def test_function_app_init_and_database_connection(monkeypatch):
             sql_calls.append(q)
             return self
 
-    monkeypatch.setattr(func_mod.duckdb, "connect", lambda database=":memory:": FakeConn())
+    monkeypatch.setattr(
+        func_mod.duckdb, "connect", lambda database=":memory:": FakeConn()
+    )
 
     c_env.cred = SimpleNamespace(
         azure_tenant_id="tenant",
         azure_subscription_id="sub",
         azure_client_id="cid",
-        azure_client_secret="secret",
+        azure_client_secret="secret",  # pragma: allowlist secret
         azure_blob_storage_account="storageacct",
     )
     conn = c_env._get_database_connection()
@@ -203,10 +212,16 @@ def test_metaflow_imports_and_decorator_basics(monkeypatch):
     fake_examples = {
         "examples": ModuleType("examples"),
         "examples.metaflow": ModuleType("examples.metaflow"),
-        "examples.metaflow.azure_batch_decorator": ModuleType("examples.metaflow.azure_batch_decorator"),
+        "examples.metaflow.azure_batch_decorator": ModuleType(
+            "examples.metaflow.azure_batch_decorator"
+        ),
         "examples.metaflow.plugins": ModuleType("examples.metaflow.plugins"),
-        "examples.metaflow.plugins.metadata_providers": ModuleType("examples.metaflow.plugins.metadata_providers"),
-        "examples.metaflow.plugins.metadata_providers.local": ModuleType("examples.metaflow.plugins.metadata_providers.local"),
+        "examples.metaflow.plugins.metadata_providers": ModuleType(
+            "examples.metaflow.plugins.metadata_providers"
+        ),
+        "examples.metaflow.plugins.metadata_providers.local": ModuleType(
+            "examples.metaflow.plugins.metadata_providers.local"
+        ),
     }
 
     class FakeAzureBatchDecorator:
@@ -215,8 +230,12 @@ def test_metaflow_imports_and_decorator_basics(monkeypatch):
     class FakeLocalMetadataProvider:
         pass
 
-    fake_examples["examples.metaflow.azure_batch_decorator"].AzureBatchDecorator = FakeAzureBatchDecorator
-    fake_examples["examples.metaflow.plugins.metadata_providers.local"].LocalMetadataProvider = FakeLocalMetadataProvider
+    fake_examples[
+        "examples.metaflow.azure_batch_decorator"
+    ].AzureBatchDecorator = FakeAzureBatchDecorator
+    fake_examples[
+        "examples.metaflow.plugins.metadata_providers.local"
+    ].LocalMetadataProvider = FakeLocalMetadataProvider
 
     for name, mod in fake_examples.items():
         monkeypatch.setitem(sys.modules, name, mod)

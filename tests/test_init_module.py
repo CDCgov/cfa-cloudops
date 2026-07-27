@@ -11,8 +11,12 @@ def _reload_cloudops(monkeypatch, log_output=None):
         monkeypatch.setenv("LOG_OUTPUT", log_output)
 
     monkeypatch.setattr("logging.basicConfig", lambda **kwargs: None)
-    monkeypatch.setattr("logging.StreamHandler", lambda stream=None: SimpleNamespace(kind="stream"))
-    monkeypatch.setattr("logging.FileHandler", lambda path: SimpleNamespace(kind="file", path=path))
+    monkeypatch.setattr(
+        "logging.StreamHandler", lambda stream=None: SimpleNamespace(kind="stream")
+    )
+    monkeypatch.setattr(
+        "logging.FileHandler", lambda path: SimpleNamespace(kind="file", path=path)
+    )
 
     import cfa.cloudops as cloudops
 

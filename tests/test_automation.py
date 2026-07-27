@@ -61,7 +61,9 @@ def test_run_experiment_returns_none_when_client_creation_fails(monkeypatch):
 def test_run_experiment_returns_none_without_pool_name(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.toml, "load", lambda _: {"job": {}, "experiment": {}})
+    monkeypatch.setattr(
+        automation.toml, "load", lambda _: {"job": {}, "experiment": {}}
+    )
 
     assert automation.run_experiment("exp.toml") is None
 
@@ -77,7 +79,9 @@ def test_run_experiment_returns_none_when_pool_missing(monkeypatch):
             "experiment": {"base_cmd": "echo hi", "x": [1]},
         },
     )
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: False)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: False
+    )
 
     assert automation.run_experiment("exp.toml") is None
 
@@ -85,7 +89,9 @@ def test_run_experiment_returns_none_when_pool_missing(monkeypatch):
 def test_run_experiment_yaml_upload_and_monitor(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: True)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: True
+    )
     monkeypatch.setattr(
         automation.toml,
         "load",
@@ -126,7 +132,9 @@ def test_run_experiment_yaml_upload_and_monitor(monkeypatch):
 def test_run_experiment_parameter_grid_adds_tasks(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: True)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: True
+    )
     monkeypatch.setattr(
         automation.toml,
         "load",
@@ -165,7 +173,9 @@ def test_run_tasks_returns_none_without_pool_name(monkeypatch):
 def test_run_tasks_upload_dependencies_and_monitor(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: True)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: True
+    )
     monkeypatch.setattr(
         automation.toml,
         "load",
@@ -211,7 +221,9 @@ def test_run_tasks_upload_dependencies_and_monitor(monkeypatch):
 def test_run_experiment_upload_default_location_and_no_monitor_key(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: True)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: True
+    )
     monkeypatch.setattr(
         automation.toml,
         "load",
@@ -268,7 +280,9 @@ def test_run_tasks_returns_none_when_pool_missing(monkeypatch):
             "task": [{"name": "prep", "cmd": "echo prep"}],
         },
     )
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: False)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: False
+    )
 
     assert automation.run_tasks("tasks.toml") is None
 
@@ -276,7 +290,9 @@ def test_run_tasks_returns_none_when_pool_missing(monkeypatch):
 def test_run_tasks_optional_job_fields_present_and_monitor_false(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: True)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: True
+    )
     monkeypatch.setattr(
         automation.toml,
         "load",
@@ -310,7 +326,9 @@ def test_run_tasks_optional_job_fields_present_and_monitor_false(monkeypatch):
 def test_run_tasks_no_upload_no_container_and_no_monitor_key(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(automation, "CloudClient", lambda **kwargs: fake)
-    monkeypatch.setattr(automation.batch_helpers, "check_pool_exists", lambda **kwargs: True)
+    monkeypatch.setattr(
+        automation.batch_helpers, "check_pool_exists", lambda **kwargs: True
+    )
     monkeypatch.setattr(
         automation.toml,
         "load",

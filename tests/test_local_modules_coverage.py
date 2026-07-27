@@ -100,7 +100,9 @@ def test_local_helpers_docker_helpers(monkeypatch):
         ),
     )
 
-    monkeypatch.setattr("cfa.cloudops.local.helpers.docker.from_env", lambda timeout=10: docker_env)
+    monkeypatch.setattr(
+        "cfa.cloudops.local.helpers.docker.from_env", lambda timeout=10: docker_env
+    )
     monkeypatch.setattr("cfa.cloudops.local.helpers.os.path.exists", lambda p: True)
     monkeypatch.setattr("cfa.cloudops.local.helpers.sp.run", lambda *a, **k: None)
 
@@ -154,7 +156,9 @@ def test_local_cloudclient_basic_ops(tmp_path, monkeypatch):
         ),
     )
 
-    monkeypatch.setattr("cfa.cloudops.local._client.docker.from_env", lambda timeout=8: docker_env)
+    monkeypatch.setattr(
+        "cfa.cloudops.local._client.docker.from_env", lambda timeout=8: docker_env
+    )
     monkeypatch.setattr("cfa.cloudops.local._client.sp.run", lambda *a, **k: None)
 
     c = local_client.CloudClient()
@@ -187,9 +191,17 @@ def test_local_cloudclient_blob_delete_and_yaml(tmp_path, monkeypatch):
     Path("tmp/pools/poolx.txt").write_text("{'image_name': 'img:1', 'mount_str': ''}")
 
     monkeypatch.setattr("cfa.cloudops.local._client.sp.run", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.local._client.docker.from_env", lambda: SimpleNamespace(images=SimpleNamespace(get=lambda name: SimpleNamespace(short_id='i'))))
+    monkeypatch.setattr(
+        "cfa.cloudops.local._client.docker.from_env",
+        lambda: SimpleNamespace(
+            images=SimpleNamespace(get=lambda name: SimpleNamespace(short_id="i"))
+        ),
+    )
 
-    monkeypatch.setattr("cfa.cloudops.local._client.helpers.get_tasks_from_yaml", lambda **k: ["echo 1", "echo 2"])
+    monkeypatch.setattr(
+        "cfa.cloudops.local._client.helpers.get_tasks_from_yaml",
+        lambda **k: ["echo 1", "echo 2"],
+    )
     monkeypatch.setattr(c, "add_task", lambda **k: 1)
 
     tasks = c.add_tasks_from_yaml("jobx", "python x.py", "cfg.yml")
@@ -207,14 +219,19 @@ def test_local_cloudclient_blob_delete_and_yaml(tmp_path, monkeypatch):
 
 
 def test_local_automation_missing_pool_name(monkeypatch):
-    monkeypatch.setattr("cfa.cloudops.local.automation.toml.load", lambda _: {"job": {}})
+    monkeypatch.setattr(
+        "cfa.cloudops.local.automation.toml.load", lambda _: {"job": {}}
+    )
     assert local_automation.run_experiment("exp.toml") is None
 
 
 def test_local_automation_run_tasks_happy_path(monkeypatch):
     config = {
         "job": {"pool_name": "p1", "job_name": "j1"},
-        "task": [{"name": "t1", "cmd": "echo 1"}, {"name": "t2", "cmd": "echo 2", "depends_on": ["t1"]}],
+        "task": [
+            {"name": "t1", "cmd": "echo 1"},
+            {"name": "t2", "cmd": "echo 2", "depends_on": ["t1"]},
+        ],
     }
 
     fake_client = SimpleNamespace(
@@ -226,7 +243,13 @@ def test_local_automation_run_tasks_happy_path(monkeypatch):
     )
 
     monkeypatch.setattr("cfa.cloudops.local.automation.toml.load", lambda _: config)
-    monkeypatch.setattr("cfa.cloudops.local.automation.CloudClient", lambda dotenv_path=None: fake_client)
-    monkeypatch.setattr("cfa.cloudops.local.automation.Path.read_text", lambda self: "{'image_name': 'img:1'}")
+    monkeypatch.setattr(
+        "cfa.cloudops.local.automation.CloudClient",
+        lambda dotenv_path=None: fake_client,
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.local.automation.Path.read_text",
+        lambda self: "{'image_name': 'img:1'}",
+    )
 
     assert local_automation.run_tasks("tasks.toml") is None

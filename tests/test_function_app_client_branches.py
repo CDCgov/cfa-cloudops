@@ -17,9 +17,9 @@ def base_client():
         azure_subscription_id="sub",
         azure_tenant_id="tenant",
         azure_client_id="cid",
-        azure_client_secret="secret",
+        azure_client_secret="secret",  # pragma: allowlist secret
         azure_blob_storage_account="blob",
-        client_secret_credential="cred",
+        client_secret_credential="cred",  # pragma: allowlist secret
     )
     c.update_function_database = True
     c.conn = None
@@ -29,7 +29,9 @@ def base_client():
 def test_clone_deployment_slot_success_and_failure(monkeypatch, base_client):
     calls = []
 
-    monkeypatch.setattr(func_mod.subprocess, "run", lambda args, check=True: calls.append(args))
+    monkeypatch.setattr(
+        func_mod.subprocess, "run", lambda args, check=True: calls.append(args)
+    )
     assert base_client._clone_deployment_slot("newslot", "rollback") is True
     assert "--configuration-source" in calls[0]
     assert "fa-app/rollback" in calls[0]
@@ -43,7 +45,9 @@ def test_clone_deployment_slot_success_and_failure(monkeypatch, base_client):
 
 def test_swap_and_delete_deployment_slot(monkeypatch, base_client):
     web_apps = SimpleNamespace(
-        begin_swap_slot_with_production=lambda **k: SimpleNamespace(result=lambda: "prod"),
+        begin_swap_slot_with_production=lambda **k: SimpleNamespace(
+            result=lambda: "prod"
+        ),
         begin_swap_slot=lambda **k: SimpleNamespace(result=lambda: "slot"),
         delete_slot=lambda **k: "deleted",
     )
@@ -91,7 +95,9 @@ def test_find_available_and_allocate_function_app(monkeypatch, base_client):
 def test_log_into_portal_and_restart_paths(monkeypatch, base_client):
     calls = []
     monkeypatch.setattr(func_mod.time, "sleep", lambda _: None)
-    monkeypatch.setattr(func_mod.subprocess, "run", lambda args, check=True: calls.append(args))
+    monkeypatch.setattr(
+        func_mod.subprocess, "run", lambda args, check=True: calls.append(args)
+    )
 
     assert base_client._log_into_portal() is True
     assert calls[0][0:3] == ["az", "login", "--service-principal"]
@@ -109,12 +115,17 @@ def test_log_into_portal_and_restart_paths(monkeypatch, base_client):
 
 def test_enable_health_check_and_update_settings(monkeypatch, base_client):
     seen = []
-    monkeypatch.setattr(func_mod.subprocess, "run", lambda args, check=True: seen.append(args))
+    monkeypatch.setattr(
+        func_mod.subprocess, "run", lambda args, check=True: seen.append(args)
+    )
 
     assert base_client._enable_health_check(slot="staging") is True
     assert "--slot" in seen[0]
 
-    assert base_client._update_app_settings([("A", "1"), ("B", "2")], slot="staging") is True
+    assert (
+        base_client._update_app_settings([("A", "1"), ("B", "2")], slot="staging")
+        is True
+    )
     assert any("A=1" in x for x in seen[1])
 
     def fail(*args, **kwargs):
@@ -125,7 +136,9 @@ def test_enable_health_check_and_update_settings(monkeypatch, base_client):
     assert base_client._update_app_settings([("A", "1")]) is False
 
 
-def test_add_user_package_delete_folder_copy_template(tmp_path, monkeypatch, base_client):
+def test_add_user_package_delete_folder_copy_template(
+    tmp_path, monkeypatch, base_client
+):
     monkeypatch.chdir(tmp_path)
 
     # Current implementation expects a callable name even for string input.
@@ -150,7 +163,13 @@ def test_add_user_package_delete_folder_copy_template(tmp_path, monkeypatch, bas
     # copy_template_to_deployment
     template = tmp_path / "template"
     template.mkdir()
-    for n in ["timer_blueprint", "function_app", "containers", "cfa_service", "user_package"]:
+    for n in [
+        "timer_blueprint",
+        "function_app",
+        "containers",
+        "cfa_service",
+        "user_package",
+    ]:
         (template / f"{n}.txt").write_text(n)
     for n in ["host", "local.settings"]:
         (template / f"{n}.txt").write_text(n)
@@ -179,15 +198,33 @@ def test_publish_function_success_and_failure(tmp_path, monkeypatch, base_client
         Path(base_client.function_app_name, "requirements.txt").write_text("base\n")
 
     monkeypatch.setattr(base_client, "_copy_template_to_deployment", copy_template)
-    monkeypatch.setattr(base_client, "_add_user_package_to_deployment", lambda user_package: None)
-    monkeypatch.setattr(base_client, "_clone_deployment_slot", lambda slot_name, source_slot=None: clone_calls.append((slot_name, source_slot)) or True)
-    monkeypatch.setattr(base_client, "_delete_deployment_slot", lambda slot: delete_calls.append(slot))
-    monkeypatch.setattr(base_client, "_update_app_settings", lambda settings, slot=None: settings_calls.append(settings) or True)
+    monkeypatch.setattr(
+        base_client, "_add_user_package_to_deployment", lambda user_package: None
+    )
+    monkeypatch.setattr(
+        base_client,
+        "_clone_deployment_slot",
+        lambda slot_name, source_slot=None: (
+            clone_calls.append((slot_name, source_slot)) or True
+        ),
+    )
+    monkeypatch.setattr(
+        base_client, "_delete_deployment_slot", lambda slot: delete_calls.append(slot)
+    )
+    monkeypatch.setattr(
+        base_client,
+        "_update_app_settings",
+        lambda settings, slot=None: settings_calls.append(settings) or True,
+    )
     monkeypatch.setattr(base_client, "_enable_health_check", lambda slot=None: True)
-    monkeypatch.setattr(base_client, "_swap_deployment_slot", lambda source_slot, target_slot: True)
+    monkeypatch.setattr(
+        base_client, "_swap_deployment_slot", lambda source_slot, target_slot: True
+    )
 
     monkeypatch.setattr(func_mod.subprocess, "run", lambda args, check=True: None)
-    monkeypatch.setattr(func_mod.FunctionAppClient, "get_health_check_flag", lambda *a, **k: True)
+    monkeypatch.setattr(
+        func_mod.FunctionAppClient, "get_health_check_flag", lambda *a, **k: True
+    )
     monkeypatch.setattr(
         func_mod.FunctionAppClient,
         "list_slots",
@@ -201,12 +238,15 @@ def test_publish_function_success_and_failure(tmp_path, monkeypatch, base_client
     def user_package():
         return 42
 
-    assert base_client._publish_function(
-        schedule="* * * * * *",
-        user_package=user_package,
-        dependencies=["numpy==1.0"],
-        environment_variables=[("K", "V")],
-    ) is True
+    assert (
+        base_client._publish_function(
+            schedule="* * * * * *",
+            user_package=user_package,
+            dependencies=["numpy==1.0"],
+            environment_variables=[("K", "V")],
+        )
+        is True
+    )
     assert ("rollbackprevious", "rollback") in clone_calls
     assert ("rollback", None) in clone_calls
     assert ("backup", None) in clone_calls
@@ -216,8 +256,14 @@ def test_publish_function_success_and_failure(tmp_path, monkeypatch, base_client
     assert len(settings_calls) == 2
 
     base_client.function_app_name = "fa-app-2"
-    monkeypatch.setattr(func_mod.FunctionAppClient, "get_health_check_flag", lambda *a, **k: False)
-    monkeypatch.setattr(func_mod.subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(subprocess.CalledProcessError(1, "func")))
+    monkeypatch.setattr(
+        func_mod.FunctionAppClient, "get_health_check_flag", lambda *a, **k: False
+    )
+    monkeypatch.setattr(
+        func_mod.subprocess,
+        "run",
+        lambda *a, **k: (_ for _ in ()).throw(subprocess.CalledProcessError(1, "func")),
+    )
     assert base_client._publish_function("* * * * * *", user_package) is False
 
 

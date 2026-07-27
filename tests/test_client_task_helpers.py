@@ -5,17 +5,15 @@ from types import SimpleNamespace
 import pytest
 from azure.batch.models import BatchNodeIdentityReference
 
-from cfa.cloudops import client
-from cfa.cloudops import helpers
-from cfa.cloudops import task
+from cfa.cloudops import client, helpers, task
 
 
 @pytest.fixture
 def fake_credential_handler():
     return SimpleNamespace(
         method="sp",
-        client_secret_credential="sp-cred",
-        client_secret_sp_credential="default-cred",
+        client_secret_credential="sp-cred",  # pragma: allowlist secret
+        client_secret_sp_credential="default-cred",  # pragma: allowlist secret
         user_credential="user-cred",
         azure_subscription_id="sub-123",
         azure_batch_endpoint="https://batch.example",
@@ -118,7 +116,9 @@ def test_get_blob_service_client_methods(monkeypatch, fake_credential_handler):
     assert all(c["account_url"] == "https://blob.example" for c in calls)
 
 
-def test_get_clients_build_default_handler_when_none(monkeypatch, fake_credential_handler):
+def test_get_clients_build_default_handler_when_none(
+    monkeypatch, fake_credential_handler
+):
     monkeypatch.setattr(
         "cfa.cloudops.client.EnvCredentialHandler", lambda: fake_credential_handler
     )
@@ -154,10 +154,14 @@ def test_get_container_settings_with_mounts_and_registry(monkeypatch):
 
 
 def test_output_task_files_to_blob_uses_default_identity(monkeypatch):
-    mgmt_id = SimpleNamespace(resource_id="/subscriptions/sub/resourceGroups/rg/providers/id")
+    mgmt_id = SimpleNamespace(
+        resource_id="/subscriptions/sub/resourceGroups/rg/providers/id"
+    )
     node_id = BatchNodeIdentityReference(resource_id=mgmt_id.resource_id)
 
-    monkeypatch.setattr("cfa.cloudops.task.get_compute_node_identity_reference", lambda: mgmt_id)
+    monkeypatch.setattr(
+        "cfa.cloudops.task.get_compute_node_identity_reference", lambda: mgmt_id
+    )
     monkeypatch.setattr("cfa.cloudops.task.get_batch_compute_id", lambda x: node_id)
 
     output = task.output_task_files_to_blob(
@@ -185,7 +189,9 @@ def test_output_task_files_to_blob_type_error():
 
 
 def test_get_task_config_with_logs_and_filtered_kwargs(monkeypatch):
-    node_id = BatchNodeIdentityReference(resource_id="/subscriptions/sub/resourceGroups/rg/providers/id")
+    node_id = BatchNodeIdentityReference(
+        resource_id="/subscriptions/sub/resourceGroups/rg/providers/id"
+    )
     log_output_file = task.output_task_files_to_blob(
         file_pattern="../std*.txt",
         blob_container="logs",
@@ -216,7 +222,9 @@ def test_get_task_config_with_logs_and_filtered_kwargs(monkeypatch):
 
 
 def test_get_batch_compute_id_validation():
-    valid = SimpleNamespace(resource_id="/subscriptions/sub/resourceGroups/rg/providers/id")
+    valid = SimpleNamespace(
+        resource_id="/subscriptions/sub/resourceGroups/rg/providers/id"
+    )
     result = task.get_batch_compute_id(valid)
     assert isinstance(result, BatchNodeIdentityReference)
     assert result.resource_id == valid.resource_id
@@ -346,7 +354,9 @@ def test_package_and_upload_dockerfile_success(
         commands.append(cmd)
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr("cfa.cloudops.helpers.docker.from_env", lambda timeout=10: docker_env)
+    monkeypatch.setattr(
+        "cfa.cloudops.helpers.docker.from_env", lambda timeout=10: docker_env
+    )
     monkeypatch.setattr("cfa.cloudops.helpers.os.path.exists", lambda p: True)
     monkeypatch.setattr("cfa.cloudops.helpers.sp.run", fake_run)
 
@@ -359,7 +369,9 @@ def test_package_and_upload_dockerfile_success(
     )
 
     assert image_name == "reg.azurecr.io/repo:v1"
-    assert commands[0].startswith("docker image build -f ./Dockerfile -t reg.azurecr.io/repo:v1")
+    assert commands[0].startswith(
+        "docker image build -f ./Dockerfile -t reg.azurecr.io/repo:v1"
+    )
     assert expected_login_cmd in commands
     assert "az acr login --name reg" in commands
     assert "docker push reg.azurecr.io/repo:v1" in commands
@@ -378,7 +390,9 @@ def test_package_and_upload_dockerfile_docker_not_running(monkeypatch):
 def test_package_and_upload_dockerfile_missing_file(monkeypatch):
     docker_env = SimpleNamespace(ping=lambda: True)
 
-    monkeypatch.setattr("cfa.cloudops.helpers.docker.from_env", lambda timeout=10: docker_env)
+    monkeypatch.setattr(
+        "cfa.cloudops.helpers.docker.from_env", lambda timeout=10: docker_env
+    )
     monkeypatch.setattr("cfa.cloudops.helpers.os.path.exists", lambda p: False)
 
     with pytest.raises(Exception):
@@ -406,7 +420,9 @@ def test_upload_docker_image_success(monkeypatch, use_device_code, expected_logi
         commands.append(cmd)
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr("cfa.cloudops.helpers.docker.from_env", lambda timeout=8: docker_env)
+    monkeypatch.setattr(
+        "cfa.cloudops.helpers.docker.from_env", lambda timeout=8: docker_env
+    )
     monkeypatch.setattr("cfa.cloudops.helpers.sp.run", fake_run)
 
     image_name = helpers.upload_docker_image(
@@ -444,7 +460,9 @@ def test_upload_docker_image_not_found(monkeypatch):
     )
     docker_env = SimpleNamespace(ping=lambda: True, images=images)
 
-    monkeypatch.setattr("cfa.cloudops.helpers.docker.from_env", lambda timeout=8: docker_env)
+    monkeypatch.setattr(
+        "cfa.cloudops.helpers.docker.from_env", lambda timeout=8: docker_env
+    )
 
     with pytest.raises(helpers.docker.errors.ImageNotFound):
         helpers.upload_docker_image("local:latest", "reg", "repo")

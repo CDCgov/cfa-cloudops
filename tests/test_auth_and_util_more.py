@@ -3,8 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from cfa.cloudops import auth
-from cfa.cloudops import util
+from cfa.cloudops import auth, util
 
 
 def test_lookup_service_principal_success(monkeypatch):
@@ -124,8 +123,8 @@ def test_service_principal_secret_branches(monkeypatch):
         azure_keyvault_sp_secret_id="sp-id",
         method="sp",
     )
-    ch_sp.azure_client_secret = "direct-secret"
-    assert ch_sp.service_principal_secret == "direct-secret"
+    ch_sp.azure_client_secret = "direct-secret"  # pragma: allowlist secret
+    assert ch_sp.service_principal_secret == "direct-secret"  # pragma: allowlist secret
 
     ch_default = auth.CredentialHandler(
         azure_keyvault_endpoint="https://kv",
@@ -133,7 +132,9 @@ def test_service_principal_secret_branches(monkeypatch):
         method="default",
     )
     ch_default.__dict__["default_credential"] = "default-cred"
-    assert ch_default.service_principal_secret == "kv-secret"
+    assert (
+        ch_default.service_principal_secret == "kv-secret"  # pragma: allowlist secret
+    )
 
     ch_env = auth.CredentialHandler(
         azure_keyvault_endpoint="https://kv",
@@ -141,7 +142,7 @@ def test_service_principal_secret_branches(monkeypatch):
         method="env",
     )
     ch_env.__dict__["user_credential"] = "user-cred"
-    assert ch_env.service_principal_secret == "kv-secret"
+    assert ch_env.service_principal_secret == "kv-secret"  # pragma: allowlist secret
 
 
 def test_batch_service_principal_credentials(monkeypatch):
@@ -158,11 +159,11 @@ def test_batch_service_principal_credentials(monkeypatch):
         azure_client_id="client",
         azure_batch_resource_url="resource",
     )
-    ch.__dict__["service_principal_secret"] = "secret"
+    ch.__dict__["service_principal_secret"] = "secret"  # pragma: allowlist secret
 
     cred = ch.batch_service_principal_credentials
     assert cred.client_id == "client"
-    assert called["secret"] == "secret"
+    assert called["secret"] == "secret"  # pragma: allowlist secret
 
 
 def test_client_secret_credential_variants(monkeypatch):
@@ -172,21 +173,25 @@ def test_client_secret_credential_variants(monkeypatch):
         calls.append(kwargs)
         return SimpleNamespace(**kwargs)
 
-    monkeypatch.setattr("cfa.cloudops.auth.ClientSecretCredential", fake_client_secret_cred)
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.ClientSecretCredential", fake_client_secret_cred
+    )
 
     ch = auth.CredentialHandler(azure_tenant_id="t", azure_client_id="c")
-    ch.__dict__["service_principal_secret"] = "s1"
+    ch.__dict__["service_principal_secret"] = "s1"  # pragma: allowlist secret
     out1 = ch.client_secret_sp_credential
-    assert out1.client_secret == "s1"
+    assert out1.client_secret == "s1"  # pragma: allowlist secret
 
     ch2 = auth.CredentialHandler(azure_tenant_id="t", azure_client_id="c")
-    ch2.azure_client_secret = "s2"
+    ch2.azure_client_secret = "s2"  # pragma: allowlist secret
     out2 = ch2.client_secret_credential
-    assert out2.client_secret == "s2"
+    assert out2.client_secret == "s2"  # pragma: allowlist secret
 
 
 def test_compute_node_identity_reference():
-    ch = auth.CredentialHandler(azure_user_assigned_identity="/subscriptions/sub/resourceGroups/rg/providers/id")
+    ch = auth.CredentialHandler(
+        azure_user_assigned_identity="/subscriptions/sub/resourceGroups/rg/providers/id"
+    )
     ref = ch.compute_node_identity_reference
     assert ref.resource_id.endswith("/providers/id")
 
@@ -198,7 +203,9 @@ def test_azure_container_registry_valid_and_invalid(monkeypatch):
         azure_user_assigned_identity="/subscriptions/sub/resourceGroups/rg/providers/id",
     )
 
-    monkeypatch.setattr("cfa.cloudops.auth.is_valid_acr_endpoint", lambda endpoint: (True, None))
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.is_valid_acr_endpoint", lambda endpoint: (True, None)
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.batch_mgmt_models.ContainerRegistry",
         lambda **kwargs: SimpleNamespace(**kwargs),
@@ -242,7 +249,9 @@ def test_default_credential_wrapper(monkeypatch):
 
 
 def test_get_sp_secret(monkeypatch):
-    monkeypatch.setattr("cfa.cloudops.auth.ManagedIdentityCredential", lambda: "managed")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.ManagedIdentityCredential", lambda: "managed"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SecretClient",
         lambda vault_url, credential: SimpleNamespace(
@@ -267,7 +276,7 @@ def test_get_client_secret_sp_credential(monkeypatch):
         tenant_id="tenant",
         application_id="app",
     )
-    assert cred.client_secret == "sp-secret"
+    assert cred.client_secret == "sp-secret"  # pragma: allowlist secret
 
 
 def test_get_service_principal_credentials(monkeypatch):
@@ -283,7 +292,7 @@ def test_get_service_principal_credentials(monkeypatch):
         tenant_id="tenant",
         application_id="app",
     )
-    assert cred.secret == "sp-secret"
+    assert cred.secret == "sp-secret"  # pragma: allowlist secret
 
 
 def test_get_compute_node_identity_reference_helper(monkeypatch):
@@ -364,7 +373,9 @@ def test_load_env_vars(monkeypatch):
     monkeypatch.setattr("cfa.cloudops.auth.ManagedIdentityCredential", lambda: "mid")
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
-        lambda cred: SimpleNamespace(subscriptions=SimpleNamespace(list=lambda: [FakeSub()])),
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
+        ),
     )
 
     called = {"set_env": 0, "kv": 0}
@@ -377,7 +388,9 @@ def test_load_env_vars(monkeypatch):
         lambda **kwargs: called.__setitem__("kv", called["kv"] + 1),
     )
 
-    auth.load_env_vars(dotenv_path=".env.test", keyvault_name="mykv", force_keyvault=True)
+    auth.load_env_vars(
+        dotenv_path=".env.test", keyvault_name="mykv", force_keyvault=True
+    )
 
     assert os.environ["AZURE_SUBSCRIPTION_ID"] == "sub-1"
     assert os.environ["AZURE_TENANT_ID"] == "tenant-1"
@@ -391,13 +404,17 @@ def test_env_credential_handler_init(monkeypatch):
     monkeypatch.setattr(
         "cfa.cloudops.auth.get_config_val",
         lambda key, config_dict=None, try_env=True: (
-            config_dict.get(key) if config_dict and key in config_dict else os.getenv(key.upper())
+            config_dict.get(key)
+            if config_dict and key in config_dict
+            else os.getenv(key.upper())
         ),
     )
 
     monkeypatch.delenv("AZURE_BATCH_LOCATION", raising=False)
 
-    handler = auth.EnvCredentialHandler(dotenv_path=".env.test", azure_batch_account="acct")
+    handler = auth.EnvCredentialHandler(
+        dotenv_path=".env.test", azure_batch_account="acct"
+    )
     assert handler.method == "env"
     assert handler.azure_batch_location == auth.d.default_azure_batch_location
 
@@ -413,7 +430,9 @@ def test_sp_credential_handler_init(monkeypatch):
     monkeypatch.setattr(
         "cfa.cloudops.auth.get_config_val",
         lambda key, config_dict=None, try_env=True: (
-            config_dict.get(key) if config_dict and key in config_dict else os.getenv(key.upper())
+            config_dict.get(key)
+            if config_dict and key in config_dict
+            else os.getenv(key.upper())
         ),
     )
 
@@ -421,7 +440,7 @@ def test_sp_credential_handler_init(monkeypatch):
         azure_tenant_id="tenant",
         azure_subscription_id="sub",
         azure_client_id="client",
-        azure_client_secret="secret",
+        azure_client_secret="secret",  # pragma: allowlist secret
         azure_batch_account="acct",
     )
     assert handler.method == "sp"
@@ -439,12 +458,16 @@ def test_default_credential_handler_success(monkeypatch):
     monkeypatch.setattr("cfa.cloudops.auth.DefaultCredential", lambda: "dcred")
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
-        lambda cred: SimpleNamespace(subscriptions=SimpleNamespace(list=lambda: [FakeSub()])),
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
+        ),
     )
     monkeypatch.setattr(
         "cfa.cloudops.auth.get_config_val",
         lambda key, config_dict=None, try_env=True: (
-            config_dict.get(key) if config_dict and key in config_dict else os.getenv(key.upper())
+            config_dict.get(key)
+            if config_dict and key in config_dict
+            else os.getenv(key.upper())
         ),
     )
 

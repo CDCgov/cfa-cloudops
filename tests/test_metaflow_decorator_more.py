@@ -12,10 +12,16 @@ def deco_mod(monkeypatch):
     fake_examples = {
         "examples": ModuleType("examples"),
         "examples.metaflow": ModuleType("examples.metaflow"),
-        "examples.metaflow.azure_batch_decorator": ModuleType("examples.metaflow.azure_batch_decorator"),
+        "examples.metaflow.azure_batch_decorator": ModuleType(
+            "examples.metaflow.azure_batch_decorator"
+        ),
         "examples.metaflow.plugins": ModuleType("examples.metaflow.plugins"),
-        "examples.metaflow.plugins.metadata_providers": ModuleType("examples.metaflow.plugins.metadata_providers"),
-        "examples.metaflow.plugins.metadata_providers.local": ModuleType("examples.metaflow.plugins.metadata_providers.local"),
+        "examples.metaflow.plugins.metadata_providers": ModuleType(
+            "examples.metaflow.plugins.metadata_providers"
+        ),
+        "examples.metaflow.plugins.metadata_providers.local": ModuleType(
+            "examples.metaflow.plugins.metadata_providers.local"
+        ),
     }
 
     class FakeAzureBatchDecorator:
@@ -24,8 +30,12 @@ def deco_mod(monkeypatch):
     class FakeLocalMetadataProvider:
         pass
 
-    fake_examples["examples.metaflow.azure_batch_decorator"].AzureBatchDecorator = FakeAzureBatchDecorator
-    fake_examples["examples.metaflow.plugins.metadata_providers.local"].LocalMetadataProvider = FakeLocalMetadataProvider
+    fake_examples[
+        "examples.metaflow.azure_batch_decorator"
+    ].AzureBatchDecorator = FakeAzureBatchDecorator
+    fake_examples[
+        "examples.metaflow.plugins.metadata_providers.local"
+    ].LocalMetadataProvider = FakeLocalMetadataProvider
 
     for name, mod in fake_examples.items():
         monkeypatch.setitem(sys.modules, name, mod)
@@ -52,7 +62,7 @@ def _attrs():
         "AZURE_TENANT_ID": "tenant",
         "AZURE_SUBSCRIPTION_ID": "sub",
         "AZURE_SP_CLIENT_ID": "client",
-        "AZURE_CLIENT_SECRET": "secret",
+        "AZURE_CLIENT_SECRET": "secret",  # pragma: allowlist secret
         "AZURE_KEYVAULT_ENDPOINT": "kv",
         "AZURE_KEYVAULT_SP_SECRET_ID": "sid",
         "AZURE_RESOURCE_GROUP": "rg",
@@ -73,7 +83,9 @@ def test_decorator_init_sets_clients(monkeypatch, deco_mod):
     cred = SimpleNamespace()
     monkeypatch.setattr(deco_mod, "SPCredentialHandler", lambda **kwargs: cred)
     monkeypatch.setattr(deco_mod, "get_batch_service_client", lambda c: "batch-client")
-    monkeypatch.setattr(deco_mod, "get_batch_management_client", lambda c: "batch-mgmt-client")
+    monkeypatch.setattr(
+        deco_mod, "get_batch_management_client", lambda c: "batch-mgmt-client"
+    )
 
     d = deco_mod.CFAAzureBatchDecorator(
         pool_name="pool-a",
@@ -108,7 +120,9 @@ def test_private_create_job_builds_and_submits(monkeypatch, deco_mod):
             self.__dict__.update(kwargs)
 
     fake_models = SimpleNamespace(
-        BatchAllTasksCompleteMode=SimpleNamespace(TERMINATE_JOB="term", NO_ACTION="none"),
+        BatchAllTasksCompleteMode=SimpleNamespace(
+            TERMINATE_JOB="term", NO_ACTION="none"
+        ),
         BatchTaskFailureMode=SimpleNamespace(PERFORM_EXIT_OPTIONS_JOB_ACTION="exit"),
         BatchJobConstraints=FakeConstraints,
         BatchPoolInfo=lambda pool_id: SimpleNamespace(pool_id=pool_id),
@@ -159,11 +173,15 @@ def test_private_create_job_builds_and_submits(monkeypatch, deco_mod):
 def test_add_task_delegates_and_overrides_logs_folder(monkeypatch, deco_mod):
     d = deco_mod.CFAAzureBatchDecorator.__new__(deco_mod.CFAAzureBatchDecorator)
     d.pool_name = "pool-a"
-    d.cred = SimpleNamespace(azure_resource_group_name="rg", azure_batch_account="batch")
+    d.cred = SimpleNamespace(
+        azure_resource_group_name="rg", azure_batch_account="batch"
+    )
     d.batch_mgmt_client = "batch-mgmt"
     d.batch_client = "batch-client"
 
-    monkeypatch.setattr(deco_mod.batch_helpers, "get_pool_mounts", lambda *a, **k: ["/mnt/input"])
+    monkeypatch.setattr(
+        deco_mod.batch_helpers, "get_pool_mounts", lambda *a, **k: ["/mnt/input"]
+    )
     seen = {}
 
     def fake_add_task(**kwargs):
@@ -199,11 +217,15 @@ def test_fetch_or_create_job_reuse_and_create(monkeypatch, deco_mod):
 
     monkeypatch.setattr(deco_mod, "generate_random_string", lambda length: "abcde")
 
-    monkeypatch.setattr(deco_mod.batch_helpers, "check_job_exists", lambda job_id, client: True)
+    monkeypatch.setattr(
+        deco_mod.batch_helpers, "check_job_exists", lambda job_id, client: True
+    )
     assert d.fetch_or_create_job() == "pref-abcde"
 
     calls = []
-    monkeypatch.setattr(deco_mod.batch_helpers, "check_job_exists", lambda job_id, client: False)
+    monkeypatch.setattr(
+        deco_mod.batch_helpers, "check_job_exists", lambda job_id, client: False
+    )
     monkeypatch.setattr(
         d,
         "_CFAAzureBatchDecorator__create_job",

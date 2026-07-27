@@ -14,17 +14,29 @@ def cloud_client_more(monkeypatch):
         azure_blob_storage_account="blobacct",
         azure_blob_storage_endpoint="https://blobacct.blob.core.windows.net/",
         user_credential="user-cred",
-        client_secret_sp_credential="default-cred",
-        client_secret_credential="sp-cred",
+        client_secret_sp_credential="default-cred",  # pragma: allowlist secret
+        client_secret_credential="sp-cred",  # pragma: allowlist secret
         compute_node_identity_reference=SimpleNamespace(resource_id="rid"),
     )
 
     with (
         patch("cfa.cloudops._cloudclient.EnvCredentialHandler", return_value=cred),
-        patch("cfa.cloudops._cloudclient.get_batch_management_client", return_value=MagicMock()),
-        patch("cfa.cloudops._cloudclient.get_compute_management_client", return_value=MagicMock()),
-        patch("cfa.cloudops._cloudclient.get_batch_service_client", return_value=MagicMock()),
-        patch("cfa.cloudops._cloudclient.get_blob_service_client", return_value=MagicMock()),
+        patch(
+            "cfa.cloudops._cloudclient.get_batch_management_client",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "cfa.cloudops._cloudclient.get_compute_management_client",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "cfa.cloudops._cloudclient.get_batch_service_client",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "cfa.cloudops._cloudclient.get_blob_service_client",
+            return_value=MagicMock(),
+        ),
     ):
         return CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
 
@@ -42,7 +54,9 @@ def test_check_credentials_env_default_sp(cloud_client_more, monkeypatch):
         seen_creds.append(cred)
         return SimpleNamespace(subscriptions=SimpleNamespace(list=lambda: [FakeSub()]))
 
-    monkeypatch.setattr("cfa.cloudops._cloudclient.SubscriptionClient", fake_subscription_client)
+    monkeypatch.setattr(
+        "cfa.cloudops._cloudclient.SubscriptionClient", fake_subscription_client
+    )
 
     cloud_client_more.method = "env"
     cloud_client_more.check_credentials()
@@ -74,17 +88,28 @@ def test_delete_job_and_schedule_methods(cloud_client_more):
     cloud_client_more.resume_job_schedule("sched-1")
     cloud_client_more.suspend_job_schedule("sched-1")
 
-    cloud_client_more.batch_service_client.begin_delete_job.assert_called_once_with("job-1")
-    cloud_client_more.batch_service_client.begin_delete_job_schedule.assert_called_once_with("sched-1")
-    cloud_client_more.batch_service_client.enable_job_schedule.assert_called_once_with("sched-1")
-    cloud_client_more.batch_service_client.disable_job_schedule.assert_called_once_with("sched-1")
+    cloud_client_more.batch_service_client.begin_delete_job.assert_called_once_with(
+        "job-1"
+    )
+    cloud_client_more.batch_service_client.begin_delete_job_schedule.assert_called_once_with(
+        "sched-1"
+    )
+    cloud_client_more.batch_service_client.enable_job_schedule.assert_called_once_with(
+        "sched-1"
+    )
+    cloud_client_more.batch_service_client.disable_job_schedule.assert_called_once_with(
+        "sched-1"
+    )
 
 
 def test_list_available_images_filtering(cloud_client_more):
     linux = SimpleNamespace(os_type="linux", name="lin")
     windows = SimpleNamespace(os_type="windows", name="win")
 
-    cloud_client_more.batch_service_client.list_supported_images.return_value = [linux, windows]
+    cloud_client_more.batch_service_client.list_supported_images.return_value = [
+        linux,
+        windows,
+    ]
 
     with patch("cfa.cloudops._cloudclient.batch_models.OSType") as os_type:
         os_type.linux = "linux"
@@ -192,11 +217,15 @@ def test_delete_pool_and_blob_ops(cloud_client_more, monkeypatch):
     )
     monkeypatch.setattr(
         "cfa.cloudops._cloudclient.blob_helpers.delete_blob_snapshots",
-        lambda *args, **kwargs: called.__setitem__("blob_file", called["blob_file"] + 1),
+        lambda *args, **kwargs: called.__setitem__(
+            "blob_file", called["blob_file"] + 1
+        ),
     )
     monkeypatch.setattr(
         "cfa.cloudops._cloudclient.blob_helpers.delete_blob_folder",
-        lambda *args, **kwargs: called.__setitem__("blob_folder", called["blob_folder"] + 1),
+        lambda *args, **kwargs: called.__setitem__(
+            "blob_folder", called["blob_folder"] + 1
+        ),
     )
 
     cloud_client_more.delete_pool("pool-1")
@@ -209,7 +238,9 @@ def test_delete_pool_and_blob_ops(cloud_client_more, monkeypatch):
 def test_list_blob_files_by_container_and_mounts(cloud_client_more, monkeypatch):
     monkeypatch.setattr(
         "cfa.cloudops._cloudclient.blob_helpers.list_blobs_flat",
-        lambda container_name, blob_service_client, verbose=False: [f"{container_name}/a.txt"],
+        lambda container_name, blob_service_client, verbose=False: [
+            f"{container_name}/a.txt"
+        ],
     )
 
     out_container = cloud_client_more.list_blob_files("c1")

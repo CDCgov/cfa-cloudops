@@ -5,10 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from azure.mgmt.batch import models
 
-from cfa.cloudops import config
-from cfa.cloudops import defaults
-from cfa.cloudops import endpoints
-from cfa.cloudops import util
+from cfa.cloudops import config, defaults, endpoints, util
 
 
 def test_try_get_val_from_dict_success_and_missing():
@@ -57,7 +54,9 @@ def test_get_config_val_missing_returns_none(monkeypatch):
 
 
 def test_construct_https_url():
-    assert endpoints._construct_https_url("example.com", "/v1") == "https://example.com/v1"
+    assert (
+        endpoints._construct_https_url("example.com", "/v1") == "https://example.com/v1"
+    )
 
 
 def test_batch_blob_and_registry_endpoint_constructors():
@@ -120,14 +119,8 @@ def test_set_env_vars_sets_defaults_and_derived_values(monkeypatch):
 
     defaults.set_env_vars()
 
-    assert (
-        "https://acct.eastus.batch.azure.com/"
-        == os.environ["AZURE_BATCH_ENDPOINT"]
-    )
-    assert (
-        "https://myvault.vault.azure.net"
-        == os.environ["AZURE_KEYVAULT_ENDPOINT"]
-    )
+    assert "https://acct.eastus.batch.azure.com/" == os.environ["AZURE_BATCH_ENDPOINT"]
+    assert "https://myvault.vault.azure.net" == os.environ["AZURE_KEYVAULT_ENDPOINT"]
     assert (
         "https://blobacct.blob.core.windows.net/"
         == os.environ["AZURE_BLOB_STORAGE_ENDPOINT"]
@@ -203,7 +196,9 @@ def test_get_subscriptions_success_and_failure(monkeypatch):
     fake_client.subscriptions.list.return_value = [FakeSub("sub-a"), FakeSub("sub-b")]
 
     monkeypatch.setattr("cfa.cloudops.util.DefaultAzureCredential", lambda: object())
-    monkeypatch.setattr("cfa.cloudops.util.SubscriptionClient", lambda cred: fake_client)
+    monkeypatch.setattr(
+        "cfa.cloudops.util.SubscriptionClient", lambda cred: fake_client
+    )
 
     assert util.get_subscriptions() == ["sub-a", "sub-b"]
 
