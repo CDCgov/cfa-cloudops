@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import logging
 import sys
 import textwrap
 from pathlib import Path
@@ -8,6 +9,25 @@ from pathlib import Path
 import yaml
 
 from cfa.cloudops import CloudClient, batch_helpers
+
+
+def setup_logging():
+    level = logging.INFO
+
+    handlers = [logging.StreamHandler(sys.stdout)]
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | [%(levelname)-8s] | %(name)s | %(message)s",
+        handlers=handlers,
+        force=True,
+    )
+
+
+logger = logging.getLogger(__name__)
+
+# Configure logging once on module import so all script entry points inherit it.
+setup_logging()
 
 
 def hello():
