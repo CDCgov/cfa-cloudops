@@ -84,8 +84,6 @@ get_vm_name = "cfa.cloudops.scripts:get_vm_name"
 add_task_collection = "cfa.cloudops.scripts:add_task_collection"
 async_download_folder = "cfa.cloudops.scripts:async_download_folder"
 async_upload_folder = "cfa.cloudops.scripts:async_upload_folder"
-generate_dag = "cfa.cloudops.scripts:generate_dag"
-run_dag = "cfa.cloudops.scripts:run_dag"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
