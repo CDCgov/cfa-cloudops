@@ -239,6 +239,28 @@ def test_async_folder_scripts(mocker, monkeypatch):
     scripts.async_upload_folder()
 
 
+def test_add_tasks_from_yaml(mocker, monkeypatch, tmp_path):
+    yaml_file = tmp_path / "tasks.yaml"
+    yaml_file.write_text("tasks:\n  - id: t1\n    cmd: echo hi\n")
+    monkeypatch.setattr(
+        "sys.argv",
+        FAKE_COMMANDLINE
+        + [
+            "--job_name",
+            "test-job",
+            "--base_cmd",
+            "echo",
+            "-fp",
+            str(yaml_file),
+        ],
+    )
+    mocker.patch("cfa.cloudops._cloudclient.CloudClient.__init__", return_value=None)
+    mocker.patch(
+        "cfa.cloudops._cloudclient.CloudClient.add_tasks_from_yaml", return_value=None
+    )
+    scripts.add_tasks_from_yaml()
+
+
 def test_dag_scripts(mocker, monkeypatch, tmp_path):
     dag_file = tmp_path / "dag.yaml"
     dag_file.write_text(
