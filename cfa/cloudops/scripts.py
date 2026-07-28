@@ -23,6 +23,10 @@ def setup_logging():
         force=True,
     )
 
+    # Keep package logs visible while reducing Azure SDK noise.
+    logging.getLogger("cfa.cloudops").setLevel(logging.INFO)
+    logging.getLogger("azure").setLevel(logging.ERROR)
+
 
 logger = logging.getLogger(__name__)
 
