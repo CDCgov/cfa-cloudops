@@ -4,11 +4,8 @@ import json
 import logging
 import sys
 import textwrap
-from pathlib import Path
 
-import yaml
-
-from cfa.cloudops import CloudClient, batch_helpers
+from cfa.cloudops import CloudClient
 
 
 def setup_logging():
@@ -20,7 +17,6 @@ def setup_logging():
         level=level,
         format="%(asctime)s | [%(levelname)-8s] | %(name)s | %(message)s",
         handlers=handlers,
-        force=True,
     )
 
     # Keep package logs visible while reducing Azure SDK noise.
@@ -1823,97 +1819,6 @@ def async_upload_folder():
         immutability_lock_days=args.immutability_lock_days,
         read_only=args.read_only,
     )
-
-
-def _load_dag_tasks(task_file: str):
-    with open(task_file, "r") as f:
-        data = yaml.safe_load(f)
-    tasks_data = data["tasks"] if isinstance(data, dict) and "tasks" in data else data
-    task_map = {}
-    for item in tasks_data:
-        t = batch_helpers.Task(cmd=item["cmd"], id=item["id"])
-        task_map[item["id"]] = t
-    for item in tasks_data:
-        deps = item.get("depends_on", [])
-        if deps:
-            task_map[item["id"]].after([task_map[d] for d in deps])
-    return list(task_map.values())
-
-
-def generate_dag():
-    parser = argparse.ArgumentParser(description="Generate DAG text from task YAML")
-    parser.add_argument(
-        "-tf",
-        "--task_file",
-        type=str,
-        required=True,
-        help="YAML file with tasks and dependencies",
-    )
-    parser.add_argument(
-        "-o",
-        "--output_file",
-        type=str,
-        required=True,
-        help="Output path for generated DAG text",
-    )
-    parser.add_argument(
-        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
-    )
-    parser.add_argument(
-        "-sp",
-        "--use_sp",
-        action="store_true",
-        help="Use service principal for authentication",
-    )
-    parser.add_argument(
-        "-f",
-        "--use_federated",
-        action="store_true",
-        help="Use federated identity for authentication",
-    )
-    args = parser.parse_args()
-    tasks = _load_dag_tasks(args.task_file)
-    client = CloudClient(
-        dotenv_path=args.dotenv_path,
-        use_sp=args.use_sp,
-        use_federated=args.use_federated,
-    )
-    client.generate_dag(*tasks, file_name=str(Path(args.output_file)))
-
-
-def run_dag():
-    parser = argparse.ArgumentParser(description="Run DAG tasks from task YAML")
-    parser.add_argument(
-        "-tf",
-        "--task_file",
-        type=str,
-        required=True,
-        help="YAML file with tasks and dependencies",
-    )
-    parser.add_argument("-j", "--job_name", type=str, required=True)
-    parser.add_argument(
-        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
-    )
-    parser.add_argument(
-        "-sp",
-        "--use_sp",
-        action="store_true",
-        help="Use service principal for authentication",
-    )
-    parser.add_argument(
-        "-f",
-        "--use_federated",
-        action="store_true",
-        help="Use federated identity for authentication",
-    )
-    args = parser.parse_args()
-    tasks = _load_dag_tasks(args.task_file)
-    client = CloudClient(
-        dotenv_path=args.dotenv_path,
-        use_sp=args.use_sp,
-        use_federated=args.use_federated,
-    )
-    client.run_dag(*tasks, job_name=args.job_name)
 
 
 def generate_sample_env():
