@@ -168,7 +168,7 @@ client.add_tasks_from_yaml(
 
 ## Monitoring Jobs
 
-Once jobs are running (or not), we can monitor them in the terminal. This prints status output every few seconds, including elapsed monitoring time and the number of completed, remaining, successful, and failed tasks. This is done by using the `monitor_job` method of the `CloudClient` object. It takes the following inputs:
+After jobs/tasks are submitted, we can monitor them in the terminal. This prints status output every few seconds, including elapsed monitoring time and the number of completed, remaining, successful, and failed tasks. This is done by using the `monitor_job` method of the `CloudClient` object. It takes the following inputs:
 
 - job_name: name of the job to monitor
 - timeout: time in minutes to monitor the job
