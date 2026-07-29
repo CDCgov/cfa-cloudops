@@ -1565,7 +1565,12 @@ def get_kv_secret():
         use_sp=args.use_sp,
         use_federated=args.use_federated,
     )
-    print(client.get_kv_secret(secret_name=args.secret_name, keyvault=args.keyvault))
+    secret = client.get_kv_secret(secret_name=args.secret_name, keyvault=args.keyvault)
+    with open(f"{args.secret_name}_secret.txt", "a") as f:
+        f.write(secret)
+    print(
+        f"Secret '{args.secret_name}' from Key Vault '{args.keyvault}' has been written to '{args.secret_name}_secret.txt'"
+    )
 
 
 def get_all_vm_quotas():
