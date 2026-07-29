@@ -608,8 +608,10 @@ def check_virtual_directory_existence(
         logger.debug(f"No blobs found with prefix '{vdir_path}'.")
         return False
     except Exception as e:
-        logger.error(repr(e))
-        raise e
+        logger.exception(
+            f"Error while checking for virtual directory prefix '{vdir_path}': {e}"
+        )
+        raise
 
 
 def list_blobs_in_container(
