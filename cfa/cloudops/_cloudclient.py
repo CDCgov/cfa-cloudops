@@ -14,8 +14,6 @@ from azure.batch.models import (
     BatchMetadataItem,
 )
 from azure.keyvault.secrets import SecretClient
-
-# from azure.batch.models import BatchTaskAddParameter
 from azure.mgmt.batch import models
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 
@@ -147,6 +145,8 @@ class CloudClient:
         self.compute_mgmt_client = get_compute_management_client(self.cred)
         self.batch_service_client = get_batch_service_client(self.cred)
         self.blob_service_client = get_blob_service_client(self.cred)
+
+        # set other defaults
         self.full_container_name = None
         self.save_logs_to_blob = None
         self.logs_folder = "stdout_stderr"
@@ -873,14 +873,23 @@ class CloudClient:
         if pool_name is None and pool_info is not None:
             pool_name = getattr(pool_info, "pool_id", None)
         if pool_name is None:
-            job_dict = job_info.as_dict()
-            exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
-            if isinstance(exec_dict, dict):
-                pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
-            if pool_name is None:
-                pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
-                if isinstance(pool_dict, dict):
-                    pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
+            job_dict = (
+                job_info.as_dict()
+                if hasattr(job_info, "as_dict")
+                else job_info
+                if isinstance(job_info, dict)
+                else None
+            )
+            if isinstance(job_dict, dict):
+                exec_dict = job_dict.get("execution_info") or job_dict.get(
+                    "executionInfo"
+                )
+                if isinstance(exec_dict, dict):
+                    pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
+                if pool_name is None:
+                    pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
+                    if isinstance(pool_dict, dict):
+                        pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
 
         if pool_name is None:
             raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
@@ -998,14 +1007,25 @@ class CloudClient:
         if pool_name is None and pool_info is not None:
             pool_name = getattr(pool_info, "pool_id", None)
         if pool_name is None:
-            job_dict = job_info.as_dict()
-            exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
-            if isinstance(exec_dict, dict):
-                pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
-            if pool_name is None:
-                pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
-                if isinstance(pool_dict, dict):
-                    pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
+            job_info_dict = (
+                job_info.as_dict()
+                if hasattr(job_info, "as_dict")
+                else job_info
+                if isinstance(job_info, dict)
+                else None
+            )
+            if isinstance(job_info_dict, dict):
+                exec_dict = job_info_dict.get("execution_info") or job_info_dict.get(
+                    "executionInfo"
+                )
+                if isinstance(exec_dict, dict):
+                    pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
+                if pool_name is None:
+                    pool_dict = job_info_dict.get("pool_info") or job_info_dict.get(
+                        "poolInfo"
+                    )
+                    if isinstance(pool_dict, dict):
+                        pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
 
         if pool_name is None:
             raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")

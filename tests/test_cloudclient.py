@@ -443,6 +443,38 @@ def test_add_task(
             assert result is True
 
 
+def test_add_task_uses_job_info_as_dict_for_pool_lookup(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+    cloud_client_with_service_principal,
+):
+    job_name = "my-job-1"
+    pool_name = "mock_pool_id"
+
+    class MockJobInfo:
+        execution_info = None
+        pool_info = None
+
+        def as_dict(self):
+            return {"pool_info": {"pool_id": pool_name}}
+
+    cloud_client_with_service_principal.batch_service_client.get_job.return_value = (
+        MockJobInfo()
+    )
+
+    with patch("cfa.cloudops.batch_helpers.add_task", return_value=True):
+        result = cloud_client_with_service_principal.add_task(
+            job_name=job_name,
+            command_line="echo Hello World",
+            container_image_name="my-image:latest",
+        )
+
+    assert result is True
+
+
 def test_add_task_collection(
     mock_env_vars,
     mock_batch_service_client,
