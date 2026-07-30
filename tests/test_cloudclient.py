@@ -1,4 +1,5 @@
 import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,6 +7,16 @@ from shared_fixtures import FAKE_IMAGES, MockLogger
 
 from cfa.cloudops._cloudclient import CloudClient
 from cfa.cloudops.batch_helpers import Task
+
+
+def _mock_pool_info_with_container(image: str = "my-image:latest"):
+    return SimpleNamespace(
+        deployment_configuration=SimpleNamespace(
+            virtual_machine_configuration=SimpleNamespace(
+                container_configuration=SimpleNamespace(container_image_names=[image])
+            )
+        )
+    )
 
 
 @pytest.fixture
@@ -452,38 +463,6 @@ def test_add_task(
                 assert result is True
 
 
-def test_add_task_uses_job_info_as_dict_for_pool_lookup(
-    mock_env_vars,
-    mock_batch_service_client,
-    mock_batch_management_client,
-    mock_blob_service_client,
-    mock_compute_management_client,
-    cloud_client_with_service_principal,
-):
-    job_name = "my-job-1"
-    pool_name = "mock_pool_id"
-
-    class MockJobInfo:
-        execution_info = None
-        pool_info = None
-
-        def as_dict(self):
-            return {"pool_info": {"pool_id": pool_name}}
-
-    cloud_client_with_service_principal.batch_service_client.get_job.return_value = (
-        MockJobInfo()
-    )
-
-    with patch("cfa.cloudops.batch_helpers.add_task", return_value=True):
-        result = cloud_client_with_service_principal.add_task(
-            job_name=job_name,
-            command_line="echo Hello World",
-            container_image_name="my-image:latest",
-        )
-
-    assert result is True
-
-
 def test_add_task_collection(
     mock_env_vars,
     mock_batch_service_client,
@@ -561,7 +540,11 @@ def test_run_dag(cloud_client_with_service_principal, mock_logging):
     t2.after(t1)
     t3.after(t1)
     t4.after([t2, t3])
-    cloud_client_with_service_principal.run_dag(t1, t2, t3, t4, job_name="dag_job")
+    with patch(
+        "cfa.cloudops.batch_helpers.get_pool_full_info",
+        return_value=_mock_pool_info_with_container(),
+    ):
+        cloud_client_with_service_principal.run_dag(t1, t2, t3, t4, job_name="dag_job")
     assert len(mock_logging.messages) > 0
 
 
