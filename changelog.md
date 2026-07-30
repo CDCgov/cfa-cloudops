@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.7.9
+
+- add more scripts for CLI use
+
 ## 0.7.8
 
 - added tests for increased coverage

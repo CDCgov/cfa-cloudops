@@ -1,4 +1,3 @@
-import pytest
 from shared_fixtures import FAKE_COMMANDLINE
 
 import cfa.cloudops.scripts as scripts
@@ -240,9 +239,6 @@ def test_async_folder_scripts(mocker, monkeypatch):
     scripts.async_upload_folder()
 
 
-def test_add_tasks_from_yaml(mocker, monkeypatch, tmp_path):
-    yaml_file = tmp_path / "tasks.yaml"
-    yaml_file.write_text("tasks:\n  - id: t1\n    cmd: echo hi\n")
 def test_hello(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["script_name.py", "--name", "Tester"])
     scripts.hello()
@@ -442,7 +438,9 @@ def test_download_job_stats(mocker, monkeypatch):
     scripts.download_job_stats()
 
 
-def test_add_tasks_from_yaml(mocker, monkeypatch):
+def test_add_tasks_from_yaml(mocker, monkeypatch, tmp_path):
+    yaml_file = tmp_path / "tasks.yaml"
+    yaml_file.write_text("tasks:\n  - id: t1\n    cmd: echo hi\n")
     monkeypatch.setattr(
         "sys.argv",
         FAKE_COMMANDLINE
