@@ -1176,7 +1176,7 @@ def add_tasks_from_yaml():
         help="Base command for the tasks",
     )
     parser.add_argument(
-        "-f",
+        "-fp",
         "--file_path",
         type=str,
         required=True,

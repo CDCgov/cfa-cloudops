@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.7.8
+
+- added tests for increased coverage
+
 ## 0.7.7
 
 - added `create_new_folder` flag for upload functions to allow/warn users when uploading to a folder that does not currently exist in Blob.
