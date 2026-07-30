@@ -14,8 +14,6 @@ from azure.batch.models import (
     BatchMetadataItem,
 )
 from azure.keyvault.secrets import SecretClient
-
-# from azure.batch.models import BatchTaskAddParameter
 from azure.mgmt.batch import models
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 
@@ -147,6 +145,8 @@ class CloudClient:
         self.compute_mgmt_client = get_compute_management_client(self.cred)
         self.batch_service_client = get_batch_service_client(self.cred)
         self.blob_service_client = get_blob_service_client(self.cred)
+
+        # set other defaults
         self.full_container_name = None
         self.save_logs_to_blob = None
         self.logs_folder = "stdout_stderr"
@@ -873,14 +873,23 @@ class CloudClient:
         if pool_name is None and pool_info is not None:
             pool_name = getattr(pool_info, "pool_id", None)
         if pool_name is None:
-            job_dict = job_info.as_dict()
-            exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
-            if isinstance(exec_dict, dict):
-                pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
-            if pool_name is None:
-                pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
-                if isinstance(pool_dict, dict):
-                    pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
+            job_dict = (
+                job_info.as_dict()
+                if hasattr(job_info, "as_dict")
+                else job_info
+                if isinstance(job_info, dict)
+                else None
+            )
+            if isinstance(job_dict, dict):
+                exec_dict = job_dict.get("execution_info") or job_dict.get(
+                    "executionInfo"
+                )
+                if isinstance(exec_dict, dict):
+                    pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
+                if pool_name is None:
+                    pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
+                    if isinstance(pool_dict, dict):
+                        pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
 
         if pool_name is None:
             raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
@@ -903,17 +912,13 @@ class CloudClient:
                 logger.debug("Generated VM config.")
 
                 pool_container = vm_config.container_configuration.container_image_names
-                try:
-                    if pool_container is not None and len(pool_container) > 0:
-                        container_name = pool_container[0].split("://")[-1]
-                        logger.debug(f"Container name set to {container_name}.")
-                    else:
-                        raise ValueError(
-                            "No container image found in pool configuration and no container image name provided."
-                        )
-                except Exception as e:
-                    logger.error(f"No container image found or provided: {str(e)}")
-                    raise
+                if pool_container is not None and len(pool_container) > 0:
+                    container_name = pool_container[0].split("://")[-1]
+                    logger.debug(f"Container name set to {container_name}.")
+                else:
+                    raise ValueError(
+                        "No container image found in pool configuration and no container image name provided."
+                    )
             else:
                 container_name = self.full_container_name
                 logger.debug(f"Container name set to {container_name}.")
@@ -998,14 +1003,25 @@ class CloudClient:
         if pool_name is None and pool_info is not None:
             pool_name = getattr(pool_info, "pool_id", None)
         if pool_name is None:
-            job_dict = job_info.as_dict()
-            exec_dict = job_dict.get("execution_info") or job_dict.get("executionInfo")
-            if isinstance(exec_dict, dict):
-                pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
-            if pool_name is None:
-                pool_dict = job_dict.get("pool_info") or job_dict.get("poolInfo")
-                if isinstance(pool_dict, dict):
-                    pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
+            job_info_dict = (
+                job_info.as_dict()
+                if hasattr(job_info, "as_dict")
+                else job_info
+                if isinstance(job_info, dict)
+                else None
+            )
+            if isinstance(job_info_dict, dict):
+                exec_dict = job_info_dict.get("execution_info") or job_info_dict.get(
+                    "executionInfo"
+                )
+                if isinstance(exec_dict, dict):
+                    pool_name = exec_dict.get("pool_id") or exec_dict.get("poolId")
+                if pool_name is None:
+                    pool_dict = job_info_dict.get("pool_info") or job_info_dict.get(
+                        "poolInfo"
+                    )
+                    if isinstance(pool_dict, dict):
+                        pool_name = pool_dict.get("pool_id") or pool_dict.get("poolId")
 
         if pool_name is None:
             raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
@@ -1178,6 +1194,7 @@ class CloudClient:
         exclude_patterns: str | list | None = None,
         location_in_blob: str = ".",
         force_upload: bool = False,
+        create_new_folder: bool = False,
         legal_hold: bool = False,
         immutability_lock_days: int = 0,
     ) -> list[str]:
@@ -1206,6 +1223,9 @@ class CloudClient:
             force_upload (bool, optional): Whether to force upload files even if they
                 already exist in the container with the same size. Default is False
                 (skip existing files with same size).
+            create_new_folder (bool, optional): If True, allow creating a new virtual
+                path implicitly when location_in_blob does not exist. If False, raise
+                an error when the path is missing. Default is False.
             legal_hold (bool, optional): Whether to apply a legal hold to the uploaded blobs
                 which prevents deletion or modification of the blobs.
             immutability_lock_days (int, optional): Number of days to set for immutability lock on the uploaded blobs.
@@ -1253,6 +1273,7 @@ class CloudClient:
                 location_in_blob=location_in_blob,
                 blob_service_client=self.blob_service_client,
                 force_upload=force_upload,
+                create_new_folder=create_new_folder,
                 legal_hold=legal_hold,
                 immutability_lock_days=immutability_lock_days,
             )

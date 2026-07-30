@@ -49,6 +49,9 @@ def test_upload_files_in_folder(mocker):
     mock_blob_client = MagicMock()
     mock_container_client = MagicMock()
     mock_container_client.exists.return_value = True
+    mock_container_client.list_blobs.return_value = iter(
+        [MagicMock(name="existing/path/file.txt")]
+    )
     mock_blob_client.get_container_client.return_value = mock_container_client
     mocker.patch("builtins.open", mocker.mock_open(read_data="Some data"))
 
@@ -81,6 +84,105 @@ def test_upload_files_in_folder(mocker):
                 immutability_lock_days=7,
             )
             assert type(files) is list
+
+
+def test_upload_files_in_folder_missing_blob_location(mocker):
+    mock_blob_client = MagicMock()
+    mock_container_client = MagicMock()
+    mock_container_client.exists.return_value = True
+    mock_container_client.list_blobs.return_value = iter([])
+    mock_blob_client.get_container_client.return_value = mock_container_client
+    upload_mock = mocker.patch("cfa.cloudops.blob_helpers.upload_to_storage_container")
+
+    with patch("os.path.isdir", return_value=True):
+        with pytest.raises(ValueError) as excinfo:
+            upload_files_in_folder(
+                blob_service_client=mock_blob_client,
+                container_name="my-container",
+                folder="/folder",
+                location_in_blob="missing/path",
+            )
+
+    assert str(excinfo.value) == (
+        "Target virtual directory 'missing/path' does not exist in container 'my-container'."
+    )
+    upload_mock.assert_not_called()
+
+
+def test_upload_files_in_folder_missing_blob_location_create_new_folder(mocker):
+    mock_blob_client = MagicMock()
+    mock_container_client = MagicMock()
+    mock_container_client.exists.return_value = True
+    mock_container_client.list_blobs.return_value = iter([])
+    mock_blob_client.get_container_client.return_value = mock_container_client
+    upload_mock = mocker.patch("cfa.cloudops.blob_helpers.upload_to_storage_container")
+
+    with patch("cfa.cloudops.blob_helpers.walk_folder", return_value=["file1.txt"]):
+        with patch("os.path.isdir", return_value=True):
+            files = upload_files_in_folder(
+                blob_service_client=mock_blob_client,
+                container_name="my-container",
+                folder="/folder",
+                location_in_blob="missing/path",
+                create_new_folder=True,
+            )
+
+    assert files == ["file1.txt"]
+    upload_mock.assert_called_once()
+
+
+def test_upload_files_in_folder_root_missing_parent_blob_location(mocker):
+    mock_blob_client = MagicMock()
+    mock_container_client = MagicMock()
+    mock_container_client.exists.return_value = True
+    # Treat all virtual-directory checks as missing.
+    mock_container_client.list_blobs.return_value = iter([])
+    mock_blob_client.get_container_client.return_value = mock_container_client
+    upload_mock = mocker.patch("cfa.cloudops.blob_helpers.upload_to_storage_container")
+
+    with patch(
+        "cfa.cloudops.blob_helpers.walk_folder", return_value=["nested/file1.txt"]
+    ):
+        with patch("os.path.isdir", return_value=True):
+            with pytest.raises(ValueError) as excinfo:
+                upload_files_in_folder(
+                    blob_service_client=mock_blob_client,
+                    container_name="my-container",
+                    folder="/folder",
+                    location_in_blob=".",
+                )
+
+    assert str(excinfo.value) == (
+        "Parent virtual directory(s) 'nested' do not exist in container 'my-container'."
+    )
+    upload_mock.assert_not_called()
+
+
+def test_upload_files_in_folder_root_missing_parent_blob_location_create_new_folder(
+    mocker,
+):
+    mock_blob_client = MagicMock()
+    mock_container_client = MagicMock()
+    mock_container_client.exists.return_value = True
+    # Treat all virtual-directory checks as missing.
+    mock_container_client.list_blobs.return_value = iter([])
+    mock_blob_client.get_container_client.return_value = mock_container_client
+    upload_mock = mocker.patch("cfa.cloudops.blob_helpers.upload_to_storage_container")
+
+    with patch(
+        "cfa.cloudops.blob_helpers.walk_folder", return_value=["nested/file1.txt"]
+    ):
+        with patch("os.path.isdir", return_value=True):
+            files = upload_files_in_folder(
+                blob_service_client=mock_blob_client,
+                container_name="my-container",
+                folder="/folder",
+                location_in_blob=".",
+                create_new_folder=True,
+            )
+
+    assert files == ["nested/file1.txt"]
+    upload_mock.assert_called_once()
 
 
 def test_upload_files_in_folder_fail():
