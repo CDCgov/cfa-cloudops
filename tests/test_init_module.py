@@ -1,4 +1,5 @@
 import importlib
+import logging
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,6 +11,8 @@ def _reload_cloudops(monkeypatch, log_output=None):
     else:
         monkeypatch.setenv("LOG_OUTPUT", log_output)
 
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+
     monkeypatch.setattr("logging.basicConfig", lambda **kwargs: None)
     monkeypatch.setattr("logging.StreamHandler", MagicMock())
     monkeypatch.setattr("logging.FileHandler", MagicMock())
@@ -17,6 +20,46 @@ def _reload_cloudops(monkeypatch, log_output=None):
     import cfa.cloudops as cloudops
 
     return importlib.reload(cloudops)
+
+
+def test_cloudops_default_log_level_warning(monkeypatch):
+    captured = {}
+
+    monkeypatch.delenv("LOG_OUTPUT", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.setattr("logging.StreamHandler", MagicMock())
+    monkeypatch.setattr("logging.FileHandler", MagicMock())
+
+    def fake_basic_config(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr("logging.basicConfig", fake_basic_config)
+
+    import cfa.cloudops as cloudops
+
+    importlib.reload(cloudops)
+
+    assert captured["level"] == logging.WARNING
+
+
+def test_cloudops_log_level_none_disables_logging(monkeypatch):
+    captured = {}
+
+    monkeypatch.delenv("LOG_OUTPUT", raising=False)
+    monkeypatch.setenv("LOG_LEVEL", "none")
+    monkeypatch.setattr("logging.StreamHandler", MagicMock())
+    monkeypatch.setattr("logging.FileHandler", MagicMock())
+
+    def fake_basic_config(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr("logging.basicConfig", fake_basic_config)
+
+    import cfa.cloudops as cloudops
+
+    importlib.reload(cloudops)
+
+    assert captured["level"] == logging.CRITICAL + 1
 
 
 def test_cloudops_getattr_known_symbols(monkeypatch):
