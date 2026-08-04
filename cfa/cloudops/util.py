@@ -303,7 +303,9 @@ def get_subscriptions():
 
 
 def check_ext_env() -> bool:
-    return any("EXT-EDAV-CFA" in i for i in get_subscriptions())
+    subs = get_subscriptions()
+    logging.debug(f"Retrieved subscriptions: {subs}")
+    return any("EXT-EDAV-CFA" in i for i in subs)
 
 
 def get_user() -> str:
