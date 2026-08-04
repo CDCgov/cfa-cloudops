@@ -297,13 +297,13 @@ def get_subscriptions():
         subscriptions = subscription_client.subscriptions.list()
         return [sub.display_name for sub in subscriptions]
     except Exception:
-        logger.warning("Could not list Azure subscriptions", exc_info=True)
+        logger.warning("Could not list Azure subscriptions.", exc_info=True)
         return []
 
 
 def check_ext_env() -> bool:
     subs = get_subscriptions()
-    logging.debug(f"Retrieved subscriptions: {subs}")
+    logger.debug(f"Retrieved subscriptions: {subs}")
     return any("EXT-EDAV-CFA" in i for i in subs)
 
 
