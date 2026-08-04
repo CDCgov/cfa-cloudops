@@ -289,7 +289,7 @@ def get_subscriptions():
     """Get a list of Azure subscriptions available to the current user.
 
     Returns:
-        list: A list of subscription IDs.
+        list: A list of subscription display names.
     """
     try:
         credential = DefaultAzureCredential()
