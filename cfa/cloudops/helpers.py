@@ -37,9 +37,9 @@ def get_log_level() -> int:
 
     if log_level is None:
         logger.debug(
-            "LOG_LEVEL not set, returning CRITICAL+1 to effectively disable logging"
+            "LOG_LEVEL not set, returning WARNING by default. To disable logging, set LOG_LEVEL to 'none' in your environment."
         )
-        return logging.CRITICAL + 1
+        return logging.WARNING
 
     logger.debug(f"Processing log level string: '{log_level.lower()}'")
     match log_level.lower():
