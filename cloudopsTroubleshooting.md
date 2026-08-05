@@ -18,27 +18,23 @@ This indicates that cloudops did not resolve the Azure Batch account configurati
 
 **Common Causes**
 
-- Do not assume that setting
-`AZURE_KEYVAULT_NAME=CFA-Predict`
-in your environment will automatically configure cloudops. 
+- Do not assume that setting your environment will automatically configure cloudops. Refer to <https://github.com/cdcent/cfa-cloudops-example>
 
 - A `.env` file or manually set environment variable may not be sufficient if the rest of the Azure Batch configuration is not loaded successfully.
 
 
 **Best Practice**
 
-Use the explicit keyvault argument.  Initialize the client by explicitly specifying the Key Vault name.
+Use the explicit Key Vault argument.  Initialize the client by explicitly specifying the Key Vault name.
 
 
 **Python Script**
 
 `from cloudops import CloudClient`
 
-`cc = CloudClient(keyvault="CFA-Predict")`
+`cc = CloudClient(CFA-Predict)`
 
 This is the preferred approach because it avoids ambiguity about whether environment variables are being read correctly.
-
-Additionally:
 
 - Monitor tasks while nodes are still available.
 - Download outputs immediately after task completion.
@@ -62,9 +58,9 @@ CloudClient() fails with Azure Batch account error?
 
         |
         v
-Did you pass keyvault explicitly?
+Did you pass Key Vault explicitly?
 
-   No ------------------> Use `CloudClient(keyvault="CFA-Predict")`
+   No ------------------> Use `CloudClient(CFA-Predict)`
 
    Yes -----------------> Confirm your Key Vault and Azure Batch access
 
@@ -97,8 +93,6 @@ my-azure-registry
 
 Use the actual Azure Container Registry assigned for your cloudops environment.
 
-`registry_name = "cfprdbatchcr"`
-
 Then use that value consistently in image build, tag, and push steps.
 
 **Decision tree**
@@ -113,7 +107,7 @@ Does the registry name contain underscores?
 
    No -------------------> Does the registry exist and belong to your environment?
 
-        No ----> Use your assigned registry name
+        No ----> Use your assigned registry name   
         Yes ---> Check login/network access
 
 
@@ -133,6 +127,7 @@ A task may fail because the script cannot be found inside the container.
 - The container cannot locate the script at the specified path.
 - The path used in the task command does not match the file location inside the Docker image or mounted input directory.
 - Local paths on your computer are not automatically available inside the container. The task command must reference paths that exist inside the container at runtime.
+- Incorrect permission privileges preventing reading from the blob.
 
 **Best Practices**
 
@@ -194,16 +189,27 @@ Script not found?
 
         |
         v
+  
 Did the Dockerfile copy the script into the image?
 
    No ------------------> Add COPY instruction and rebuild image
 
    Yes -----------------> Does the task command use the same path?
 
-        No ----> Update task command path
+        No ----> Update task command path  
         Yes ---> Run `pwd` and `ls -R` inside the task
 
+Is the blob container mounted to the pool?
 
+   No -------------------> Mount the blob container to the pool before submitting the task
+   
+   Yes ------------------> Can the task read the file?
+   
+           No -----> Check blob access and permissions
+           Yes-----> Confirm the file name and path
+   
+
+        
 
 **4\. Dockerfile and Working Directory Consistency**
 
@@ -322,9 +328,9 @@ Users observe that pools do not automatically increase in size despite specifyin
 
 `max_autoscale_nodes=5`
 
-**Comon Cause**
+**Note**
 
-A maximum node count is not always the same thing as an active autoscaling configuration. The pool must be configured in a way that actually permits nodes to be allocated.
+`max_autoscale_nodes` only applies if the default auto scale formula is used. Otherwise, whatever is specified in the user-specified auto scale formula will take precedent.
 
 **Best Practices**
 
@@ -388,9 +394,6 @@ Azure Batch tasks execute on compute nodes. If the node has been removed (for ex
 
 `cc.monitor_task(download_task_output=False)`
 
-\# Download outputs immediately after completion
-
-`cc.download_task_output(...)`
 
 (Use the actual cloudops function if a dedicated download function exists.)
 
@@ -399,19 +402,20 @@ Azure Batch tasks execute on compute nodes. If the node has been removed (for ex
 
 Did `monitor_task()` fail?
 
-        │
-        ▼
+        |
+        v
+
 Did the task finish?
 
-        │
-        ▼
+        |
+        v
 
-Yes   ......................Does the pool still have nodes?
+ Yes ----------------------------> Does the pool still have nodes?
 
-        Yes   ..................Download outputs
-        No   ...................Recreate job and rerun task
+        Yes -------------------> Download outputs
+        No --------------------> Recreate job and rerun task
 
-No   .......................Continue monitoring
+No ----------------------------> Continue monitoring
 
 
 
@@ -424,14 +428,14 @@ No   .......................Continue monitoring
 
 **Common Causes**
 
-The Azure Batch pool odes not exit or contains no available compute nodes.
+The Azure Batch pool nodes do not exit or contain no available compute nodes.
 
 **How to Verify**
 
 Before creating a job:
 - Verify the pool exists.
-- Verify the pool is active.
-- Verify the pool contains compute nodes.
+- Job is not marked complete.
+
 
 **Best Practices**
 
@@ -454,16 +458,17 @@ Before creating a job:
 
 Task queued?
 
-      │
-      ▼
+      |
+      v
+
 Does pool exist?
 
-Yes   ............................ Has the pool finished allocating?
+Yes --------------------------------> Has the pool finished allocating?
 
-        Yes   ...................Submit task again
-        No    ................... Wait for notes to finish allocating
+        Yes --------------------> Submit task again
+        No ---------------------> Wait for notes to finish allocating
 
-No    ............................. Create pool
+No -------------------------------> Create pool
 
 
 **9\. Intrepreting Cloudops Error Messages**
@@ -503,22 +508,23 @@ This behavior is expected and is not unique to cloudops.
 
 Create Pool
 
-      │
-      ▼
+     |
+     v
+      
 Wait for nodes
 
-      │
-      ▼
+     |
+     v
 
 Submit small test task
 
-      │
-      ▼
+      |
+      v
 
-Verify output
+  Verify output
 
-      │
-      ▼
+      |
+      v
 
 Submit larger workload
 
@@ -551,8 +557,8 @@ If one task fails before another completes, attempting to download output from a
 
 | **Issue**                                  | **Most Likely Cause**              | **Recommended Action**                    |
 | ------------------------------------------ | ---------------------------------- | ----------------------------------------- |
-| 1. `CloudClient()` initialization fails with Azure Batch account error                          | Cloudops could not resolve Azure Batch configuration from the environment           | Use `CloudClient(keyvault="CFA-Predict")`   |
-| 2. Container image push fails                          | Placeholder or invalid Azure Container Registry name           | Use your assigned ACR name, such as `cfprdbatchcr` if assigned   |
+| 1. `CloudClient()` initialization fails with Azure Batch account error                          | Cloudops could not resolve Azure Batch configuration from the environment           | Use `CloudClient(CFA-Predict)`   |
+| 2. Container image push fails                          | Placeholder or invalid Azure Container Registry name           | Use your assigned ACR name, if assigned   |
 | 3. Python or R scripts cannot be found                          | Script is not present at the path used inside the container           | Run `pwd` and `ls -R`; update Dockerfile or task command   |
 | 4.	Dockerfile path does not match task command                          | `WORKDIR`, `COPY`, and command paths are inconsistent           | Align Dockerfile and task command paths   |
 | 5. Pool cannot be recreated immediately after deletion                          | Azure Batch has not fully completed deletion           | Wait and verify deletion, or use a new pool name   |
