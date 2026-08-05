@@ -235,7 +235,7 @@ def test_get_batch_compute_id_validation():
 
 def test_get_log_level_variants(monkeypatch):
     monkeypatch.delenv("LOG_LEVEL", raising=False)
-    assert helpers.get_log_level() == logging.CRITICAL + 1
+    assert helpers.get_log_level() == logging.WARNING
 
     monkeypatch.setenv("LOG_LEVEL", "none")
     assert helpers.get_log_level() == logging.CRITICAL + 1
