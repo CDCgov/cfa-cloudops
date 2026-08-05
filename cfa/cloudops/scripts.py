@@ -1,8 +1,33 @@
 import argparse
+import datetime
+import json
+import logging
 import sys
 import textwrap
 
 from cfa.cloudops import CloudClient
+
+
+def setup_logging():
+    level = logging.INFO
+
+    handlers = [logging.StreamHandler(sys.stdout)]
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | [%(levelname)-8s] | %(name)s | %(message)s",
+        handlers=handlers,
+    )
+
+    # Keep package logs visible while reducing Azure SDK noise.
+    logging.getLogger("cfa.cloudops").setLevel(logging.INFO)
+    logging.getLogger("azure").setLevel(logging.ERROR)
+
+
+logger = logging.getLogger(__name__)
+
+# Configure logging once on module import so all script entry points inherit it.
+setup_logging()
 
 
 def hello():
@@ -475,6 +500,11 @@ def upload_folder():
         action="store_true",
         help="Force upload even if files exist",
     )
+    parser.add_argument(
+        "--create_new_folder",
+        action="store_true",
+        help="Allow upload to create location_in_blob if it does not already exist",
+    )
     args = parser.parse_args()
     client = CloudClient(
         dotenv_path=args.dotenv_path,
@@ -488,6 +518,7 @@ def upload_folder():
         exclude_extensions=args.exclude_extensions,
         location_in_blob=args.location_in_blob,
         force_upload=args.force_upload,
+        create_new_folder=args.create_new_folder,
     )
 
 
@@ -1170,7 +1201,7 @@ def add_tasks_from_yaml():
         help="Base command for the tasks",
     )
     parser.add_argument(
-        "-f",
+        "-fp",
         "--file_path",
         type=str,
         required=True,
@@ -1185,6 +1216,619 @@ def add_tasks_from_yaml():
         job_name=args.job_name,
         base_cmd=args.base_cmd,
         file_path=args.file_path,
+    )
+
+
+def check_credentials():
+    parser = argparse.ArgumentParser(description="Check CloudClient credentials")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.check_credentials()
+
+
+def create_job_schedule():
+    parser = argparse.ArgumentParser(description="Create a job schedule")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-n", "--job_schedule_name", type=str, required=True)
+    parser.add_argument("-pn", "--pool_name", type=str, required=True)
+    parser.add_argument("-c", "--command", type=str, required=True)
+    parser.add_argument("-t", "--timeout", type=int, default=30)
+    parser.add_argument(
+        "-sw",
+        "--start_window_minutes",
+        type=int,
+        default=None,
+        help="Job schedule start window in minutes",
+    )
+    parser.add_argument(
+        "-ri",
+        "--recurrence_interval_minutes",
+        type=int,
+        default=None,
+        help="Job schedule recurrence interval in minutes",
+    )
+    parser.add_argument(
+        "-dnu",
+        "--do_not_run_until",
+        type=str,
+        default=None,
+        help="Do not run until datetime string",
+    )
+    parser.add_argument(
+        "-dna",
+        "--do_not_run_after",
+        type=str,
+        default=None,
+        help="Do not run after datetime string",
+    )
+    parser.add_argument(
+        "-e",
+        "--exist_ok",
+        action="store_true",
+        help="Do not fail if job schedule already exists",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    start_window = None
+    if args.start_window_minutes is not None:
+        start_window = datetime.timedelta(minutes=args.start_window_minutes)
+    recurrence_interval = None
+    if args.recurrence_interval_minutes is not None:
+        recurrence_interval = datetime.timedelta(
+            minutes=args.recurrence_interval_minutes
+        )
+    client.create_job_schedule(
+        job_schedule_name=args.job_schedule_name,
+        pool_name=args.pool_name,
+        command=args.command,
+        timeout=args.timeout,
+        start_window=start_window,
+        recurrence_interval=recurrence_interval,
+        do_not_run_until=args.do_not_run_until,
+        do_not_run_after=args.do_not_run_after,
+        exist_ok=args.exist_ok,
+        verbose=args.verbose,
+    )
+
+
+def delete_job_schedule():
+    parser = argparse.ArgumentParser(description="Delete a job schedule")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-n", "--job_schedule_id", type=str, required=True)
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.delete_job_schedule(job_schedule_id=args.job_schedule_id)
+
+
+def resume_job_schedule():
+    parser = argparse.ArgumentParser(description="Resume a suspended job schedule")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-n", "--job_schedule_id", type=str, required=True)
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.resume_job_schedule(job_schedule_id=args.job_schedule_id)
+
+
+def suspend_job_schedule():
+    parser = argparse.ArgumentParser(description="Suspend an active job schedule")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-n", "--job_schedule_id", type=str, required=True)
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.suspend_job_schedule(job_schedule_id=args.job_schedule_id)
+
+
+def list_available_images():
+    parser = argparse.ArgumentParser(description="List available Azure Batch images")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-os",
+        "--operating_system",
+        type=str,
+        default=None,
+        help="Optional operating system filter (linux/windows)",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    for image in client.list_available_images(operating_system=args.operating_system):
+        print(image)
+
+
+def update_blob_protection():
+    parser = argparse.ArgumentParser(
+        description="Update legal hold or read-only on blobs"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-s", "--source_path", nargs="+", required=True)
+    parser.add_argument("-c", "--container_name", type=str, required=True)
+    parser.add_argument("-lh", "--legal_hold", action="store_true")
+    parser.add_argument("-ro", "--read_only", action="store_true")
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    files = args.source_path if len(args.source_path) > 1 else args.source_path[0]
+    client.update_blob_protection(
+        files=files,
+        container_name=args.container_name,
+        legal_hold=args.legal_hold,
+        read_only=args.read_only,
+    )
+
+
+def list_acr_tags():
+    parser = argparse.ArgumentParser(description="List tags in an ACR repository")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-r", "--registry_name", type=str, required=True)
+    parser.add_argument("-n", "--repo_name", type=str, required=True)
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    for tag in client.list_acr_tags(
+        registry_name=args.registry_name, repo_name=args.repo_name
+    ):
+        print(tag)
+
+
+def get_task_status():
+    parser = argparse.ArgumentParser(description="Get task status for a job")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-j", "--job_name", type=str, required=True)
+    parser.add_argument("-t", "--task_id", type=str, default=None)
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    print(client.get_task_status(job_name=args.job_name, task_id=args.task_id))
+
+
+def get_kv_secret():
+    parser = argparse.ArgumentParser(description="Get a secret from Azure Key Vault")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-s", "--secret_name", type=str, required=True)
+    parser.add_argument("-k", "--keyvault", type=str, required=True)
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    secret = client.get_kv_secret(secret_name=args.secret_name, keyvault=args.keyvault)
+    with open(f"{args.secret_name}_secret.txt", "a") as f:
+        f.write(secret)
+    print(
+        f"Secret '{args.secret_name}' from Key Vault '{args.keyvault}' has been written to '{args.secret_name}_secret.txt'"
+    )
+
+
+def get_all_vm_quotas():
+    parser = argparse.ArgumentParser(description="Get all available VM quotas")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    for quota in client.get_all_vm_quotas():
+        print(quota)
+
+
+def get_vm_series_quotas():
+    parser = argparse.ArgumentParser(description="Get VM quotas filtered by series")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-s",
+        "--series",
+        nargs="+",
+        required=True,
+        help="VM series values, e.g., D E",
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    series = args.series if len(args.series) > 1 else args.series[0]
+    for quota in client.get_vm_series_quotas(series=series):
+        print(quota)
+
+
+def get_vm_name():
+    parser = argparse.ArgumentParser(
+        description="Get a VM name matching selection criteria"
+    )
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-s", "--series", type=str, default="D")
+    parser.add_argument("-c", "--cores", type=int, default=4)
+    parser.add_argument("-amd", "--amd", action="store_true")
+    parser.add_argument("-ntd", "--no_temp_disk", action="store_true")
+    parser.add_argument("-ssd", "--ssd", action="store_true")
+    parser.add_argument("-v", "--version", type=int, default=5)
+    parser.add_argument("-nv", "--no_verify", action="store_true")
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    print(
+        client.get_vm_name(
+            series=args.series,
+            cores=args.cores,
+            amd=args.amd,
+            temp_disk=not args.no_temp_disk,
+            ssd=args.ssd,
+            version=args.version,
+            verify=not args.no_verify,
+        )
+    )
+
+
+def add_task_collection():
+    parser = argparse.ArgumentParser(description="Add a task collection to a job")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-j", "--job_name", type=str, required=True)
+    parser.add_argument(
+        "-tf",
+        "--tasks_file",
+        type=str,
+        required=True,
+        help="Path to JSON file containing a list of task objects",
+    )
+    parser.add_argument("-n", "--name_suffix", type=str, default="")
+    args = parser.parse_args()
+
+    with open(args.tasks_file, "r") as f:
+        tasks = json.load(f)
+
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.add_task_collection(
+        job_name=args.job_name,
+        tasks=tasks,
+        name_suffix=args.name_suffix,
+    )
+
+
+def async_download_folder():
+    parser = argparse.ArgumentParser(description="Asynchronously download a folder")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument("-s", "--src_path", type=str, required=True)
+    parser.add_argument("-d", "--dest_path", type=str, required=True)
+    parser.add_argument("-c", "--container_name", type=str, required=True)
+    parser.add_argument("-i", "--include_extensions", nargs="+", default=None)
+    parser.add_argument("-e", "--exclude_extensions", nargs="+", default=None)
+    parser.add_argument("-check", "--check_size", action="store_true")
+    parser.add_argument(
+        "-mcd",
+        "--max_concurrent_downloads",
+        type=int,
+        default=20,
+    )
+    args = parser.parse_args()
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.async_download_folder(
+        src_path=args.src_path,
+        dest_path=args.dest_path,
+        container_name=args.container_name,
+        include_extensions=args.include_extensions,
+        exclude_extensions=args.exclude_extensions,
+        check_size=args.check_size,
+        max_concurrent_downloads=args.max_concurrent_downloads,
+    )
+
+
+def async_upload_folder():
+    parser = argparse.ArgumentParser(description="Asynchronously upload folder(s)")
+    parser.add_argument(
+        "-p", "--dotenv_path", type=str, default=None, help="Path to .env file"
+    )
+    parser.add_argument(
+        "-sp",
+        "--use_sp",
+        action="store_true",
+        help="Use service principal for authentication",
+    )
+    parser.add_argument(
+        "-f",
+        "--use_federated",
+        action="store_true",
+        help="Use federated identity for authentication",
+    )
+    parser.add_argument(
+        "-n",
+        "--folders",
+        nargs="+",
+        required=True,
+        help="Folder path(s) to upload",
+    )
+    parser.add_argument("-c", "--container_name", type=str, required=True)
+    parser.add_argument("-i", "--include_extensions", nargs="+", default=None)
+    parser.add_argument("-e", "--exclude_extensions", nargs="+", default=None)
+    parser.add_argument("-l", "--location_in_blob", type=str, default=".")
+    parser.add_argument(
+        "-mcu",
+        "--max_concurrent_uploads",
+        type=int,
+        default=20,
+    )
+    parser.add_argument("-lh", "--legal_hold", action="store_true")
+    parser.add_argument("-ild", "--immutability_lock_days", type=int, default=0)
+    parser.add_argument("-ro", "--read_only", action="store_true")
+    args = parser.parse_args()
+    folders = args.folders if len(args.folders) > 1 else args.folders[0]
+    client = CloudClient(
+        dotenv_path=args.dotenv_path,
+        use_sp=args.use_sp,
+        use_federated=args.use_federated,
+    )
+    client.async_upload_folder(
+        folders=folders,
+        container_name=args.container_name,
+        include_extensions=args.include_extensions,
+        exclude_extensions=args.exclude_extensions,
+        location_in_blob=args.location_in_blob,
+        max_concurrent_uploads=args.max_concurrent_uploads,
+        legal_hold=args.legal_hold,
+        immutability_lock_days=args.immutability_lock_days,
+        read_only=args.read_only,
     )
 
 

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.8.0
+
+- change default `LOG_LEVEL` behavior when unset to use `warning` (instead of disabled logging)
+- improve Azure subscription lookup diagnostics by using warning-level logging with exception details
+
+## 0.7.9
+
+- add more scripts for CLI use
+
+## 0.7.8
+
+- added tests for increased coverage
+
+## 0.7.7
+
+- added `create_new_folder` flag for upload functions to allow/warn users when uploading to a folder that does not currently exist in Blob.
+
+## 0.7.6
+
+- change most dict calls to getattr
+
 ## 0.7.5
 
 - removes --uses_deps arg from create_job cli command

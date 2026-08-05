@@ -13,8 +13,8 @@ def get_log_level() -> int:
     """Get the logging level from the LOG_LEVEL environment variable.
 
     Reads the LOG_LEVEL environment variable and returns the corresponding logging
-    level constant. If the variable is not set, returns a value higher than CRITICAL
-    to effectively disable logging. If the value is unrecognized, defaults to DEBUG.
+    level constant. If the variable is not set, defaults to WARNING. If the value
+    is unrecognized, defaults to DEBUG.
 
     Returns:
         int: Logging level constant (e.g., logging.DEBUG, logging.INFO, etc.).
@@ -28,6 +28,8 @@ def get_log_level() -> int:
 
     Note:
         Recognized values (case-insensitive): none, debug, info, warning, warn, error, critical.
+        If LOG_LEVEL is unset, WARNING is used by default.
+        Set LOG_LEVEL to "none" to effectively disable logging.
         Unrecognized values will trigger a warning and default to DEBUG.
     """
     logger.debug("Getting log level from LOG_LEVEL environment variable")
@@ -37,9 +39,9 @@ def get_log_level() -> int:
 
     if log_level is None:
         logger.debug(
-            "LOG_LEVEL not set, returning CRITICAL+1 to effectively disable logging"
+            "LOG_LEVEL not set, returning WARNING by default. To disable logging, set LOG_LEVEL to 'none' in your environment."
         )
-        return logging.CRITICAL + 1
+        return logging.WARNING
 
     logger.debug(f"Processing log level string: '{log_level.lower()}'")
     match log_level.lower():

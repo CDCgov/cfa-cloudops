@@ -29,9 +29,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-#tests
-my-dest*
-testdata
+#test
+testdata/
+my-dest-path
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

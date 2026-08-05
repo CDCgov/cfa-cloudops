@@ -8,13 +8,17 @@ The default authentication method for the `CloudClient` is a Managed Identity. I
 
 Solution: confirm your VM has the right Managed Identity setup for the Azure environment. If working at CFA, please reach out to the CFA Tools Teams. An easy way to check your Managed Identity is to run `az login --identity` in your terminal.
 
+### Unexpected Logging Output
 
-### Error Instantiating CloudClient
+The package logging behavior can be configured with environment variables.
 
-If you experience errors when creating an instance of `CloudClient()` using a .env file, it's possible the issue is coming from the .env file itself. Make sure the keys in your .env file match exactly with the keys in the sample .env. If all keys are present, it's likely an issue with a value in the .env. Confirm all values are correct.
+- `LOG_LEVEL`: controls logging verbosity.
+	- Supported values: `none`, `debug`, `info`, `warning`/`warn`, `error`, `critical`.
+	- Default when unset: `warning`.
+	- To disable package logging, set `LOG_LEVEL=none`.
+- `LOG_OUTPUT`: controls where logs are written.
+	- `stdout` (or unset): write logs to stdout.
+	- `file`: write logs to `./logs/<timestamp>.log`.
+	- `both`: write logs to both stdout and file.
 
-### File Not Found During Job
-
-If you are interacting with files during a job and getting errors like a file is not found, it can be originating from two places:
-1. incorrect mount reference. The blob container should be mounted during pool creation and referenced at the root of the Docker container. For example, a container called `my-container` would be referenced as `/my-container` in code, unless you provided a relative mount path when creating the pool.
-2. file not present in container. If you are referencing a file that should exist in your Docker container, confirm the path where it exists. Note that Docker sets a working directory so any relative paths will start from the working directory specified in your Docker container.
+If logs are not appearing as expected, verify these environment variables are set correctly for your execution context (.env, shell session, or CI workflow).
