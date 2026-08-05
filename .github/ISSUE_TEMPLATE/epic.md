@@ -1,8 +1,8 @@
 ---
 name: Epic
 about: Quarterly chunks of related work
-title: "[Q# | CO] - Title"
-labels: Epic
+title: "[EPIC | CO] - Title"
+labels: Epic, question
 assignees: ''
 
 ---
