@@ -16,4 +16,11 @@ assignees: ''
 
 **Total time estimate (days)**
 
+**Components**
+* [ ] Documentation
+* [ ] Code Updates
+* [ ] New Functionality
+* [ ] Dagster Integration
+* [ ] Azure Expertise
+
 Remove question label once details are complete.
