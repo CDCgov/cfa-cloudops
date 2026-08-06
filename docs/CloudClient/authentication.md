@@ -21,9 +21,11 @@ When the `CloudClient` class gets instantiated, one way it attempts to get one o
 - azure_blob_storage_account
 - azure_container_registry_account
 
-If the Key Vault is setup with these keys/values (the correct CFA key vault is), then no .env file is necessary. If a .env is still provided, then values from the .env will be used over what is stored in the key vault. If you desire to use values in the keyvault over the .env, provide the flag `force_keyvault=True` when instantiating the `CloudClient`. Note that if you are using a service principal then "AZURE_TENANT_ID","AZURE_SUBSCRIPTION_ID", "AZURE_CLIENT_ID", and "AZURE_CLIENT_SECRET" need to be in the .env file, saved as local environment variables, or passed to the `CloudClient`.
+If the Key Vault is set up with these keys/values (the correct CFA Key Vault is), then no .env file is necessary. If a .env file is still provided, values from the .env file are used over what is stored in the Key Vault. If you want to use values in the Key Vault over the .env file, provide the flag `force_keyvault=True` when instantiating `CloudClient`. Note that if you are using a service principal, then "AZURE_TENANT_ID", "AZURE_SUBSCRIPTION_ID", "AZURE_CLIENT_ID", and "AZURE_CLIENT_SECRET" need to be in the .env file, saved as local environment variables, or passed to `CloudClient`.
 
-For ease of use, you can also set AZURE_KEYVAULT_NAME as a global environment variable in your development workspace so that it will be passed to the `CloudClient` and eliminate the need for any parameters when instantiating the CloudClient.
+For managed identity and service principal authentication, pass the Key Vault name directly with `keyvault="..."` when instantiating `CloudClient`.
+
+For federated authentication (`use_federated=True`), if `keyvault` is not passed explicitly, `CloudClient` will check for `AZURE_KEYVAULT_NAME` in the environment and use that value if available.
 
 For example, the following way pulls values from our Key Vault called 'my-key-vault'.
 
@@ -39,20 +41,20 @@ client = CloudClient(keyvault = "my-key-vault", force_keyvault = True)
 
 ## Environment Variable Setup
 
-When the `CloudClient` class gets instantiated, the other way it attempts to get one of the three credentials listed above is based on environment variables. These environment variables can be stored locally on your system before calling out to the `CloudClient` class. A potentially easier way is to store the required variables is in a .env file. This allows for easier changing of variables or sharing between individuals.
+When the `CloudClient` class gets instantiated, another way it attempts to get one of the three credentials listed above is based on environment variables. These environment variables can be stored locally on your system before calling `CloudClient`. A potentially easier way is to store the required variables in a .env file. This allows for easier updates and sharing between individuals.
 
-The path to the .env file can be provided via the `dotenv_path` parameter when calling `CloudClient()`. By default, it looks for a file called `.env`. If the name of the file is anything else, it should be passed to `dotenv_path`. For example, instantiating the client in the following ways would be identical:
+The path to the .env file can be provided via the `dotenv_path` parameter when calling `CloudClient()`. By default, it looks for a file called `.env`. If the file name is anything else, pass it to `dotenv_path`. For example, instantiating the client in the following ways is identical:
 ```python
 client = CloudClient()
 client = CloudClient(dotenv_path = ".env")
 ```
 
-If the .env file is called "my_azure.env" then the following should be run:
+If the .env file is called "my_azure.env", then run the following:
 ```python
 client = CloudClient(dotenv_path = "my_azure.env")
 ```
 
-During instantiation of the `CloudClient`, the variables from the .env file get added to the local environment variables, overriding any variables with the same name. Then all the environment variables from the local environment are used to create a credential.
+During instantiation of `CloudClient`, variables from the .env file are added to local environment variables, overriding any variables with the same name. Then all environment variables from the local environment are used to create a credential.
 
 An example .env file can be found [here](../files/sample.env).
 
@@ -62,14 +64,14 @@ An example .env file can be found [here](../files/sample.env).
 
 The default method for authenticating to the Azure environment via the `CloudClient` is a Managed Identity. Data Scientists at CFA should already have identities associated with Azure in their development environment (VAP). Because of this, we can reduce the number of inputs to authenticate with Azure because your machine is already approved. This is the encouraged method when possible. When this method is used, we are able to pull in AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, and AZURE_RESOURCE_GROUP_NAME from the linked subscription. Therefore, these values do not need to exist in the local environment or .env file.
 
-To instantiate a `CloudClient` object using a Managed Identity credential, no additional arguments need to be passed in, except from `dotenv_path` if needed. For example:
+To instantiate a `CloudClient` object using a Managed Identity credential, no additional arguments need to be passed, except `dotenv_path` if needed. For example:
 ```python
 client = CloudClient()
 ```
 
 ### Service Principal
 
-Sometimes there are cases when a Managed Identity won't work or is not ideal. In this situation it is possible to authenticate with a Service Principal. If this is the case, set the `use_sp` parameter to `True` when instantiating the `CloudClient`. This method requires the existence of AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET to exist in the local environment variables or .env file, or these can be passed in to the `CloudClient` as lowercase parameters of the same name.
+Sometimes a Managed Identity will not work or is not ideal. In this situation, you can authenticate with a Service Principal. If this is the case, set the `use_sp` parameter to `True` when instantiating `CloudClient`. This method requires AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET to exist in local environment variables or a .env file, or these can be passed to `CloudClient` as lowercase parameters of the same name.
 
 Check [here](../files/sp_sample.env) for an example .env to be used with a service principal.
 
@@ -101,6 +103,41 @@ client = CloudClient(
 ```
 
 #### Example
-In practicality, there are a few steps required for using the CloudClient in GitHub Actions. In your repo, create a workflow file that contains the steps for your workflow. The workflow will need to run on a self-hosted runner with access to Azure in order to pull information from Azure back to the runner. We also need to use OIDC Federated login using the azure/login@v2 action. Secrets typically found in your .env file will need to be added as secrets to your GitHub repository, especially AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_SUBSCRIPTION_ID. In each of the action steps, the appropriate environment variables will need to loaded in the `env:` section of th action. Then the correct python version and requirements can be loaded. Lastly, you can then run a python script using `cfa-cloudops` and the `use_federated` parameter mentioned above.
+In practice, there are a few steps required for using CloudClient in GitHub Actions. In your repo, create a workflow file that contains the steps for your workflow. The workflow will need to run on a self-hosted runner with access to Azure in order to pull information from Azure back to the runner. We also need to use OIDC federated login with the `azure/login@v3` action. Secrets typically found in your .env file will need to be added as secrets to your GitHub repository, especially AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_SUBSCRIPTION_ID. In each action step, the appropriate environment variables will need to be loaded in the `env:` section of the action. Then the correct Python version and requirements can be loaded. Lastly, you can run a Python script using `cfa-cloudops` and the `use_federated` parameter mentioned above.
 
 For a specific example, check [here](https://github.com/cdcent/cfa-cloudops-example).
+
+## Checking Credentials
+
+If you want to quickly verify that the active credential can access your Azure subscription(s), use `check_credentials`.
+
+This method attempts to list subscriptions visible to the current credential and logs subscription information. It is useful for validating `.env` values, Key Vault setup, or federated login before creating pools/jobs.
+
+### Example
+
+```python
+client = CloudClient()
+client.check_credentials()
+```
+
+## Retrieving Secrets from Key Vault
+
+If you need a single secret value at runtime, use `get_kv_secret`.
+
+Inputs:
+
+- `secret_name`: the secret key to retrieve
+- `keyvault`: the Key Vault name (without `.vault.azure.net`)
+
+This returns the secret value if found, or `None` if the lookup fails.
+
+### Example
+
+```python
+client = CloudClient(keyvault="my-key-vault")
+token = client.get_kv_secret(
+    secret_name="my-secret-name", #pragma: allowlist secret
+    keyvault="my-key-vault"
+)
+print(token is not None)
+```

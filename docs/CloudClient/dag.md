@@ -2,7 +2,7 @@
 
 A DAG is a graph containing directed edges but no cycles, ensuring no path leads back to the starting node. This is helpful in building complex workflows where order matters between certain tasks that are dependent on other tasks completing first.
 
-To create a DAG using `cfa-cloudops`, the building blocks are Task objects from the `batch_helpers` module. Each task includes the docker command that will be run when the task executes in Azure Batch, and optionally an id you want to specify the task by, and any dependencies. Dependencies can be added at Task creation or at a later time, which will be discussed more below.
+To create a DAG using `cfa-cloudops`, the building blocks are Task objects from the `batch_helpers` module. Each task includes the Docker command that runs when the task executes in Azure Batch, and optionally an ID and any dependencies. Dependencies can be added at Task creation time or later.
 
 **Example to create Task objects**
 ```python
@@ -29,7 +29,7 @@ t1.after(t2)
 
 Tasks can also be set to have multiple dependencies using multiple statements or a single list in one call. For example:
 ```python
-#multiple statements
+# multiple statements
 t1.after(t2)
 t1.after(t3)
 
@@ -37,7 +37,7 @@ t1.after(t3)
 t1.after([t2, t3])
 ```
 
-Once all tasks have their task dependencies added, use the client method `generate_dag()` to optionally visualize the DAG as a text diagram. The diagram shall be saved to the text file specified in `file_name` parameter.
+Once all task dependencies are added, use the client method `generate_dag()` to optionally visualize the DAG as a text diagram. The diagram is saved to the text file specified in the `file_name` parameter.
 
 For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
 ```python
@@ -56,16 +56,16 @@ This will generate a diagram similar to this example in `dag_example.txt` file:
     L->  ...
 ```
 
-After verifying the text diagram, use the client method `run_dag()` to execute the DAG based on the provided tasks. The general structure of this method is comma-separated Task objects, followed by a `job_id` specification.
+After verifying the text diagram, use the client method `run_dag()` to execute the DAG based on the provided tasks. The general structure of this method is comma-separated Task objects, followed by a `job_name` specification.
 
 For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
 ```python
 client = CloudClient()
-client.run_dag(t1, t2, t3, t4, job_id = "dag_job_example")
+client.run_dag(t1, t2, t3, t4, job_name = "dag_job_example")
 ```
 
 ## A Simple Example
-Say we have 5 tasks that we want to run in a certain order. Task 2 depends on Task 1, Task 3 needs to run before Task 4, and Task 5 needs to run after Task 3 and Task 4. The following end to end example could be used. Note that we use tasks t1-t5 for the Task names, but any name can be used for a Task, such as a_way_too_long_task_name.
+Say we have 5 tasks that we want to run in a certain order. Task 2 depends on Task 1, Task 3 needs to run before Task 4, and Task 5 needs to run after Task 3 and Task 4. The following end-to-end example can be used. Note that we use tasks t1-t5 for Task names, but any name can be used for a Task, such as a_way_too_long_task_name.
 ```python
 from cfa.cloudops import CloudClient
 from cfa.cloudops.batch_helpers import Task
@@ -83,7 +83,7 @@ t3.before(t4)
 t5.after([t3, t4])
 
 client.create_job("dag_job_example", pool_name = "example_pool")
-client.run_dag(t1, t2, t3, t4, t5, job_id = "dag_job_example")
+client.run_dag(t1, t2, t3, t4, t5, job_name = "dag_job_example")
 ```
 
 ## Alternative Methods for Setting Dependencies
