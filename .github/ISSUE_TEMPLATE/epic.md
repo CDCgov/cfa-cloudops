@@ -19,6 +19,7 @@ Stakeholders:
 * [ ] Code Updates
 * [ ] New Functionality
 * [ ] Dagster Integration
+* [ ] Azure Expertise
 
 **Resources**
 [doc](link)
