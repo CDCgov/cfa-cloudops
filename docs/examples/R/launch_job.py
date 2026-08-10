@@ -1,4 +1,4 @@
-# instantiate the CoudClient
+# instantiate the CloudClient
 from cfa.cloudops import CloudClient
 
 cc = CloudClient(keyvault="my_keyvault")  # replace with CFA keyvault name
