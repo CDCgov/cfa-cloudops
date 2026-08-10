@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.8.0
+
+- change default `LOG_LEVEL` behavior when unset to use `warning` (instead of disabled logging)
+- improve Azure subscription lookup diagnostics by using warning-level logging with exception details
+
 ## 0.7.9
 
 - add more scripts for CLI use

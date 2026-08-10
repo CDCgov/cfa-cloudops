@@ -508,3 +508,17 @@ Submit larger workload
 | 10. Generic CloudOps error                     | Azure Batch resource issue         | Check pool, node, job, and task status    |
 | 11. Slow debugging                             | Azure Batch provisioning           | Reuse pools and batch test changes        |
 | 12. Download output fails after one task fails | Tasks completed at different times | Monitor and retrieve outputs individually |
+### Unexpected Logging Output
+
+The package logging behavior can be configured with environment variables.
+
+- `LOG_LEVEL`: controls logging verbosity.
+	- Supported values: `none`, `debug`, `info`, `warning`/`warn`, `error`, `critical`.
+	- Default when unset: `warning`.
+	- To disable package logging, set `LOG_LEVEL=none`.
+- `LOG_OUTPUT`: controls where logs are written.
+	- `stdout` (or unset): write logs to stdout.
+	- `file`: write logs to `./logs/<timestamp>.log`.
+	- `both`: write logs to both stdout and file.
+
+If logs are not appearing as expected, verify these environment variables are set correctly for your execution context (.env, shell session, or CI workflow).

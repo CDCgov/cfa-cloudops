@@ -289,7 +289,7 @@ def get_subscriptions():
     """Get a list of Azure subscriptions available to the current user.
 
     Returns:
-        list: A list of subscription IDs.
+        list: A list of subscription display names.
     """
     try:
         credential = DefaultAzureCredential()
@@ -297,12 +297,14 @@ def get_subscriptions():
         subscriptions = subscription_client.subscriptions.list()
         return [sub.display_name for sub in subscriptions]
     except Exception:
-        print("Could not find a subscription.")
+        logger.warning("Could not list Azure subscriptions.", exc_info=True)
         return []
 
 
 def check_ext_env() -> bool:
-    return any("EXT-EDAV-CFA" in i for i in get_subscriptions())
+    subs = get_subscriptions()
+    logger.debug(f"Retrieved subscriptions: {subs}")
+    return any("EXT-EDAV-CFA" in i for i in subs)
 
 
 def get_user() -> str:
