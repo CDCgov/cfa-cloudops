@@ -3,13 +3,13 @@
 
 ## Purpose
 
-This guide is intended to improve onboarding to cfa-cloudops client capabilities.  The guide documents common issues encountered by CFA users when using cfa-cloudops.   It provides guidance on troubleshooting, and best practices and focuses on practical solutions that can be implemented immediately to resolve issues rather than targeting changes to the cfa-cloudops code base.
+This guide is intended to improve onboarding to cfa-cloudops client capabilities.  The guide documents common issues encountered by CFA users when using cfa-cloudops. It provides guidance on troubleshooting and best practices, and focuses on practical solutions that can be implemented immediately to resolve issues rather than targeting changes to the cfa-cloudops code base.
 
 ## Potential Issues and Solutions
 
 ### 1\. Authentication/Credential Error
 
-The default authentication method for the `CloudClient` is a Managed Identity. If your Managed Identity on your VM is not setup at all or not setup correctly, you will experience issues authenticating.
+The default authentication method for the `CloudClient` is a Managed Identity. If your Managed Identity on your VM is not setup at all or missing certain permissions, you will experience issues authenticating.
 
 Solution: confirm your VM has the right Managed Identity setup for the Azure environment. If working at CFA, please reach out to the CFA Tools Teams. An easy way to check your Managed Identity is to run `az login --identity` in your terminal.
 
@@ -26,49 +26,30 @@ This indicates that cloudops did not resolve the Azure Batch account configurati
 
 **Common Causes**
 
-- Do not assume that setting your environment will automatically configure cloudops. Refer to <https://github.com/cdcent/cfa-cloudops-example>
+- An incorrect Key Vault reference. Refer to <https://github.com/cdcent/cfa-cloudops-example> for help with the Key Vault.
 
 - A `.env` file or manually set environment variable may not be sufficient if the rest of the Azure Batch configuration is not loaded successfully.
 
 
 **Best Practice**
 
-Use the explicit Key Vault argument.  Initialize the client by explicitly specifying the Key Vault name.
+Use the explicit Key Vault argument. Initialize the client by explicitly specifying the Key Vault name. The Key Vault name for CFA use is found [here](https://github.com/cdcent/cfa-cloudops-example).
 
 
 **Python Script**
 
 `from cloudops import CloudClient`
 
-`cc = CloudClient(CFA-Predict)`
+`cc = CloudClient(keyvault = <cfa_keyvault_name>)`
 
 This is the preferred approach because it avoids ambiguity about whether environment variables are being read correctly.
-
-- Monitor tasks while nodes are still available.
-- Download outputs immediately after task completion.
-- Avoid deleting pools until outputs have been retrieved.
-- If output download fails, recreate the job and rerun the task if the output cannot be recovered elsewhere.
-
-**Example**
-
-\# Monitor the task until it completes
-
-`cc.monitor_task(download_task_output=False)`
-
-\# Download outputs immediately after completion
-
-`cc.download_task_output(...)`
-
 
 **Decision Tree**
 
 CloudClient() fails with Azure Batch account error?
-
-        |
-        v
 Did you pass Key Vault explicitly?
 
-   No ------------------> Use `CloudClient(CFA-Predict)`
+   No ------------------> Use `CloudClient(keyvault = <cfa_keyvault_name>)`
 
    Yes -----------------> Confirm your Key Vault and Azure Batch access
 
@@ -91,7 +72,7 @@ or
 
 A placeholder registry name was copied literally, or the registry name does not correspond to an existing Azure Container Registry available to the user.
 
-For example, names like the following should be treated as placeholders unless explicitly assigned to you:
+For example, names like the following should be treated as placeholders and replaced with your own values:
 
 my_azure_registry
 
@@ -106,16 +87,13 @@ Then use that value consistently in image build, tag, and push steps.
 **Decision tree**
 
 Image push fails?
-
-        |
-        v
 Does the registry name contain underscores?
 
    Yes ------------------> Replace with a valid ACR name
 
    No -------------------> Does the registry exist and belong to your environment?
 
-        No ----> Use your assigned registry name   
+        No ----> Use your assigned registry name
         Yes ---> Check login/network access
 
 
@@ -124,7 +102,7 @@ Does the registry name contain underscores?
 
 **Problem**
 
-A task may fail because the script cannot be found inside the container. 
+A task may fail because the script cannot be found inside the container.
 
 **Example**
 
@@ -187,7 +165,6 @@ Use the appropriate cloudops task submission method for your workflow. The impor
 
 `cc.add_task(
     job_name="my-job",
-    task_name="hello-r",
     command="Rscript /app/cloudops_helloworld.R",
 )`
 
@@ -195,29 +172,26 @@ Use the appropriate cloudops task submission method for your workflow. The impor
 
 Script not found?
 
-        |
-        v
-  
 Did the Dockerfile copy the script into the image?
 
    No ------------------> Add COPY instruction and rebuild image
 
    Yes -----------------> Does the task command use the same path?
 
-        No ----> Update task command path  
+        No ----> Update task command path
         Yes ---> Run `pwd` and `ls -R` inside the task
 
 Is the blob container mounted to the pool?
 
    No -------------------> Mount the blob container to the pool before submitting the task
-   
+
    Yes ------------------> Can the task read the file?
-   
+
            No -----> Check blob access and permissions
            Yes-----> Confirm the file name and path
-   
 
-        
+
+
 
 ### 5\. Dockerfile and Working Directory Consistency
 
@@ -266,9 +240,6 @@ or:
 **Decision tree**
 
 Dockerfile uses `WORKDIR /app`?
-
-        |
-        v
 Does the task command reference files in /app?
 
    No ------------------> Update task command or Dockerfile
@@ -282,7 +253,7 @@ Does the task command reference files in /app?
 
 Calling pool deletion and then immediately recreating a pool with the same name may fail or skip creation with a message similar to:
 
-`Pool with name kps-cloudops-demo-pool already exists. Skipping pool creation.`
+`Pool with name demo-pool already exists. Skipping pool creation.`
 
 **Common Cause**
 
@@ -291,7 +262,7 @@ Pool deletion may not complete immediately.  Azure Batch has accepted the delete
 If you need to recreate a pool with the same name:
 
 - Call the pool deletion method.
-- Wait several minutes.
+- Wait a minutes.
 - Verify that the pool no longer exists.
 - Recreate the pool.
 - If you need to continue immediately, use a new pool name.
@@ -307,20 +278,9 @@ If you need to recreate a pool with the same name:
 `cc.create_pool(pool_name="my-debug-pool-v2")`
 
 
-**Best Practices**
-
-- Monitor task completion individually.
-- Download outputs as each task finishes.
-- Don't assume all tasks complete simultaneously.
-- Investigate failed tasks before downloading outputs for remaining tasks.
-
-
 **Decision Tree**
 
 Need to recreate a deleted pool?
-
-        |
-        v
 Must you reuse the same name?
 
    No ------------------> Create a pool with a new name
@@ -338,7 +298,7 @@ Users observe that pools do not automatically increase in size despite specifyin
 
 **Note**
 
-`max_autoscale_nodes` only applies if the default auto scale formula is used. Otherwise, whatever is specified in the user-specified auto scale formula will take precedent.
+`max_autoscale_nodes` only applies if the default autoscale formula is used. Otherwise, whatever is specified in the user-specified autoscale formula will take precedent. If number of tasks is less than max autoscale nodes, the number of nodes may be less than the maximum you set.
 
 **Best Practices**
 
@@ -363,9 +323,6 @@ When creating a pool for debugging or small tests:
 **Decision tree**
 
 Tasks stay queued after pool creation?
-
-        |
-        v
 Does the pool exist?
 
    No ------------------> Create the pool first
@@ -377,46 +334,37 @@ Does the pool exist?
 
 
 
-### 8\.	`cc.monitor_task() fails while downloading task output.`
+### 8\.	`cc.monitor_job() fails while downloading task output.`
 
 **Problem**
 
-`cc.monitor_task
+`cc.monitor_job
 (download_task_output=True)` fails when tasks no longer have nodes
 
 
 **Common Cause**
 
-Azure Batch tasks execute on compute nodes. If the node has been removed (for example, because the pool autoscaled or was deleted), cloudops cannot retrieve files directly from that node.
+Azure Batch tasks execute on compute nodes. If the node has been removed (for example, because the pool autoscaled down or was deleted), cloudops cannot retrieve files directly from that node.
 
 **Best Practices**
 
 - Monitor tasks while nodes are still available.
 - Download outputs immediately after task completion.
-- Avoid deleting pools until outputs have been retrieved. 
+- Avoid deleting pools until outputs have been retrieved.
 - If output download fails, recreate the job and rerun the task if the output cannot be recovered elsewhere.
 
 **Example**
 
-\# Monitor the task until it completes
+\# Monitor the job until it completes
 
-`cc.monitor_task(download_task_output=False)`
-
-
-(Use the actual cloudops function if a dedicated download function exists.)
+`cc.monitor_job(download_task_output=True)`
 
 
 **Decision Tree**
 
-Did `monitor_task()` fail?
+Did `monitor_job()` fail?
 
-        |
-        v
-
-Did the task finish?
-
-        |
-        v
+Did the task(s) finish?
 
  Yes ----------------------------> Does the pool still have nodes?
 
@@ -436,12 +384,13 @@ No ----------------------------> Continue monitoring
 
 **Common Causes**
 
-The Azure Batch pool nodes do not exit or contain no available compute nodes.
+- The Azure Batch pool does not exist or contains no available compute nodes.
+- The job has already been marked complete.
 
 **How to Verify**
 
 Before creating a job:
-- Verify the pool exists.
+- Verify the pool exists with an appropriate autoscaling formula.
 - Job is not marked complete.
 
 
@@ -451,7 +400,6 @@ Before creating a job:
 
 `cc.create_pool(...)`
 
-\# Wait until nodes are available
 
 \# Then create the job
 
@@ -459,22 +407,19 @@ Before creating a job:
 
 \# Finally submit tasks
 
-`cc.submit_task(...)`
+`cc.add_task(...)`
 
 
 **Decision Tree**
 
 Task queued?
 
-      |
-      v
-
 Does pool exist?
 
 Yes --------------------------------> Has the pool finished allocating?
 
         Yes --------------------> Submit task again
-        No ---------------------> Wait for notes to finish allocating
+        No ---------------------> Wait for nodes to finish allocating
 
 No -------------------------------> Create pool
 
@@ -496,6 +441,8 @@ Rather than relying only on the exception:
 
 Often the Azure Batch resources state explains the error better than the cloudops exception.
 
+If the message is still unclear, submit an issue on the GitHub repo.
+
 
 ### 11\. Reducing Debugging Time
 
@@ -503,7 +450,9 @@ Often the Azure Batch resources state explains the error better than the cloudop
 
 Debugging is slow.   Even using an extra small VM size, Azure Batch typically requires several minutes to provision compute resources before tasks begin running.
 
-This behavior is expected and is not unique to cloudops.
+**Common Causes**
+
+This behavior is expected and is not unique to cloudops. All pools take several minutes to spin up nodes no matter the size of the VM.
 
 **Best Practices**
 
@@ -515,11 +464,6 @@ This behavior is expected and is not unique to cloudops.
 **Decision Tree**
 
 Create Pool
-
-     |
-     v
-      
-Wait for nodes
 
      |
      v
@@ -537,26 +481,13 @@ Submit small test task
 Submit larger workload
 
 
-### 12\. Running Multiple Test Tasks
-
-**Problem**
-
-If one task fails before another completes, attempting to download output from all tasks may generate additional errors.
-
-**Best Practices**
-
-- Monitor task completion individually.
-- Download outputs as each task finishes.
-- Don't assume all tasks complete simultaneously.
-- Investigate failed tasks before downloading outputs for remaining tasks.
-
 ## General Recommendations
 
 - Use explicit CloudOps configuration over implicit environment discovery when getting started.
 - Treat registry names, pool names, and paths in examples as placeholders unless the documentation says otherwise.
 - Keep Dockerfile paths and task commands consistent.
 - For R and Python tasks, start with a minimal hello-world script before running a full model.
-- Use diagnostic commands such as `pwd` and `ls-r` when debugging path problems.
+- Use diagnostic commands such as `pwd` and `ls -r` when debugging path problems.
 - Do not immediately reuse a pool name after deletion unless you have verified deletion is complete.
 - If a task is queued, check pool and node state before changing the task node.
 
@@ -565,9 +496,9 @@ If one task fails before another completes, attempting to download output from a
 
 | **Issue**                                  | **Most Likely Cause**              | **Recommended Action**                    |
 | ------------------------------------------ | ---------------------------------- | ----------------------------------------- |
-| 1. Authentication/Credential Error                          | Managed Identity on your VM is not setup at all or not setup correctly       | confirm your VM has the right Managed Identity setup for the Azure environment |   
-| 2. `CloudClient()` initialization fails with Azure Batch account error                          | Cloudops could not resolve Azure Batch configuration from the environment           | Use `CloudClient(CFA-Predict)`   |
-| 3. Container image push fails                          | Placeholder or invalid Azure Container Registry name           | Use your assigned ACR name, if assigned   |
+| 1. Authentication/Credential Error                          | Managed Identity on your VM is not setup at all or not setup correctly       | Confirm your VM has the right Managed Identity setup for the Azure environment |
+| 2. `CloudClient()` initialization fails with Azure Batch account error                          | Cloudops could not resolve Azure Batch configuration from the environment           | Use `CloudClient(keyvault = <cfa_keyvault>)`  <- make sure to use the appropriate keyvault listed in the repo documented above |
+| 3. Container image push fails                          | Placeholder or invalid Azure Container Registry name           | Use your actual ACR name of your container registry |
 | 4. Python or R scripts cannot be found                          | Script is not present at the path used inside the container           | Run `pwd` and `ls -R`; update Dockerfile or task command   |
 | 5.	Dockerfile path does not match task command                          | `WORKDIR`, `COPY`, and command paths are inconsistent           | Align Dockerfile and task command paths   |
 | 6. Pool cannot be recreated immediately after deletion                          | Azure Batch has not fully completed deletion           | Wait and verify deletion, or use a new pool name   |
