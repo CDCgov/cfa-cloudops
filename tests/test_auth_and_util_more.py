@@ -115,34 +115,8 @@ def test_credential_handler_user_credential(monkeypatch):
     assert ch.user_credential is sentinel
 
 
-def test_service_principal_secret_branches(monkeypatch):
-    monkeypatch.setattr("cfa.cloudops.auth.get_sp_secret", lambda *a, **k: "kv-secret")
-
-    ch_sp = auth.CredentialHandler(
-        azure_keyvault_endpoint="https://kv",
-        azure_client_id="sp-id",
-        method="sp",
-    )
-    ch_sp.azure_client_secret = "direct-secret"  # pragma: allowlist secret
-    assert ch_sp.service_principal_secret == "direct-secret"  # pragma: allowlist secret
-
-    ch_default = auth.CredentialHandler(
-        azure_keyvault_endpoint="https://kv",
-        azure_client_id="sp-id",
-        method="default",
-    )
-    ch_default.__dict__["default_credential"] = "default-cred"
-    assert (
-        ch_default.service_principal_secret == "kv-secret"  # pragma: allowlist secret
-    )
-
-    ch_env = auth.CredentialHandler(
-        azure_keyvault_endpoint="https://kv",
-        azure_client_id="sp-id",
-        method="env",
-    )
-    ch_env.__dict__["user_credential"] = "user-cred"
-    assert ch_env.service_principal_secret == "kv-secret"  # pragma: allowlist secret
+def test_removed_service_principal_secret_property():
+    assert not hasattr(auth.CredentialHandler, "service_principal_secret")
 
 
 def test_removed_batch_service_principal_credentials_property():
@@ -228,19 +202,8 @@ def test_default_credential_wrapper(monkeypatch):
     assert dc.token["access_token"] == "abc123"
 
 
-def test_get_sp_secret(monkeypatch):
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ManagedIdentityCredential", lambda: "managed"
-    )
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.SecretClient",
-        lambda vault_url, credential: SimpleNamespace(
-            get_secret=lambda sid: SimpleNamespace(value=f"secret-{sid}")
-        ),
-    )
-
-    result = auth.get_sp_secret("https://kv", "sp-id")
-    assert result == "secret-sp-id"
+def test_removed_get_sp_secret_function():
+    assert not hasattr(auth, "get_sp_secret")
 
 
 def test_removed_get_client_secret_sp_credential_function():
