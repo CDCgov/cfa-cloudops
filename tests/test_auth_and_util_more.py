@@ -120,7 +120,7 @@ def test_service_principal_secret_branches(monkeypatch):
 
     ch_sp = auth.CredentialHandler(
         azure_keyvault_endpoint="https://kv",
-        azure_keyvault_sp_secret_id="sp-id",
+        azure_client_id="sp-id",
         method="sp",
     )
     ch_sp.azure_client_secret = "direct-secret"  # pragma: allowlist secret
@@ -128,7 +128,7 @@ def test_service_principal_secret_branches(monkeypatch):
 
     ch_default = auth.CredentialHandler(
         azure_keyvault_endpoint="https://kv",
-        azure_keyvault_sp_secret_id="sp-id",
+        azure_client_id="sp-id",
         method="default",
     )
     ch_default.__dict__["default_credential"] = "default-cred"
@@ -138,32 +138,15 @@ def test_service_principal_secret_branches(monkeypatch):
 
     ch_env = auth.CredentialHandler(
         azure_keyvault_endpoint="https://kv",
-        azure_keyvault_sp_secret_id="sp-id",
+        azure_client_id="sp-id",
         method="env",
     )
     ch_env.__dict__["user_credential"] = "user-cred"
     assert ch_env.service_principal_secret == "kv-secret"  # pragma: allowlist secret
 
 
-def test_batch_service_principal_credentials(monkeypatch):
-    called = {}
-
-    def fake_spcred(**kwargs):
-        called.update(kwargs)
-        return SimpleNamespace(**kwargs)
-
-    monkeypatch.setattr("cfa.cloudops.auth.ServicePrincipalCredentials", fake_spcred)
-
-    ch = auth.CredentialHandler(
-        azure_tenant_id="tenant",
-        azure_client_id="client",
-        azure_batch_resource_url="resource",
-    )
-    ch.__dict__["service_principal_secret"] = "secret"  # pragma: allowlist secret
-
-    cred = ch.batch_service_principal_credentials
-    assert cred.client_id == "client"
-    assert called["secret"] == "secret"  # pragma: allowlist secret
+def test_removed_batch_service_principal_credentials_property():
+    assert not hasattr(auth.CredentialHandler, "batch_service_principal_credentials")
 
 
 def test_client_secret_credential_variants(monkeypatch):
@@ -177,15 +160,12 @@ def test_client_secret_credential_variants(monkeypatch):
         "cfa.cloudops.auth.ClientSecretCredential", fake_client_secret_cred
     )
 
-    ch = auth.CredentialHandler(azure_tenant_id="t", azure_client_id="c")
-    ch.__dict__["service_principal_secret"] = "s1"  # pragma: allowlist secret
-    out1 = ch.client_secret_sp_credential
-    assert out1.client_secret == "s1"  # pragma: allowlist secret
+    assert not hasattr(auth.CredentialHandler, "client_secret_sp_credential")
 
     ch2 = auth.CredentialHandler(azure_tenant_id="t", azure_client_id="c")
     ch2.azure_client_secret = "s2"  # pragma: allowlist secret
-    out2 = ch2.client_secret_credential
-    assert out2.client_secret == "s2"  # pragma: allowlist secret
+    out = ch2.client_secret_credential
+    assert out.client_secret == "s2"  # pragma: allowlist secret
 
 
 def test_compute_node_identity_reference():
@@ -263,36 +243,12 @@ def test_get_sp_secret(monkeypatch):
     assert result == "secret-sp-id"
 
 
-def test_get_client_secret_sp_credential(monkeypatch):
-    monkeypatch.setattr("cfa.cloudops.auth.get_sp_secret", lambda *a, **k: "sp-secret")
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ClientSecretCredential",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-
-    cred = auth.get_client_secret_sp_credential(
-        vault_url="https://kv",
-        vault_sp_secret_id="sp-id",
-        tenant_id="tenant",
-        application_id="app",
-    )
-    assert cred.client_secret == "sp-secret"  # pragma: allowlist secret
+def test_removed_get_client_secret_sp_credential_function():
+    assert not hasattr(auth, "get_client_secret_sp_credential")
 
 
-def test_get_service_principal_credentials(monkeypatch):
-    monkeypatch.setattr("cfa.cloudops.auth.get_sp_secret", lambda *a, **k: "sp-secret")
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ServicePrincipalCredentials",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-
-    cred = auth.get_service_principal_credentials(
-        vault_url="https://kv",
-        vault_sp_secret_id="sp-id",
-        tenant_id="tenant",
-        application_id="app",
-    )
-    assert cred.secret == "sp-secret"  # pragma: allowlist secret
+def test_removed_get_service_principal_credentials_function():
+    assert not hasattr(auth, "get_service_principal_credentials")
 
 
 def test_get_compute_node_identity_reference_helper(monkeypatch):

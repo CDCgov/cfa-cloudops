@@ -43,6 +43,9 @@ def cloud_client_more(monkeypatch):
 
 def test_check_credentials_env_default_sp(cloud_client_more, monkeypatch):
     seen_creds = []
+    monkeypatch.setattr(
+        "cfa.cloudops._cloudclient.DefaultAzureCredential", lambda: "default-cred"
+    )
 
     class FakeSub:
         def __init__(self):
@@ -170,6 +173,9 @@ def test_download_file_download_folder_delegates(cloud_client_more, monkeypatch)
 
 def test_async_download_folder_uses_method_credential(cloud_client_more, monkeypatch):
     calls = []
+    monkeypatch.setattr(
+        "cfa.cloudops._cloudclient.DefaultAzureCredential", lambda: "default-cred"
+    )
 
     def fake_async_download_blob_folder(**kwargs):
         calls.append(kwargs)

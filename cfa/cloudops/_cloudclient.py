@@ -13,6 +13,7 @@ from azure.batch.models import (
     BatchJobConstraints,
     BatchMetadataItem,
 )
+from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models
 from azure.mgmt.resource.subscriptions import SubscriptionClient
@@ -158,7 +159,7 @@ class CloudClient:
         if self.method == "env":
             cred = self.cred.user_credential
         elif self.method == "default":
-            cred = self.cred.client_secret_sp_credential
+            cred = DefaultAzureCredential()
         else:
             cred = self.cred.client_secret_credential
 
@@ -1853,7 +1854,7 @@ class CloudClient:
         """
         logger.debug("Attempting to download folder.")
         if self.method == "default":
-            cred = self.cred.client_secret_sp_credential
+            cred = DefaultAzureCredential()
         elif self.method == "sp":
             cred = self.cred.client_secret_credential
         else:
@@ -1929,7 +1930,7 @@ class CloudClient:
         """
         logger.debug("Attempting to upload folder(s).")
         if self.method == "default":
-            cred = self.cred.client_secret_sp_credential
+            cred = DefaultAzureCredential()
         elif self.method == "sp":
             cred = self.cred.client_secret_credential
         else:
