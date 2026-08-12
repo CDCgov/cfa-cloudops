@@ -15,7 +15,6 @@ The versioning pattern is `major.minor.patch`.
 - remove unused `azure-common` dependency
 
 
-
 ## 0.8.0
 
 - change default `LOG_LEVEL` behavior when unset to use `warning` (instead of disabled logging)
