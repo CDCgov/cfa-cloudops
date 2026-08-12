@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.9.0
+
+- switch default authentication paths to use `DefaultAzureCredential` directly in client and cloud client flows
+- remove legacy service-principal secret retrieval APIs from `auth.py` (including Key Vault SP-secret helper functions/properties)
+- remove `AZURE_KEYVAULT_SP_SECRET_ID` from default key list and align Metaflow credential wiring to prefer `AZURE_CLIENT_ID` (with fallback to `AZURE_SP_CLIENT_ID`)
+- remove unused `azure-common` dependency
+
+
+
 ## 0.8.0
 
 - change default `LOG_LEVEL` behavior when unset to use `warning` (instead of disabled logging)
