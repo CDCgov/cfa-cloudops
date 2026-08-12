@@ -5,6 +5,7 @@ Helper functions for setting up valid Azure clients.
 import logging
 
 from azure.batch import BatchClient
+from azure.identity import DefaultAzureCredential
 from azure.mgmt.batch import BatchManagementClient
 from azure.mgmt.compute import ComputeManagementClient
 from azure.storage.blob import BlobServiceClient
@@ -61,7 +62,7 @@ def get_batch_management_client(
     elif ch.method == "default":
         logger.debug("Using default credentials for BatchManagementClient")
         client = BatchManagementClient(
-            credential=ch.client_secret_sp_credential,
+            credential=DefaultAzureCredential(),
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -124,7 +125,7 @@ def get_compute_management_client(
     elif ch.method == "default":
         logger.debug("Using default credentials for ComputeManagementClient")
         client = ComputeManagementClient(
-            credential=ch.client_secret_sp_credential,
+            credential=DefaultAzureCredential(),
             subscription_id=ch.azure_subscription_id,
             **kwargs,
         )
@@ -194,7 +195,7 @@ def get_batch_service_client(
         logger.debug("Creating BatchClient with default credentials")
         client = BatchClient(
             endpoint=ch.azure_batch_endpoint,
-            credential=ch.client_secret_sp_credential,
+            credential=DefaultAzureCredential(),
             **kwargs,
         )
     else:
@@ -258,7 +259,7 @@ def get_blob_service_client(
     elif ch.method == "default":
         logger.debug("Using default credentials for BlobServiceClient")
         client = BlobServiceClient(
-            credential=ch.client_secret_sp_credential,
+            credential=DefaultAzureCredential(),
             account_url=ch.azure_blob_storage_endpoint,
             **kwargs,
         )

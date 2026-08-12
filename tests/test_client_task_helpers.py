@@ -29,6 +29,9 @@ def test_get_batch_management_client_methods(monkeypatch, fake_credential_handle
         return SimpleNamespace(kind="batch_mgmt")
 
     monkeypatch.setattr("cfa.cloudops.client.BatchManagementClient", fake_constructor)
+    monkeypatch.setattr(
+        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
+    )
 
     fake_credential_handler.method = "sp"
     client.get_batch_management_client(fake_credential_handler)
@@ -53,6 +56,9 @@ def test_get_compute_management_client_methods(monkeypatch, fake_credential_hand
         return SimpleNamespace(kind="compute_mgmt")
 
     monkeypatch.setattr("cfa.cloudops.client.ComputeManagementClient", fake_constructor)
+    monkeypatch.setattr(
+        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
+    )
 
     fake_credential_handler.method = "sp"
     client.get_compute_management_client(fake_credential_handler)
@@ -76,6 +82,9 @@ def test_get_batch_service_client_methods(monkeypatch, fake_credential_handler):
         return SimpleNamespace(kind="batch_service")
 
     monkeypatch.setattr("cfa.cloudops.client.BatchClient", fake_constructor)
+    monkeypatch.setattr(
+        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
+    )
 
     fake_credential_handler.method = "sp"
     client.get_batch_service_client(fake_credential_handler)
@@ -100,6 +109,9 @@ def test_get_blob_service_client_methods(monkeypatch, fake_credential_handler):
         return SimpleNamespace(kind="blob_service")
 
     monkeypatch.setattr("cfa.cloudops.client.BlobServiceClient", fake_constructor)
+    monkeypatch.setattr(
+        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
+    )
 
     fake_credential_handler.method = "sp"
     client.get_blob_service_client(fake_credential_handler)
