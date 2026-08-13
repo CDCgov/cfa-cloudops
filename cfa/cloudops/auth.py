@@ -5,7 +5,7 @@ Helper functions for Azure authentication.
 import logging
 import os
 from dataclasses import dataclass
-from functools import cached_property, partial
+from functools import cached_property
 
 from azure.core.pipeline import PipelineContext, PipelineRequest
 from azure.core.pipeline.policies import BearerTokenCredentialPolicy
@@ -200,10 +200,16 @@ class CredentialHandler:
 
     @cached_property
     def default_credential(self):
+        credential_kwargs = getattr(self, "_default_credential_kwargs", {}) or {}
         logger.debug(
             "Creating DefaultAzureCredential for ARM/Key Vault/data-plane usage."
         )
-        return DefaultAzureCredential()
+        if credential_kwargs:
+            logger.debug(
+                "DefaultAzureCredential configured with options: %s",
+                sorted(credential_kwargs.keys()),
+            )
+        return DefaultAzureCredential(**credential_kwargs)
 
     @cached_property
     def batch_credential(self):
@@ -458,6 +464,7 @@ class DefaultCredentialHandler(CredentialHandler):
         override_env: bool = False,
         keyvault: str = None,
         force_keyvault: bool = False,
+        default_credential_kwargs: dict | None = None,
         **kwargs,
     ) -> None:
         """Initialize a Default Credential Handler.
@@ -470,9 +477,15 @@ class DefaultCredentialHandler(CredentialHandler):
         Args:
             dotenv_path: Path to .env file to load environment variables from.
                 If None, uses default .env file discovery.
-            override_env: If True, overrides existing environment variables with values from the .env file.
+            override_env: If True, overrides existing environment variables with values from the
+                .env file and persists resolved ``azure_*`` handler values and derived defaults
+                into process environment variables.
             keyvault: Name of the Azure Key Vault to use for secrets.
             force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
+            default_credential_kwargs: Optional keyword arguments passed directly to
+                ``DefaultAzureCredential`` to tune credential chain behavior in CI/
+                headless environments (for example
+                ``{"exclude_interactive_browser_credential": True}``).
             **kwargs: Additional keyword arguments to override specific credential attributes.
 
         Raises:
@@ -490,20 +503,30 @@ class DefaultCredentialHandler(CredentialHandler):
         logger.debug("Loading environment variables.")
         load_dotenv(dotenv_path=dotenv_path, override=override_env)
 
-        # Explicit CloudClient kwargs should override .env values and be visible
-        # to downstream credential discovery via standard AZURE_* environment keys.
+        self._default_credential_kwargs = default_credential_kwargs or {}
+        if self._default_credential_kwargs:
+            logger.debug(
+                "DefaultCredentialHandler received DefaultAzureCredential options: %s",
+                sorted(self._default_credential_kwargs.keys()),
+            )
+
+        # Explicit kwargs should override .env/env values for this handler instance
+        # without mutating process-level environment by default.
         azure_kwargs = {
             key: val
             for key, val in kwargs.items()
             if key.startswith("azure_") and val is not None
         }
-        for key, val in azure_kwargs.items():
-            os.environ[key.upper()] = str(val)
+
+        def get_resolved(key: str):
+            if key in azure_kwargs:
+                return azure_kwargs[key]
+            return get_config_val(key, config_dict=kwargs, try_env=True)
 
         logger.debug(
             "Retrieving Azure subscription information using DefaultCredential."
         )
-        d_cred = DefaultAzureCredential()
+        d_cred = DefaultAzureCredential(**self._default_credential_kwargs)
 
         # load keyvault secrets
         if keyvault is None:
@@ -518,17 +541,12 @@ class DefaultCredentialHandler(CredentialHandler):
                 force_keyvault=force_keyvault,
             )
 
-        # Re-apply explicit kwargs after optional Key Vault load so constructor
-        # arguments remain authoritative for this handler.
-        for key, val in azure_kwargs.items():
-            os.environ[key.upper()] = str(val)
-
         try:
             sub_c = SubscriptionClient(d_cred)
         except Exception as e:
             logger.error(f"Failed to create SubscriptionClient: {e}")
             raise
-        sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
+        sub_id = get_resolved("azure_subscription_id")
         if sub_id is None:
             logger.error("AZURE_SUBSCRIPTION_ID not found in environment variables.")
             raise ValueError("AZURE_SUBSCRIPTION_ID not found in env variables.")
@@ -554,16 +572,22 @@ class DefaultCredentialHandler(CredentialHandler):
             raise ValueError(
                 f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
             )
-        logger.debug("Setting environment variables.")
-        d.set_env_vars()
-
-        get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
 
         for key in self.__dataclass_fields__.keys():
-            self.__setattr__(key, get_conf(key))
+            self.__setattr__(key, get_resolved(key))
         # check for azure batch location
         if self.__getattribute__("azure_batch_location") is None:
             self.__setattr__("azure_batch_location", d.default_azure_batch_location)
+
+        if override_env:
+            logger.debug(
+                "Persisting resolved handler values into environment variables."
+            )
+            for key in self.__dataclass_fields__.keys():
+                val = self.__getattribute__(key)
+                if val is not None:
+                    os.environ[key.upper()] = str(val)
+            d.set_env_vars()
 
 
 class EnvCredentialHandler(DefaultCredentialHandler):
