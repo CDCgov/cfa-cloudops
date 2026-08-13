@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.9.1
+
+- documentation updates
+- include R example
+- switch doc site to use Zensical
+
 ## 0.9.0
 
 - switch default authentication paths to use `DefaultAzureCredential` directly in client and cloud client flows
