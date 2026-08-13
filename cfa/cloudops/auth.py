@@ -7,7 +7,6 @@ import os
 from dataclasses import dataclass
 from functools import cached_property, partial
 
-from azure.common.credentials import ServicePrincipalCredentials
 from azure.core.pipeline import PipelineContext, PipelineRequest
 from azure.core.pipeline.policies import BearerTokenCredentialPolicy
 from azure.core.pipeline.transport import HttpRequest
@@ -49,7 +48,6 @@ class CredentialHandler:
     azure_subnet_id: str = None
 
     azure_keyvault_endpoint: str = None
-    azure_keyvault_sp_secret_id: str = None
     azure_tenant_id: str = None
     azure_client_id: str = None
     azure_batch_endpoint_subdomain: str = d.default_azure_batch_endpoint_subdomain
@@ -219,114 +217,9 @@ class CredentialHandler:
         return ManagedIdentityCredential()
 
     @cached_property
-    def service_principal_secret(self):
-        """A service principal secret retrieved from Azure Key Vault.
-
-        Returns:
-            str: The secret value.
-
-        Example:
-            >>> handler = CredentialHandler()
-            >>> handler.azure_keyvault_endpoint = "https://myvault.vault.azure.net/"
-            >>> handler.azure_keyvault_sp_secret_id = "my-secret"
-            >>> secret = handler.service_principal_secret
-        """
-        logger.debug("Retrieving service principal secret from Azure Key Vault.")
-        self.require_attr(
-            ["azure_keyvault_endpoint", "azure_keyvault_sp_secret_id"],
-            goal="service_principal_secret",
-        )
-        if self.method == "default":
-            logger.debug(
-                "Using default credential method for service principal secret."
-            )
-            cred = self.default_credential
-        elif self.method == "sp":
-            logger.debug(
-                "Using service principal credential method for service principal secret."
-            )
-            return self.azure_client_secret
-        else:
-            logger.debug("Using user credential method for service principal secret.")
-            cred = self.user_credential
-        logger.debug(
-            "All required attributes present for service principal secret. Retrieving..."
-        )
-        secret = get_sp_secret(
-            self.azure_keyvault_endpoint,
-            self.azure_keyvault_sp_secret_id,
-            cred,
-        )
-        logger.debug("Retrieved service principal secret from Azure Key Vault.")
-        logger.info(
-            f"Retrieved secret '{self.azure_keyvault_sp_secret_id}' from Azure Key Vault."
-        )
-        return secret
-
-    @cached_property
     def default_credential(self):
         logger.debug("Creating DefaultCredential.")
         return DefaultCredential()
-
-    @cached_property
-    def batch_service_principal_credentials(self):
-        """Service Principal credentials for authenticating to Azure Batch.
-
-        Returns:
-            ServicePrincipalCredentials: The credentials configured for Azure Batch access.
-
-        Example:
-            >>> handler = CredentialHandler()
-            >>> # Set required attributes...
-            >>> credentials = handler.batch_service_principal_credentials
-            >>> # Use with Azure Batch client
-        """
-        logger.debug("Creating ServicePrincipalCredentials for Azure Batch.")
-        self.require_attr(
-            [
-                "azure_tenant_id",
-                "azure_client_id",
-                "azure_batch_resource_url",
-            ],
-            goal="batch_service_principal_credentials",
-        )
-        logger.debug(
-            "All required attributes present for Azure Batch Service Principal credentials. Creating..."
-        )
-        spcred = ServicePrincipalCredentials(
-            client_id=self.azure_client_id,
-            tenant=self.azure_tenant_id,
-            secret=self.service_principal_secret,
-            resource=self.azure_batch_resource_url,
-        )
-        logger.debug("Created ServicePrincipalCredentials for Azure Batch.")
-        return spcred
-
-    @cached_property
-    def client_secret_sp_credential(self):
-        """A client secret credential created using the service principal secret.
-
-        Returns:
-            ClientSecretCredential: The credential configured with service principal details.
-
-        Example:
-            >>> handler = CredentialHandler()
-            >>> # Set required attributes...
-            >>> credential = handler.client_secret_sp_credential
-            >>> # Use with Azure SDK clients
-        """
-        logger.debug("Creating ClientSecretCredential using service principal secret.")
-        self.require_attr(["azure_tenant_id", "azure_client_id"])
-        logger.debug(
-            "All required attributes present for ClientSecretCredential. Creating..."
-        )
-        cscred = ClientSecretCredential(
-            tenant_id=self.azure_tenant_id,
-            client_secret=self.service_principal_secret,
-            client_id=self.azure_client_id,
-        )
-        logger.debug("Created ClientSecretCredential using service principal secret.")
-        return cscred
 
     @cached_property
     def client_secret_credential(self):
@@ -830,136 +723,6 @@ class DefaultCredentialHandler(CredentialHandler):
         # check for azure batch location
         if self.__getattribute__("azure_batch_location") is None:
             self.__setattr__("azure_batch_location", d.default_azure_batch_location)
-
-
-def get_sp_secret(
-    vault_url: str,
-    vault_sp_secret_id: str,
-    user_credential=None,
-) -> str:
-    """Get a service principal secret from an Azure keyvault.
-
-    Args:
-        vault_url: URL for the Azure keyvault to access.
-        vault_sp_secret_id: Service principal secret ID within the keyvault.
-        user_credential: User credential for the Azure user, as an azure-identity
-            credential class instance. If None, will use a ManagedIdentityCredential
-            instantiated at runtime.
-
-    Returns:
-        str: The retrieved value of the service principal secret.
-
-    Example:
-        >>> secret = get_sp_secret(
-        ...     "https://myvault.vault.azure.net/",
-        ...     "my-secret-id"
-        ... )
-    """
-    if user_credential is None:
-        logger.debug("No user_credential provided, using ManagedIdentityCredential.")
-        user_credential = ManagedIdentityCredential()
-
-    secret_client = SecretClient(vault_url=vault_url, credential=user_credential)
-    sp_secret = secret_client.get_secret(vault_sp_secret_id).value
-    logger.debug("Retrieved service principal secret from Azure Key Vault.")
-
-    return sp_secret
-
-
-def get_client_secret_sp_credential(
-    vault_url: str,
-    vault_sp_secret_id: str,
-    tenant_id: str,
-    application_id: str,
-    user_credential=None,
-) -> ClientSecretCredential:
-    """Get a ClientSecretCredential for a given Azure service principal.
-
-    Args:
-        vault_url: URL for the Azure keyvault to access.
-        vault_sp_secret_id: Service principal secret ID within the keyvault.
-        tenant_id: Tenant ID for the service principal credential.
-        application_id: Application ID for the service principal credential.
-        user_credential: User credential for the Azure user, as an azure-identity
-            credential class instance. Passed to ``get_sp_secret``. If None,
-            ``get_sp_secret`` will use a ManagedIdentityCredential instantiated
-            at runtime. See its documentation for more.
-
-    Returns:
-        ClientSecretCredential: A ClientSecretCredential for the given service principal.
-
-    Example:
-        >>> credential = get_client_secret_sp_credential(
-        ...     "https://myvault.vault.azure.net/",
-        ...     "my-secret-id",
-        ...     "tenant-id",
-        ...     "application-id"
-        ... )
-    """
-    logger.debug("Getting SP secret for service principal.")
-    sp_secret = get_sp_secret(
-        vault_url, vault_sp_secret_id, user_credential=user_credential
-    )
-    logger.debug("Creating ClientSecretCredential for service principal using secret.")
-    sp_credential = ClientSecretCredential(
-        tenant_id=tenant_id,
-        client_id=application_id,
-        client_secret=sp_secret,
-    )
-    logger.debug("Created ClientSecretCredential for service principal.")
-    return sp_credential
-
-
-def get_service_principal_credentials(
-    vault_url: str,
-    vault_sp_secret_id: str,
-    tenant_id: str,
-    application_id: str,
-    resource_url: str = d.default_azure_batch_resource_url,
-    user_credential=None,
-) -> ServicePrincipalCredentials:
-    """Get a ServicePrincipalCredentials object for a given Azure service principal.
-
-    Args:
-        vault_url: URL for the Azure keyvault to access.
-        vault_sp_secret_id: Service principal secret ID within the keyvault.
-        tenant_id: Tenant ID for the service principal credential.
-        application_id: Application ID for the service principal credential.
-        resource_url: URL of the Azure resource. Defaults to the value of
-            ``defaults.default_azure_batch_resource_url``.
-        user_credential: User credential for the Azure user, as an azure-identity
-            credential class instance. Passed to ``get_sp_secret``. If None,
-            ``get_sp_secret`` will use a ManagedIdentityCredential instantiated
-            at runtime. See the ``get_sp_secret`` documentation for details.
-
-    Returns:
-        ServicePrincipalCredentials: A ServicePrincipalCredentials object for the
-            service principal.
-
-    Example:
-        >>> credentials = get_service_principal_credentials(
-        ...     "https://myvault.vault.azure.net/",
-        ...     "my-secret-id",
-        ...     "tenant-id",
-        ...     "application-id"
-        ... )
-    """
-    logger.debug("Getting SP secret for service principal.")
-    sp_secret = get_sp_secret(
-        vault_url, vault_sp_secret_id, user_credential=user_credential
-    )
-    logger.debug(
-        "Creating ServicePrincipalCredentials for service principal using secret."
-    )
-    sp_credential = ServicePrincipalCredentials(
-        tenant=tenant_id,
-        client_id=application_id,
-        secret=sp_secret,
-        resource=resource_url,
-    )
-    logger.debug("Created ServicePrincipalCredentials for service principal.")
-
-    return sp_credential
 
 
 def get_compute_node_identity_reference(
