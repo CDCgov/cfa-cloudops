@@ -11,11 +11,7 @@ import duckdb
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.web import WebSiteManagementClient
 
-from .auth import (
-    DefaultCredentialHandler,
-    EnvCredentialHandler,
-    SPCredentialHandler,
-)
+from .auth import DefaultCredentialHandler
 
 logger = logging.getLogger(__name__)
 
@@ -200,33 +196,14 @@ class FunctionAppClient:
             )
             raise ValueError("Keyvault information is required but not found.")
         # authenticate to get credentials
-        if not use_sp and not use_federated:
-            self.cred = EnvCredentialHandler(
-                dotenv_path=dotenv_path,
-                keyvault=keyvault,
-                force_keyvault=force_keyvault,
-                **kwargs,
-            )
-            self.method = "env"
-            logger.info("Using managed identity credentials.")
-        elif use_federated:
-            self.cred = DefaultCredentialHandler(
-                dotenv_path=dotenv_path,
-                keyvault=keyvault,
-                force_keyvault=force_keyvault,
-                **kwargs,
-            )
-            self.method = "default"
-            logger.info("Using default credentials.")
-        else:
-            self.cred = SPCredentialHandler(
-                dotenv_path=dotenv_path,
-                keyvault=keyvault,
-                force_keyvault=force_keyvault,
-                **kwargs,
-            )
-            self.method = "sp"
-            logger.info("Using service principal credentials.")
+
+        self.cred = DefaultCredentialHandler(
+            dotenv_path=dotenv_path,
+            keyvault=keyvault,
+            force_keyvault=force_keyvault,
+            **kwargs,
+        )
+
         self.update_function_database = kwargs.get("update_function_database", True)
         self.conn = None
 
@@ -295,7 +272,7 @@ class FunctionAppClient:
 
     def _swap_deployment_slot(self, source_slot: str, target_slot: str):
         web_mgmt_client = WebSiteManagementClient(
-            self.cred.client_secret_credential, self.cred.azure_subscription_id
+            self.cred.user_credential, self.cred.azure_subscription_id
         )
         if target_slot.lower() == "production":
             return web_mgmt_client.web_apps.begin_swap_slot_with_production(

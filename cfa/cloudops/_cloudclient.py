@@ -2,6 +2,7 @@ import datetime
 import inspect
 import logging
 import os
+import warnings
 from graphlib import CycleError, TopologicalSorter
 from typing import Literal, Optional
 
@@ -13,7 +14,6 @@ from azure.batch.models import (
     BatchJobConstraints,
     BatchMetadataItem,
 )
-from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models
 from azure.mgmt.resource.subscriptions import SubscriptionClient
@@ -23,8 +23,6 @@ from cfa.cloudops import batch_helpers, blob, blob_helpers, helpers
 
 from .auth import (
     DefaultCredentialHandler,
-    EnvCredentialHandler,
-    SPCredentialHandler,
 )
 from .batch_helpers import (
     check_mount_format,
@@ -57,6 +55,7 @@ class CloudClient:
         keyvault (str, optional): Name of the Azure Key Vault to use for secrets.
         dotenv_path (str, optional): Path to .env file containing environment variables.
             If None, uses default .env file discovery. Default is None.
+        override_env (bool, optional): Whether to override existing environment variables with values from the .env file. Default is False.
         use_sp (bool, optional): Whether to use Service Principal authentication.
             Default is False.
         use_federated (bool, optional): Whether to use federated/default credentials.
@@ -99,6 +98,7 @@ class CloudClient:
         self,
         keyvault: str = None,
         dotenv_path: str = None,
+        override_env: bool = False,
         use_sp: bool = False,
         use_federated: bool = False,
         force_keyvault: bool = False,
@@ -113,33 +113,28 @@ class CloudClient:
             )
             raise ValueError("Keyvault information is required but not found.")
         # authenticate to get credentials
-        if not use_sp and not use_federated:
-            self.cred = EnvCredentialHandler(
-                dotenv_path=dotenv_path,
-                keyvault=keyvault,
-                force_keyvault=force_keyvault,
-                **kwargs,
+        if use_sp:
+            warnings.warn(
+                "The `use_sp` flag is deprecated and will be removed in future versions.",
+                DeprecationWarning,
+                stacklevel=2,
             )
-            self.method = "env"
-            logger.info("Using managed identity credentials.")
-        elif use_federated:
-            self.cred = DefaultCredentialHandler(
-                dotenv_path=dotenv_path,
-                keyvault=keyvault,
-                force_keyvault=force_keyvault,
-                **kwargs,
+        if use_federated:
+            warnings.warn(
+                "The `use_federated` flag is deprecated and will be removed in future versions.",
+                DeprecationWarning,
+                stacklevel=2,
             )
-            self.method = "default"
-            logger.info("Using default credentials.")
-        else:
-            self.cred = SPCredentialHandler(
-                dotenv_path=dotenv_path,
-                keyvault=keyvault,
-                force_keyvault=force_keyvault,
-                **kwargs,
-            )
-            self.method = "sp"
-            logger.info("Using service principal credentials.")
+
+        # change to DefaultCredentialHandler
+        self.cred = DefaultCredentialHandler(
+            dotenv_path=dotenv_path,
+            override_env=override_env,
+            keyvault=keyvault,
+            force_keyvault=force_keyvault,
+            **kwargs,
+        )
+
         # get clients
         logger.debug("Getting Azure clients and setting other attributes.")
         self.batch_mgmt_client = get_batch_management_client(self.cred)
@@ -156,12 +151,7 @@ class CloudClient:
 
     def check_credentials(self):
         logger.debug("Checking credentials by listing subscriptions.")
-        if self.method == "env":
-            cred = self.cred.user_credential
-        elif self.method == "default":
-            cred = DefaultAzureCredential()
-        else:
-            cred = self.cred.client_secret_credential
+        cred = self.cred.default_credential
 
         try:
             subscription_client = SubscriptionClient(cred)
@@ -1853,12 +1843,7 @@ class CloudClient:
             take considerable time depending on file sizes and network speed.
         """
         logger.debug("Attempting to download folder.")
-        if self.method == "default":
-            cred = DefaultAzureCredential()
-        elif self.method == "sp":
-            cred = self.cred.client_secret_credential
-        else:
-            cred = self.cred.user_credential
+        cred = self.cred.default_credential
         blob.async_download_blob_folder(
             container_name=container_name,
             local_folder=dest_path,
@@ -1929,12 +1914,7 @@ class CloudClient:
             unnecessary files like temporary files or build artifacts.
         """
         logger.debug("Attempting to upload folder(s).")
-        if self.method == "default":
-            cred = DefaultAzureCredential()
-        elif self.method == "sp":
-            cred = self.cred.client_secret_credential
-        else:
-            cred = self.cred.user_credential
+        cred = self.cred.default_credential
         if isinstance(folders, str):
             folders = [folders]
         for folder in folders:
@@ -2414,12 +2394,8 @@ class CloudClient:
         Returns:
             Optional[str]: The value of the secret, or None if not found.
         """
-        if self.method == "env":
-            cred = self.cred.user_credential
-        elif self.method == "default":
-            cred = self.cred.user_credential
-        else:
-            cred = self.cred.client_secret_credential
+        cred = self.cred.default_credential
+
         try:
             secret_client = SecretClient(
                 vault_url=f"https://{keyvault}.vault.azure.net/",

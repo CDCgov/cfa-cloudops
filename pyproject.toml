@@ -86,6 +86,9 @@ async_upload_folder = "cfa.cloudops.scripts:async_upload_folder"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
 
 [dependency-groups]
 dev = [

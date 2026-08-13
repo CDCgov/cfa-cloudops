@@ -173,17 +173,15 @@ def test_function_app_classmethods_and_validation(monkeypatch):
 
 
 def test_function_app_init_and_database_connection(monkeypatch):
-    monkeypatch.setattr(func_mod, "EnvCredentialHandler", lambda **k: "envcred")
     monkeypatch.setattr(func_mod, "DefaultCredentialHandler", lambda **k: "defaultcred")
-    monkeypatch.setattr(func_mod, "SPCredentialHandler", lambda **k: "spcred")
 
     c_env = func_mod.FunctionAppClient(function_app_name="f")
     c_def = func_mod.FunctionAppClient(function_app_name="f", use_federated=True)
     c_sp = func_mod.FunctionAppClient(function_app_name="f", use_sp=True)
 
-    assert c_env.method == "env"
-    assert c_def.method == "default"
-    assert c_sp.method == "sp"
+    assert c_env.cred == "defaultcred"
+    assert c_def.cred == "defaultcred"
+    assert c_sp.cred == "defaultcred"
 
     sql_calls = []
 
@@ -281,6 +279,17 @@ def test_cfa_batch_pool_service_setup_step_parameters(monkeypatch):
 
 
 def test_decorators_init_exports():
+    metaflow_pkg = ModuleType("metaflow")
+    metaflow_decorators = ModuleType("metaflow.decorators")
+
+    class DummyStepDecorator:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    metaflow_decorators.StepDecorator = DummyStepDecorator
+    sys.modules["metaflow"] = metaflow_pkg
+    sys.modules["metaflow.decorators"] = metaflow_decorators
+
     mod = importlib.import_module(
         "cfa.cloudops.metaflow.custom_metaflow.plugins.decorators"
     )

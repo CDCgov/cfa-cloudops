@@ -107,12 +107,12 @@ def test_credential_handler_endpoint_properties():
     assert ch.azure_container_registry_endpoint == "https://reg.azurecr.io"
 
 
-def test_credential_handler_user_credential(monkeypatch):
+def test_credential_handler_default_credential(monkeypatch):
     sentinel = object()
-    monkeypatch.setattr("cfa.cloudops.auth.ManagedIdentityCredential", lambda: sentinel)
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: sentinel)
 
     ch = auth.CredentialHandler()
-    assert ch.user_credential is sentinel
+    assert ch.default_credential is sentinel
 
 
 def test_removed_service_principal_secret_property():
@@ -123,23 +123,9 @@ def test_removed_batch_service_principal_credentials_property():
     assert not hasattr(auth.CredentialHandler, "batch_service_principal_credentials")
 
 
-def test_client_secret_credential_variants(monkeypatch):
-    calls = []
-
-    def fake_client_secret_cred(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(**kwargs)
-
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ClientSecretCredential", fake_client_secret_cred
-    )
-
+def test_removed_client_secret_credential_variants():
     assert not hasattr(auth.CredentialHandler, "client_secret_sp_credential")
-
-    ch2 = auth.CredentialHandler(azure_tenant_id="t", azure_client_id="c")
-    ch2.azure_client_secret = "s2"  # pragma: allowlist secret
-    out = ch2.client_secret_credential
-    assert out.client_secret == "s2"  # pragma: allowlist secret
+    assert not hasattr(auth.CredentialHandler, "client_secret_credential")
 
 
 def test_compute_node_identity_reference():
@@ -218,7 +204,7 @@ def test_get_compute_node_identity_reference_helper(monkeypatch):
     identity = SimpleNamespace(resource_id="rid")
 
     monkeypatch.setattr(
-        "cfa.cloudops.auth.EnvCredentialHandler",
+        "cfa.cloudops.auth.DefaultCredentialHandler",
         lambda: SimpleNamespace(compute_node_identity_reference=identity),
     )
 
@@ -288,8 +274,12 @@ def test_load_env_vars(monkeypatch):
         tenant_id = "tenant-1"
         display_name = "rg-name"
 
+    monkeypatch.delenv("AZURE_SUBSCRIPTION_ID", raising=False)
+    monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
+    monkeypatch.delenv("AZURE_RESOURCE_GROUP_NAME", raising=False)
+
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.auth.ManagedIdentityCredential", lambda: "mid")
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dac")
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -318,51 +308,36 @@ def test_load_env_vars(monkeypatch):
     assert called["kv"] == 1
 
 
-def test_env_credential_handler_init(monkeypatch):
-    monkeypatch.setattr("cfa.cloudops.auth.load_env_vars", lambda **kwargs: None)
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.get_config_val",
-        lambda key, config_dict=None, try_env=True: (
-            config_dict.get(key)
-            if config_dict and key in config_dict
-            else os.getenv(key.upper())
-        ),
-    )
+def test_load_env_vars_subscription_mismatch_raises(monkeypatch):
+    class FakeSub:
+        subscription_id = "sub-1"
+        tenant_id = "tenant-1"
+        display_name = "rg-name"
 
-    monkeypatch.delenv("AZURE_BATCH_LOCATION", raising=False)
-
-    handler = auth.EnvCredentialHandler(
-        dotenv_path=".env.test", azure_batch_account="acct"
-    )
-    assert handler.method == "env"
-    assert handler.azure_batch_location == auth.d.default_azure_batch_location
-
-
-def test_sp_credential_handler_init(monkeypatch):
+    monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "does-not-exist")
+    monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
-    monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dac")
     monkeypatch.setattr(
-        "cfa.cloudops.auth.ClientSecretCredential",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.get_config_val",
-        lambda key, config_dict=None, try_env=True: (
-            config_dict.get(key)
-            if config_dict and key in config_dict
-            else os.getenv(key.upper())
+        "cfa.cloudops.auth.SubscriptionClient",
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
         ),
     )
+    monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
 
-    handler = auth.SPCredentialHandler(
-        azure_tenant_id="tenant",
-        azure_subscription_id="sub",
-        azure_client_id="client",
-        azure_client_secret="secret",  # pragma: allowlist secret
-        azure_batch_account="acct",
-    )
-    assert handler.method == "sp"
+    with pytest.raises(ValueError, match="Subscription matching AZURE_SUBSCRIPTION_ID"):
+        auth.load_env_vars(dotenv_path=".env.test")
+
+
+def test_env_credential_handler_alias_exists():
+    assert hasattr(auth, "EnvCredentialHandler")
+    assert issubclass(auth.EnvCredentialHandler, auth.DefaultCredentialHandler)
+
+
+def test_sp_credential_handler_alias_exists():
+    assert hasattr(auth, "SPCredentialHandler")
+    assert issubclass(auth.SPCredentialHandler, auth.DefaultCredentialHandler)
 
 
 def test_default_credential_handler_success(monkeypatch):
@@ -374,7 +349,7 @@ def test_default_credential_handler_success(monkeypatch):
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultCredential", lambda: "dcred")
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -391,13 +366,55 @@ def test_default_credential_handler_success(monkeypatch):
     )
 
     handler = auth.DefaultCredentialHandler(dotenv_path=".env.test")
-    assert handler.method == "default"
+    assert handler.azure_subscription_id == "sub-1"
+
+
+def test_default_credential_handler_azure_kwargs_override_env(monkeypatch):
+    class FakeSub:
+        subscription_id = "sub-override"
+        display_name = "rg-name"
+
+    monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "sub-env")
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-env")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-env")
+    monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
+    monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.SubscriptionClient",
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
+        ),
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.get_config_val",
+        lambda key, config_dict=None, try_env=True: (
+            config_dict.get(key)
+            if config_dict and key in config_dict
+            else os.getenv(key.upper())
+        ),
+    )
+
+    handler = auth.DefaultCredentialHandler(
+        dotenv_path=".env.test",
+        azure_subscription_id="sub-override",
+        azure_tenant_id="tenant-override",
+        azure_client_id="client-override",
+    )
+
+    assert os.environ["AZURE_SUBSCRIPTION_ID"] == "sub-override"
+    assert os.environ["AZURE_TENANT_ID"] == "tenant-override"
+    assert os.environ["AZURE_CLIENT_ID"] == "client-override"
+    assert handler.azure_subscription_id == "sub-override"
+    assert handler.azure_tenant_id == "tenant-override"
+    assert handler.azure_client_id == "client-override"
 
 
 def test_default_credential_handler_missing_sub(monkeypatch):
     monkeypatch.delenv("AZURE_SUBSCRIPTION_ID", raising=False)
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultCredential", lambda: "dcred")
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(subscriptions=SimpleNamespace(list=lambda: [])),
