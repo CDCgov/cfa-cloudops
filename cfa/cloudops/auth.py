@@ -546,25 +546,38 @@ class DefaultCredentialHandler(CredentialHandler):
         except Exception as e:
             logger.error(f"Failed to create SubscriptionClient: {e}")
             raise
+        subscriptions = list(sub_c.subscriptions.list())
+        if not subscriptions:
+            raise ValueError(
+                "No Azure subscriptions were found for the current credential."
+            )
+
         sub_id = get_resolved("azure_subscription_id")
         if sub_id is None:
-            logger.error("AZURE_SUBSCRIPTION_ID not found in environment variables.")
-            raise ValueError("AZURE_SUBSCRIPTION_ID not found in env variables.")
-        subscription = [
-            sub for sub in sub_c.subscriptions.list() if sub.subscription_id == sub_id
-        ]
+            logger.debug(
+                "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
+            )
+            subscription = subscriptions[0]
+            azure_kwargs["azure_subscription_id"] = subscription.subscription_id
+        else:
+            subscription = next(
+                (sub for sub in subscriptions if sub.subscription_id == sub_id),
+                None,
+            )
+
         # pull info if sub exists
         logger.debug("Pulling subscription information.")
-        if subscription:
-            subscription = subscription[0]
+        if subscription is not None:
             if "AZURE_RESOURCE_GROUP_NAME" in os.environ:
                 logger.debug(
                     "Using AZURE_RESOURCE_GROUP_NAME from environment/.env/key vault."
                 )
             else:
-                logger.debug(
-                    "AZURE_RESOURCE_GROUP_NAME not set; subscription display_name is not treated as a resource group name."
-                )
+                azure_kwargs["azure_resource_group_name"] = subscription.display_name
+            if "AZURE_TENANT_ID" in os.environ:
+                logger.debug("Using AZURE_TENANT_ID from environment/.env/key vault.")
+            else:
+                azure_kwargs["azure_tenant_id"] = subscription.tenant_id
         else:
             logger.error(
                 f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
