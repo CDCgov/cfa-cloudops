@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from cfa.cloudops import auth, util
+from cfa.cloudops import defaults as d
 
 
 def test_lookup_service_principal_success(monkeypatch):
@@ -344,6 +345,7 @@ def test_default_credential_handler_success(monkeypatch):
     class FakeSub:
         subscription_id = "sub-1"
         display_name = "rg-name"
+        tenant_id = "tenant-1"
 
     monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "sub-1")
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
@@ -456,10 +458,39 @@ def test_default_credential_handler_missing_sub(monkeypatch):
         auth.DefaultCredentialHandler(dotenv_path=".env.test")
 
 
+def test_default_credential_handler_preserves_default_subdomain(monkeypatch):
+    class FakeSub:
+        subscription_id = "sub-1"
+        display_name = "rg-name"
+        tenant_id = "tenant-1"
+
+    monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "sub-1")
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-1")
+    monkeypatch.delenv("AZURE_BATCH_ENDPOINT_SUBDOMAIN", raising=False)
+    monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
+    monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
+    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.SubscriptionClient",
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
+        ),
+    )
+
+    handler = auth.DefaultCredentialHandler(dotenv_path=".env.test")
+
+    assert (
+        handler.azure_batch_endpoint_subdomain
+        == d.default_azure_batch_endpoint_subdomain
+    )
+
+
 def test_default_credential_handler_passes_default_credential_kwargs(monkeypatch):
     class FakeSub:
         subscription_id = "sub-1"
         display_name = "rg-name"
+        tenant_id = "tenant-1"
 
     captured = {}
 

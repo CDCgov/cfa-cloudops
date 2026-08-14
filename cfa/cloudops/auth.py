@@ -587,7 +587,9 @@ class DefaultCredentialHandler(CredentialHandler):
             )
 
         for key in self.__dataclass_fields__.keys():
-            self.__setattr__(key, get_resolved(key))
+            resolved_val = get_resolved(key)
+            if resolved_val is not None:
+                self.__setattr__(key, resolved_val)
         # check for azure batch location
         if self.__getattribute__("azure_batch_location") is None:
             self.__setattr__("azure_batch_location", d.default_azure_batch_location)
