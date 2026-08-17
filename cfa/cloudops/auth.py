@@ -11,7 +11,9 @@ from azure.core.pipeline import PipelineContext, PipelineRequest
 from azure.core.pipeline.policies import BearerTokenCredentialPolicy
 from azure.core.pipeline.transport import HttpRequest
 from azure.identity import (
+    ChainedTokenCredential,
     DefaultAzureCredential,
+    ManagedIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models as batch_mgmt_models
@@ -209,7 +211,10 @@ class CredentialHandler:
                 "DefaultAzureCredential configured with options: %s",
                 sorted(credential_kwargs.keys()),
             )
-        return DefaultAzureCredential(**credential_kwargs)
+        return ChainedTokenCredential(
+            DefaultAzureCredential(**credential_kwargs),
+            ManagedIdentityCredential(**credential_kwargs),
+        )
 
     @cached_property
     def batch_credential(self):
@@ -325,7 +330,9 @@ class DefaultCredential(BasicTokenAuthentication):
         super(DefaultCredential, self).__init__(None)
         if credential is None:
             logger.debug("No credential provided, using DefaultAzureCredential.")
-            credential = DefaultAzureCredential()
+            credential = ChainedTokenCredential(
+                DefaultAzureCredential(), ManagedIdentityCredential()
+            )
         self.credential = credential
         self._policy = BearerTokenCredentialPolicy(credential, resource_id, **kwargs)
 
@@ -399,7 +406,9 @@ def load_env_vars(
         >>> load_env_vars("/path/to/.env")  # Load from specific file
     """
     # get DefaultAzureCredential
-    def_cred = DefaultAzureCredential()
+    def_cred = ChainedTokenCredential(
+        DefaultAzureCredential(), ManagedIdentityCredential()
+    )
 
     logger.debug("Loading environment variables.")
     load_dotenv(dotenv_path=dotenv_path, override=override_env)
@@ -526,7 +535,10 @@ class DefaultCredentialHandler(CredentialHandler):
         logger.debug(
             "Retrieving Azure subscription information using DefaultCredential."
         )
-        d_cred = DefaultAzureCredential(**self._default_credential_kwargs)
+        d_cred = ChainedTokenCredential(
+            DefaultAzureCredential(**self._default_credential_kwargs),
+            ManagedIdentityCredential(**self._default_credential_kwargs),
+        )
 
         # load keyvault secrets
         if keyvault is None:
