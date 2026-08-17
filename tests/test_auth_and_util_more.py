@@ -445,6 +445,102 @@ def test_default_credential_handler_override_env_applies_overrides(monkeypatch):
     assert os.environ["AZURE_CLIENT_ID"] == "client-override"
 
 
+def test_default_credential_handler_uses_azure_kwargs_for_credential_bootstrap(
+    monkeypatch,
+):
+    class FakeSub:
+        subscription_id = "sub-override"
+        display_name = "rg-name"
+        tenant_id = "tenant-sub"
+
+    captured = {}
+
+    def fake_default_credential(**kwargs):
+        captured["tenant"] = os.getenv("AZURE_TENANT_ID")
+        captured["client_id"] = os.getenv("AZURE_CLIENT_ID")
+        captured["client_secret"] = os.getenv("AZURE_CLIENT_SECRET")
+        return "dcred"
+
+    monkeypatch.setenv("AZURE_TENANT_ID", "tenant-env")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "client-env")
+    monkeypatch.setenv("AZURE_CLIENT_SECRET", "secret-env")
+    monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.DefaultAzureCredential", fake_default_credential
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.ManagedIdentityCredential", lambda **kwargs: "mi"
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.ChainedTokenCredential", lambda *creds: "chain"
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.SubscriptionClient",
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
+        ),
+    )
+
+    handler = auth.DefaultCredentialHandler(
+        dotenv_path=".env.test",
+        azure_subscription_id="sub-override",
+        azure_tenant_id="tenant-override",
+        azure_client_id="client-override",
+        azure_client_secret="secret-override",  # pragma: allowlist secret
+    )
+
+    assert captured["tenant"] == "tenant-override"
+    assert captured["client_id"] == "client-override"
+    assert captured["client_secret"] == "secret-override"  # pragma: allowlist secret
+    assert os.environ["AZURE_TENANT_ID"] == "tenant-env"
+    assert os.environ["AZURE_CLIENT_ID"] == "client-env"
+    assert os.environ["AZURE_CLIENT_SECRET"] == "secret-env"  # pragma: allowlist secret
+    assert handler.azure_tenant_id == "tenant-override"
+    assert handler.azure_client_id == "client-override"
+    assert handler.azure_client_secret == "secret-override"  # pragma: allowlist secret
+
+
+def test_default_credential_handler_override_env_persists_client_secret(monkeypatch):
+    class FakeSub:
+        subscription_id = "sub-override"
+        display_name = "rg-name"
+        tenant_id = "tenant-sub"
+
+    monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "sub-env")
+    monkeypatch.delenv("AZURE_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.DefaultAzureCredential", lambda **kwargs: "dcred"
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.ManagedIdentityCredential", lambda **kwargs: "mi"
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.ChainedTokenCredential", lambda *creds: "chain"
+    )
+    monkeypatch.setattr(
+        "cfa.cloudops.auth.SubscriptionClient",
+        lambda cred: SimpleNamespace(
+            subscriptions=SimpleNamespace(list=lambda: [FakeSub()])
+        ),
+    )
+    monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
+
+    auth.DefaultCredentialHandler(
+        dotenv_path=".env.test",
+        override_env=True,
+        azure_subscription_id="sub-override",
+        azure_client_secret="secret-override",  # pragma: allowlist secret
+    )
+
+    assert (
+        os.environ["AZURE_CLIENT_SECRET"]
+        == "secret-override"  # pragma: allowlist secret
+    )
+
+
 def test_default_credential_handler_missing_sub(monkeypatch):
     monkeypatch.delenv("AZURE_SUBSCRIPTION_ID", raising=False)
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)

@@ -50,6 +50,7 @@ class CredentialHandler:
     azure_keyvault_endpoint: str = None
     azure_tenant_id: str = None
     azure_client_id: str = None
+    azure_client_secret: str = None
     azure_batch_endpoint_subdomain: str = d.default_azure_batch_endpoint_subdomain
     azure_batch_account: str = None
     azure_batch_location: str = d.default_azure_batch_location
@@ -527,94 +528,126 @@ class DefaultCredentialHandler(CredentialHandler):
             if key.startswith("azure_") and val is not None
         }
 
+        credential_env_mapping = {
+            "azure_tenant_id": "AZURE_TENANT_ID",
+            "azure_client_id": "AZURE_CLIENT_ID",
+            "azure_client_secret": "AZURE_CLIENT_SECRET",  # pragma: allowlist secret
+        }
+        credential_env_overrides = {
+            env_key: str(azure_kwargs[key])
+            for key, env_key in credential_env_mapping.items()
+            if key in azure_kwargs
+        }
+        original_credential_env = {
+            env_key: os.environ.get(env_key) for env_key in credential_env_overrides
+        }
+
+        for env_key, env_val in credential_env_overrides.items():
+            os.environ[env_key] = env_val
+
         def get_resolved(key: str):
             if key in azure_kwargs:
                 return azure_kwargs[key]
             return get_config_val(key, config_dict=kwargs, try_env=True)
 
-        logger.debug(
-            "Retrieving Azure subscription information using DefaultCredential."
-        )
-        d_cred = ChainedTokenCredential(
-            DefaultAzureCredential(**self._default_credential_kwargs),
-            ManagedIdentityCredential(**self._default_credential_kwargs),
-        )
-
-        # load keyvault secrets
-        if keyvault is None:
-            try:
-                keyvault = os.environ["AZURE_KEYVAULT_NAME"]
-            except KeyError:
-                keyvault = None
-        if keyvault is not None:
-            get_keyvault_vars(
-                keyvault_name=keyvault,
-                credential=d_cred,
-                force_keyvault=force_keyvault,
-            )
-
         try:
-            sub_c = SubscriptionClient(d_cred)
-        except Exception as e:
-            logger.error(f"Failed to create SubscriptionClient: {e}")
-            raise
-        subscriptions = list(sub_c.subscriptions.list())
-        if not subscriptions:
-            raise ValueError(
-                "No Azure subscriptions were found for the current credential."
-            )
-
-        sub_id = get_resolved("azure_subscription_id")
-        if sub_id is None:
             logger.debug(
-                "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
+                "Retrieving Azure subscription information using DefaultCredential."
             )
-            subscription = subscriptions[0]
-            azure_kwargs["azure_subscription_id"] = subscription.subscription_id
-        else:
-            subscription = next(
-                (sub for sub in subscriptions if sub.subscription_id == sub_id),
-                None,
+            d_cred = ChainedTokenCredential(
+                DefaultAzureCredential(**self._default_credential_kwargs),
+                ManagedIdentityCredential(**self._default_credential_kwargs),
             )
 
-        # pull info if sub exists
-        logger.debug("Pulling subscription information.")
-        if subscription is not None:
-            if "AZURE_RESOURCE_GROUP_NAME" in os.environ:
-                logger.debug(
-                    "Using AZURE_RESOURCE_GROUP_NAME from environment/.env/key vault."
+            # Reuse the same credential object for downstream SDK clients.
+            self.__dict__["default_credential"] = d_cred
+
+            # load keyvault secrets
+            if keyvault is None:
+                try:
+                    keyvault = os.environ["AZURE_KEYVAULT_NAME"]
+                except KeyError:
+                    keyvault = None
+            if keyvault is not None:
+                get_keyvault_vars(
+                    keyvault_name=keyvault,
+                    credential=d_cred,
+                    force_keyvault=force_keyvault,
                 )
-            else:
-                azure_kwargs["azure_resource_group_name"] = subscription.display_name
-            if "AZURE_TENANT_ID" in os.environ:
-                logger.debug("Using AZURE_TENANT_ID from environment/.env/key vault.")
-            else:
-                azure_kwargs["azure_tenant_id"] = subscription.tenant_id
-        else:
-            logger.error(
-                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
-            )
-            raise ValueError(
-                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
-            )
 
-        for key in self.__dataclass_fields__.keys():
-            resolved_val = get_resolved(key)
-            if resolved_val is not None:
-                self.__setattr__(key, resolved_val)
-        # check for azure batch location
-        if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
+            try:
+                sub_c = SubscriptionClient(d_cred)
+            except Exception as e:
+                logger.error(f"Failed to create SubscriptionClient: {e}")
+                raise
+            subscriptions = list(sub_c.subscriptions.list())
+            if not subscriptions:
+                raise ValueError(
+                    "No Azure subscriptions were found for the current credential."
+                )
 
-        if override_env:
-            logger.debug(
-                "Persisting resolved handler values into environment variables."
-            )
+            sub_id = get_resolved("azure_subscription_id")
+            if sub_id is None:
+                logger.debug(
+                    "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
+                )
+                subscription = subscriptions[0]
+                azure_kwargs["azure_subscription_id"] = subscription.subscription_id
+            else:
+                subscription = next(
+                    (sub for sub in subscriptions if sub.subscription_id == sub_id),
+                    None,
+                )
+
+            # pull info if sub exists
+            logger.debug("Pulling subscription information.")
+            if subscription is not None:
+                if "AZURE_RESOURCE_GROUP_NAME" in os.environ:
+                    logger.debug(
+                        "Using AZURE_RESOURCE_GROUP_NAME from environment/.env/key vault."
+                    )
+                else:
+                    azure_kwargs["azure_resource_group_name"] = (
+                        subscription.display_name
+                    )
+                if "AZURE_TENANT_ID" in os.environ:
+                    logger.debug(
+                        "Using AZURE_TENANT_ID from environment/.env/key vault."
+                    )
+                else:
+                    azure_kwargs["azure_tenant_id"] = subscription.tenant_id
+            else:
+                logger.error(
+                    f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+                )
+                raise ValueError(
+                    f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+                )
+
             for key in self.__dataclass_fields__.keys():
-                val = self.__getattribute__(key)
-                if val is not None:
-                    os.environ[key.upper()] = str(val)
-            d.set_env_vars()
+                resolved_val = get_resolved(key)
+                if resolved_val is not None:
+                    self.__setattr__(key, resolved_val)
+            # check for azure batch location
+            if self.__getattribute__("azure_batch_location") is None:
+                self.__setattr__("azure_batch_location", d.default_azure_batch_location)
+
+            if override_env:
+                logger.debug(
+                    "Persisting resolved handler values into environment variables."
+                )
+                for key in self.__dataclass_fields__.keys():
+                    val = self.__getattribute__(key)
+                    if val is not None:
+                        os.environ[key.upper()] = str(val)
+                d.set_env_vars()
+        finally:
+            if not override_env:
+                for env_key, original_val in original_credential_env.items():
+                    if original_val is None:
+                        os.environ.pop(env_key, None)
+                    else:
+                        os.environ[env_key] = original_val
 
 
 class EnvCredentialHandler(DefaultCredentialHandler):
