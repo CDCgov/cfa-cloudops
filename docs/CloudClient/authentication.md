@@ -56,6 +56,21 @@ During instantiation of the `CloudClient`, the variables from the .env file get 
 
 An example .env file can be found [here](../files/sample.env).
 
+## Logging During Initialization
+
+Package logging can still be controlled with the `LOG_LEVEL` and `LOG_OUTPUT` environment variables, but `CloudClient` now also supports direct logging overrides during initialization. This is useful when you want debug output from the client constructor itself without setting shell-level environment variables first.
+
+For example, to enable debug logs to stdout during client creation:
+
+```python
+client = CloudClient(
+    log_level="debug",
+    log_output="stdout",
+)
+```
+
+Supported `log_level` values are `none`, `debug`, `info`, `warning`/`warn`, `error`, and `critical`. Supported `log_output` values are `stdout`, `file`, and `both`.
+
 ## Using Different Authentication Methods
 
 ### Managed Identity

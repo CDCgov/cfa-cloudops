@@ -2,6 +2,8 @@ import json
 import logging
 import os
 import subprocess as sp
+import sys
+from datetime import datetime
 
 import docker
 from docker.errors import DockerException
@@ -9,7 +11,52 @@ from docker.errors import DockerException
 logger = logging.getLogger(__name__)
 
 
-def get_log_level() -> int:
+FORMAT = "[%(levelname)s] %(asctime)s: %(message)s"
+
+
+def get_log_handlers(log_output: str | None = None) -> list[logging.Handler]:
+    """Build logging handlers from a log-output setting.
+
+    Args:
+        log_output (str | None, optional): Output target. Supported values are
+            ``stdout``, ``file``, and ``both``. When None, the value is read from
+            the ``LOG_OUTPUT`` environment variable.
+
+    Returns:
+        list[logging.Handler]: Handlers to use for logging configuration.
+    """
+    resolved_output = os.getenv("LOG_OUTPUT") if log_output is None else log_output
+    run_time = datetime.now()
+    now_string = f"{run_time:%Y-%m-%d_%H:%M:%S%z}"
+
+    if resolved_output is None:
+        logger.info("Logging output set to stdout only.")
+        return [logging.StreamHandler(sys.stdout)]
+
+    lowered_output = resolved_output.lower()
+    if lowered_output.startswith("both"):
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
+        logfile = os.path.join("logs", f"{now_string}.log")
+        logger.info("Logging output set to both stdout and file.")
+        return [logging.StreamHandler(sys.stdout), logging.FileHandler(logfile)]
+
+    if lowered_output.startswith("file"):
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
+        logfile = os.path.join("logs", f"{now_string}.log")
+        logger.info("Logging output set to file only.")
+        return [logging.FileHandler(logfile)]
+
+    if lowered_output.startswith("std"):
+        logger.info("Logging output set to stdout only.")
+        return [logging.StreamHandler(sys.stdout)]
+
+    print(f"Did not recognize {resolved_output}. Setting to stdout.")
+    return [logging.StreamHandler(sys.stdout)]
+
+
+def get_log_level(log_level: str | int | None = None) -> int:
     """Get the logging level from the LOG_LEVEL environment variable.
 
     Reads the LOG_LEVEL environment variable and returns the corresponding logging
@@ -34,17 +81,21 @@ def get_log_level() -> int:
     """
     logger.debug("Getting log level from LOG_LEVEL environment variable")
 
-    log_level = os.getenv("LOG_LEVEL")
-    logger.debug(f"LOG_LEVEL environment variable value: {log_level}")
+    resolved_level = os.getenv("LOG_LEVEL") if log_level is None else log_level
+    logger.debug(f"LOG_LEVEL environment variable value: {resolved_level}")
 
-    if log_level is None:
+    if resolved_level is None:
         logger.debug(
             "LOG_LEVEL not set, returning WARNING by default. To disable logging, set LOG_LEVEL to 'none' in your environment."
         )
         return logging.WARNING
 
-    logger.debug(f"Processing log level string: '{log_level.lower()}'")
-    match log_level.lower():
+    if isinstance(resolved_level, int):
+        logger.debug(f"Using explicit integer log level: {resolved_level}")
+        return resolved_level
+
+    logger.debug(f"Processing log level string: '{resolved_level.lower()}'")
+    match resolved_level.lower():
         case "none":
             logger.debug(
                 "Log level 'none' selected, returning CRITICAL+1 to disable logging"
@@ -69,6 +120,35 @@ def get_log_level() -> int:
         case ll:
             logger.warning(f"Did not recognize log level string {ll}. Using DEBUG")
             return logging.DEBUG
+
+
+def configure_logging(
+    log_level: str | int | None = None,
+    log_output: str | None = None,
+    force: bool = False,
+) -> None:
+    """Configure package logging.
+
+    Args:
+        log_level (str | int | None, optional): Logging level to use. When None,
+            reads from ``LOG_LEVEL``.
+        log_output (str | None, optional): Logging output destination. When None,
+            reads from ``LOG_OUTPUT``.
+        force (bool, optional): Whether to replace existing logging handlers.
+            Default is False.
+    """
+    resolved_output = os.getenv("LOG_OUTPUT") if log_output is None else log_output
+    logging.basicConfig(
+        level=get_log_level(log_level),
+        format=FORMAT,
+        datefmt="%Y-%m-%d_%H:%M:%S%z",
+        handlers=get_log_handlers(log_output),
+        force=force,
+    )
+    logger.info("Logging configuration complete.")
+    logging.debug(
+        f"logging set to {get_log_level(log_level)} to output: {resolved_output}."
+    )
 
 
 def package_and_upload_dockerfile(

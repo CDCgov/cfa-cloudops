@@ -141,6 +141,58 @@ def test_create_pool_success(
         assert result is None
 
 
+def test_cloudclient_configures_logging_when_overrides_are_provided(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+):
+    with (
+        patch(
+            "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+        ) as mock_cred_handler,
+        patch(
+            "cfa.cloudops._cloudclient.helpers.configure_logging"
+        ) as mock_configure_logging,
+    ):
+        mock_cred_handler.return_value = MagicMock()
+
+        CloudClient(
+            dotenv_path=None,
+            use_sp=False,
+            use_federated=False,
+            log_level="debug",
+            log_output="stdout",
+        )
+
+    mock_configure_logging.assert_called_once_with(
+        log_level="debug", log_output="stdout", force=True
+    )
+
+
+def test_cloudclient_does_not_reconfigure_logging_without_overrides(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+):
+    with (
+        patch(
+            "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+        ) as mock_cred_handler,
+        patch(
+            "cfa.cloudops._cloudclient.helpers.configure_logging"
+        ) as mock_configure_logging,
+    ):
+        mock_cred_handler.return_value = MagicMock()
+
+        CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
+
+    mock_configure_logging.assert_not_called()
+
+
 def test_create_job_success(
     mock_env_vars,
     mock_batch_service_client,

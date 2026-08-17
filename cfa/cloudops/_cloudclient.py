@@ -56,6 +56,12 @@ class CloudClient:
         dotenv_path (str, optional): Path to .env file containing environment variables.
             If None, uses default .env file discovery. Default is None.
         override_env (bool, optional): Whether to override existing environment variables with values from the .env file. Default is False.
+        log_level (str | int, optional): Logging level override applied during
+            CloudClient initialization. When omitted, existing package logging
+            configuration is preserved.
+        log_output (str, optional): Logging output override applied during
+            CloudClient initialization. Supported values match package logging:
+            ``stdout``, ``file``, and ``both``.
         use_sp (bool, optional): Whether to use Service Principal authentication.
             Default is False.
         use_federated (bool, optional): Whether to use federated/default credentials.
@@ -99,11 +105,22 @@ class CloudClient:
         keyvault: str = None,
         dotenv_path: str = None,
         override_env: bool = False,
+        log_level: str | int | None = None,
+        log_output: str | None = None,
         use_sp: bool = False,
         use_federated: bool = False,
         force_keyvault: bool = False,
         **kwargs,
     ):
+        if log_level is not None:
+            os.environ["LOG_LEVEL"] = str(log_level)
+        if log_output is not None:
+            os.environ["LOG_OUTPUT"] = log_output
+        if log_level is not None or log_output is not None:
+            helpers.configure_logging(
+                log_level=log_level, log_output=log_output, force=True
+            )
+
         logger.debug("Initializing CloudClient.")
         if keyvault is None:
             dotenv_path = dotenv_path or ".env"
