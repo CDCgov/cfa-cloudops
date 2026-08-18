@@ -153,11 +153,12 @@ default_kv_keys = [
 ]
 
 
-def set_env_vars():
+def set_env_vars(override_env: bool = False):
     """Set default Azure environment variables.
 
     Sets default values for Azure service endpoints and creates new variables
-    as a function of existing environment variables.
+    as a function of existing environment variables. If ``override_env`` is True,
+    existing environment variables will be overwritten.
 
     Example:
         >>> import os
@@ -170,69 +171,90 @@ def set_env_vars():
     logger.debug("Setting default Azure environment variables")
 
     # save default values
-    logger.debug("Setting Azure service endpoint subdomains and URLs")
-    os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"] = "batch.azure.com/"
-    logger.debug(
-        f"Set AZURE_BATCH_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_BATCH_ENDPOINT_SUBDOMAIN']}"
-    )
+    if override_env or "AZURE_BATCH_ENDPOINT_SUBDOMAIN" not in os.environ:
+        logger.debug("Setting Azure service endpoint subdomains and URLs")
+        os.environ["AZURE_BATCH_ENDPOINT_SUBDOMAIN"] = (
+            default_azure_batch_endpoint_subdomain
+        )
+        logger.debug(
+            f"Set AZURE_BATCH_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_BATCH_ENDPOINT_SUBDOMAIN']}"
+        )
 
-    os.environ["AZURE_BATCH_RESOURCE_URL"] = "https://batch.core.windows.net/"
-    logger.debug(
-        f"Set AZURE_BATCH_RESOURCE_URL = {os.environ['AZURE_BATCH_RESOURCE_URL']}"
-    )
+    if override_env or "AZURE_BATCH_RESOURCE_URL" not in os.environ:
+        os.environ["AZURE_BATCH_RESOURCE_URL"] = default_azure_batch_resource_url
+        logger.debug(
+            f"Set AZURE_BATCH_RESOURCE_URL = {os.environ['AZURE_BATCH_RESOURCE_URL']}"
+        )
 
-    os.environ["AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN"] = "vault.azure.net"
-    logger.debug(
-        f"Set AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN']}"
-    )
+    if override_env or "AZURE_BATCH_LOCATION" not in os.environ:
+        os.environ["AZURE_BATCH_LOCATION"] = default_azure_batch_location
+        logger.debug(f"Set AZURE_BATCH_LOCATION = {os.environ['AZURE_BATCH_LOCATION']}")
 
-    os.environ["AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN"] = "blob.core.windows.net/"
-    logger.debug(
-        f"Set AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN']}"
-    )
+    if override_env or "AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN" not in os.environ:
+        os.environ["AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN"] = (
+            default_azure_keyvault_endpoint_subdomain
+        )
+        logger.debug(
+            f"Set AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_KEYVAULT_ENDPOINT_SUBDOMAIN']}"
+        )
 
-    os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"] = "azurecr.io"
-    logger.debug(
-        f"Set AZURE_CONTAINER_REGISTRY_DOMAIN = {os.environ['AZURE_CONTAINER_REGISTRY_DOMAIN']}"
-    )
+    if override_env or "AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN" not in os.environ:
+        os.environ["AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN"] = (
+            default_azure_blob_storage_endpoint_subdomain
+        )
+        logger.debug(
+            f"Set AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN = {os.environ['AZURE_BLOB_STORAGE_ENDPOINT_SUBDOMAIN']}"
+        )
+
+    if override_env or "AZURE_CONTAINER_REGISTRY_DOMAIN" not in os.environ:
+        os.environ["AZURE_CONTAINER_REGISTRY_DOMAIN"] = (
+            default_azure_container_registry_domain
+        )
+        logger.debug(
+            f"Set AZURE_CONTAINER_REGISTRY_DOMAIN = {os.environ['AZURE_CONTAINER_REGISTRY_DOMAIN']}"
+        )
 
     # create new variables as a function of env vars
     logger.debug(
         "Creating derived environment variables from existing Azure account settings"
     )
 
-    batch_account = os.getenv("AZURE_BATCH_ACCOUNT")
-    batch_location = os.getenv("AZURE_BATCH_LOCATION")
-    os.environ["AZURE_BATCH_ENDPOINT"] = (
-        f"https://{batch_account}.{batch_location}.{default_azure_batch_endpoint_subdomain}"
-    )
-    logger.debug(
-        f"Set AZURE_BATCH_ENDPOINT = {os.environ['AZURE_BATCH_ENDPOINT']} (from account: {batch_account}, location: {batch_location})"
-    )
+    if override_env or "AZURE_BATCH_ENDPOINT" not in os.environ:
+        batch_account = os.getenv("AZURE_BATCH_ACCOUNT")
+        batch_location = os.getenv("AZURE_BATCH_LOCATION")
+        os.environ["AZURE_BATCH_ENDPOINT"] = (
+            f"https://{batch_account}.{batch_location}.{default_azure_batch_endpoint_subdomain}"
+        )
+        logger.debug(
+            f"Set AZURE_BATCH_ENDPOINT = {os.environ['AZURE_BATCH_ENDPOINT']} (from account: {batch_account}, location: {batch_location})"
+        )
 
-    keyvault_name = os.getenv("AZURE_KEYVAULT_NAME")
-    os.environ["AZURE_KEYVAULT_ENDPOINT"] = (
-        f"https://{keyvault_name}.{default_azure_keyvault_endpoint_subdomain}"
-    )
-    logger.debug(
-        f"Set AZURE_KEYVAULT_ENDPOINT = {os.environ['AZURE_KEYVAULT_ENDPOINT']} (from keyvault: {keyvault_name})"
-    )
+    if override_env or "AZURE_KEYVAULT_ENDPOINT" not in os.environ:
+        keyvault_name = os.getenv("AZURE_KEYVAULT_NAME")
+        os.environ["AZURE_KEYVAULT_ENDPOINT"] = (
+            f"https://{keyvault_name}.{default_azure_keyvault_endpoint_subdomain}"
+        )
+        logger.debug(
+            f"Set AZURE_KEYVAULT_ENDPOINT = {os.environ['AZURE_KEYVAULT_ENDPOINT']} (from keyvault: {keyvault_name})"
+        )
 
-    blob_account = os.getenv("AZURE_BLOB_STORAGE_ACCOUNT")
-    os.environ["AZURE_BLOB_STORAGE_ENDPOINT"] = (
-        f"https://{blob_account}.{default_azure_blob_storage_endpoint_subdomain}"
-    )
-    logger.debug(
-        f"Set AZURE_BLOB_STORAGE_ENDPOINT = {os.environ['AZURE_BLOB_STORAGE_ENDPOINT']} (from account: {blob_account})"
-    )
+    if override_env or "AZURE_BLOB_STORAGE_ENDPOINT" not in os.environ:
+        blob_account = os.getenv("AZURE_BLOB_STORAGE_ACCOUNT")
+        os.environ["AZURE_BLOB_STORAGE_ENDPOINT"] = (
+            f"https://{blob_account}.{default_azure_blob_storage_endpoint_subdomain}"
+        )
+        logger.debug(
+            f"Set AZURE_BLOB_STORAGE_ENDPOINT = {os.environ['AZURE_BLOB_STORAGE_ENDPOINT']} (from account: {blob_account})"
+        )
 
-    registry_account = os.getenv("AZURE_CONTAINER_REGISTRY_ACCOUNT")
-    os.environ["ACR_TAG_PREFIX"] = (
-        f"{registry_account}.{default_azure_container_registry_domain}/"
-    )
-    logger.debug(
-        f"Set ACR_TAG_PREFIX = {os.environ['ACR_TAG_PREFIX']} (from registry: {registry_account})"
-    )
+    if override_env or "ACR_TAG_PREFIX" not in os.environ:
+        registry_account = os.getenv("AZURE_CONTAINER_REGISTRY_ACCOUNT")
+        os.environ["ACR_TAG_PREFIX"] = (
+            f"{registry_account}.{default_azure_container_registry_domain}/"
+        )
+        logger.debug(
+            f"Set ACR_TAG_PREFIX = {os.environ['ACR_TAG_PREFIX']} (from registry: {registry_account})"
+        )
 
     logger.debug("Completed setting all default Azure environment variables")
 

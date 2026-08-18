@@ -112,6 +112,7 @@ class CloudClient:
         force_keyvault: bool = False,
         **kwargs,
     ):
+        # set the logging level and output if provided
         if log_level is not None:
             os.environ["LOG_LEVEL"] = str(log_level)
         if log_output is not None:
@@ -121,6 +122,7 @@ class CloudClient:
                 log_level=log_level, log_output=log_output, force=True
             )
 
+        # check correct keyvault usage
         logger.debug("Initializing CloudClient.")
         if keyvault is None:
             dotenv_path = dotenv_path or ".env"
@@ -143,7 +145,7 @@ class CloudClient:
                 stacklevel=2,
             )
 
-        # change to DefaultCredentialHandler
+        # initialize DefaultCredentialHandler
         self.cred = DefaultCredentialHandler(
             dotenv_path=dotenv_path,
             override_env=override_env,

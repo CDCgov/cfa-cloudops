@@ -511,8 +511,10 @@ class DefaultCredentialHandler(CredentialHandler):
         """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
+        # load the .env values
         load_dotenv(dotenv_path=dotenv_path, override=override_env)
 
+        # gather any default_credential_kwargs for DefaultAzureCredential
         self._default_credential_kwargs = default_credential_kwargs or {}
         if self._default_credential_kwargs:
             logger.debug(
@@ -538,18 +540,22 @@ class DefaultCredentialHandler(CredentialHandler):
             for key, env_key in credential_env_mapping.items()
             if key in azure_kwargs
         }
+        # stores original env values to restore after handler initialization if override_env is False
         original_credential_env = {
             env_key: os.environ.get(env_key) for env_key in credential_env_overrides
         }
 
+        # override environment variables with explicit azure_kwargs
         for env_key, env_val in credential_env_overrides.items():
             os.environ[env_key] = env_val
 
+        # helper function to get resolved value for a key, checking azure_kwargs first, then falling back to environment or .env
         def get_resolved(key: str):
             if key in azure_kwargs:
                 return azure_kwargs[key]
             return get_config_val(key, config_dict=kwargs, try_env=True)
 
+        # try to retrieve Azure subscription information using DefaultAzureCredential
         try:
             logger.debug(
                 "Retrieving Azure subscription information using DefaultCredential."
@@ -565,10 +571,12 @@ class DefaultCredentialHandler(CredentialHandler):
             # load keyvault secrets
             if keyvault is None:
                 try:
+                    # if missing from arg, get kv name from env
                     keyvault = os.environ["AZURE_KEYVAULT_NAME"]
                 except KeyError:
                     keyvault = None
             if keyvault is not None:
+                # pull from kv if name provided or found in env
                 get_keyvault_vars(
                     keyvault_name=keyvault,
                     credential=d_cred,
@@ -576,24 +584,28 @@ class DefaultCredentialHandler(CredentialHandler):
                 )
 
             try:
+                # create SubscriptionClient to retrieve subscription info
                 sub_c = SubscriptionClient(d_cred)
             except Exception as e:
                 logger.error(f"Failed to create SubscriptionClient: {e}")
                 raise
+            # get list of subscriptions
             subscriptions = list(sub_c.subscriptions.list())
             if not subscriptions:
                 raise ValueError(
                     "No Azure subscriptions were found for the current credential."
                 )
-
+            # try to get subscription ID from environment or .env
             sub_id = get_resolved("azure_subscription_id")
             if sub_id is None:
                 logger.debug(
                     "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
                 )
+                # use first subscription if none specified
                 subscription = subscriptions[0]
                 azure_kwargs["azure_subscription_id"] = subscription.subscription_id
             else:
+                # find the subscription matching the specified subscription ID
                 subscription = next(
                     (sub for sub in subscriptions if sub.subscription_id == sub_id),
                     None,
@@ -602,6 +614,7 @@ class DefaultCredentialHandler(CredentialHandler):
             # pull info if sub exists
             logger.debug("Pulling subscription information.")
             if subscription is not None:
+                # use env resource group name if present, otherwise use subscription display name
                 if "AZURE_RESOURCE_GROUP_NAME" in os.environ:
                     logger.debug(
                         "Using AZURE_RESOURCE_GROUP_NAME from environment/.env/key vault."
@@ -610,6 +623,7 @@ class DefaultCredentialHandler(CredentialHandler):
                     azure_kwargs["azure_resource_group_name"] = (
                         subscription.display_name
                     )
+                # use env tenant ID if present, otherwise use subscription tenant ID
                 if "AZURE_TENANT_ID" in os.environ:
                     logger.debug(
                         "Using AZURE_TENANT_ID from environment/.env/key vault."
@@ -624,23 +638,24 @@ class DefaultCredentialHandler(CredentialHandler):
                     f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
                 )
 
+            # iterate over dataclass fields and set azure kwargs
             for key in self.__dataclass_fields__.keys():
                 resolved_val = get_resolved(key)
                 if resolved_val is not None:
                     self.__setattr__(key, resolved_val)
-            # check for azure batch location
-            if self.__getattribute__("azure_batch_location") is None:
-                self.__setattr__("azure_batch_location", d.default_azure_batch_location)
 
+            # persist resolved values into environment variables if override_env is True
             if override_env:
                 logger.debug(
                     "Persisting resolved handler values into environment variables."
                 )
+                # iterate over dataclass fields and set environment variables
                 for key in self.__dataclass_fields__.keys():
                     val = self.__getattribute__(key)
                     if val is not None:
                         os.environ[key.upper()] = str(val)
-                d.set_env_vars()
+            # set the environment variables for the defaults
+            d.set_env_vars(override_env=override_env)
         finally:
             if not override_env:
                 for env_key, original_val in original_credential_env.items():
