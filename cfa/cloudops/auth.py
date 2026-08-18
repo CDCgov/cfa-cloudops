@@ -606,7 +606,7 @@ class DefaultCredentialHandler(CredentialHandler):
             logger.debug(
                 "Retrieving Azure subscription information using DefaultCredential."
             )
-            d_cred = _build_default_credential(self._default_credential_kwargs)
+            d_cred = _build_default_credential(**self._default_credential_kwargs)
 
             # Reuse the same credential object for downstream SDK clients.
             self.__dict__["default_credential"] = d_cred
@@ -680,8 +680,8 @@ class DefaultCredentialHandler(CredentialHandler):
                     val = self.__getattribute__(key)
                     if val is not None:
                         os.environ[key.upper()] = str(val)
-            # set the environment variables for the defaults
-            d.set_env_vars(override_env=override_env)
+                # set the environment variables for the defaults
+                d.set_env_vars()
         finally:
             if not override_env:
                 for env_key, original_val in original_credential_env.items():
