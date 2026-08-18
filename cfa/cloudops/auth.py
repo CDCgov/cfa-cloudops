@@ -78,7 +78,11 @@ def _build_default_credential(
     if not exclude_azure_developer_cli_credential:
         credentials.append(AzureDeveloperCliCredential())
 
-    return ChainedTokenCredential(*credentials)
+    credential = ChainedTokenCredential(*credentials)
+
+    _log_successful_cred(credential)
+
+    return credential
 
 
 def _resolve_subscription(credential, configured_sub_id: str | None = None):
@@ -104,6 +108,14 @@ def _resolve_subscription(credential, configured_sub_id: str | None = None):
             f"Subscription matching AZURE_SUBSCRIPTION_ID ({configured_sub_id}) not found."
         )
     return subscription
+
+
+def _log_successful_cred(credential: ChainedTokenCredential):
+    credential.get_token("https://management.azure.com/.default")
+
+    if hasattr(credential, "_successful_credential"):
+        winning_cred_type = type(credential._successful_credential).__name__
+        logger.info(f"Successfully authenticated using {winning_cred_type}.")
 
 
 @dataclass
