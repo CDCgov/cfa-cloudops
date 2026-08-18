@@ -110,7 +110,9 @@ def test_credential_handler_endpoint_properties():
 
 def test_credential_handler_default_credential(monkeypatch):
     sentinel = object()
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: sentinel)
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: sentinel
+    )
 
     ch = auth.CredentialHandler()
     assert ch.default_credential is sentinel
@@ -280,7 +282,9 @@ def test_load_env_vars(monkeypatch):
     monkeypatch.delenv("AZURE_RESOURCE_GROUP_NAME", raising=False)
 
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dac")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dac"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -318,7 +322,9 @@ def test_load_env_vars_subscription_mismatch_raises(monkeypatch):
     monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "does-not-exist")
     monkeypatch.delenv("AZURE_TENANT_ID", raising=False)
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dac")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dac"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -351,7 +357,9 @@ def test_default_credential_handler_success(monkeypatch):
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dcred"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -382,7 +390,9 @@ def test_default_credential_handler_azure_kwargs_override_env_in_memory(monkeypa
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dcred"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -423,7 +433,9 @@ def test_default_credential_handler_override_env_applies_overrides(monkeypatch):
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-env")
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dcred"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -455,11 +467,11 @@ def test_default_credential_handler_uses_azure_kwargs_for_credential_bootstrap(
 
     captured = {}
 
-    def fake_default_credential(**kwargs):
+    def fake_build_default_credential(**kwargs):
         captured["tenant"] = os.getenv("AZURE_TENANT_ID")
         captured["client_id"] = os.getenv("AZURE_CLIENT_ID")
         captured["client_secret"] = os.getenv("AZURE_CLIENT_SECRET")
-        return "dcred"
+        return "chain"
 
     monkeypatch.setenv("AZURE_TENANT_ID", "tenant-env")
     monkeypatch.setenv("AZURE_CLIENT_ID", "client-env")
@@ -467,13 +479,7 @@ def test_default_credential_handler_uses_azure_kwargs_for_credential_bootstrap(
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
     monkeypatch.setattr(
-        "cfa.cloudops.auth.DefaultAzureCredential", fake_default_credential
-    )
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ManagedIdentityCredential", lambda **kwargs: "mi"
-    )
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ChainedTokenCredential", lambda *creds: "chain"
+        "cfa.cloudops.auth._build_default_credential", fake_build_default_credential
     )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
@@ -512,13 +518,7 @@ def test_default_credential_handler_override_env_persists_client_secret(monkeypa
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
     monkeypatch.setattr(
-        "cfa.cloudops.auth.DefaultAzureCredential", lambda **kwargs: "dcred"
-    )
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ManagedIdentityCredential", lambda **kwargs: "mi"
-    )
-    monkeypatch.setattr(
-        "cfa.cloudops.auth.ChainedTokenCredential", lambda *creds: "chain"
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "chain"
     )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
@@ -544,7 +544,9 @@ def test_default_credential_handler_override_env_persists_client_secret(monkeypa
 def test_default_credential_handler_missing_sub(monkeypatch):
     monkeypatch.delenv("AZURE_SUBSCRIPTION_ID", raising=False)
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dcred"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(subscriptions=SimpleNamespace(list=lambda: [])),
@@ -566,7 +568,9 @@ def test_default_credential_handler_preserves_default_subdomain(monkeypatch):
     monkeypatch.setattr("cfa.cloudops.auth.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
-    monkeypatch.setattr("cfa.cloudops.auth.DefaultAzureCredential", lambda: "dcred")
+    monkeypatch.setattr(
+        "cfa.cloudops.auth._build_default_credential", lambda **kwargs: "dcred"
+    )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
         lambda cred: SimpleNamespace(
@@ -582,7 +586,7 @@ def test_default_credential_handler_preserves_default_subdomain(monkeypatch):
     )
 
 
-def test_default_credential_handler_passes_default_credential_kwargs(monkeypatch):
+def test_default_credential_handler_passes_direct_credential_chain_kwargs(monkeypatch):
     class FakeSub:
         subscription_id = "sub-1"
         display_name = "rg-name"
@@ -590,7 +594,7 @@ def test_default_credential_handler_passes_default_credential_kwargs(monkeypatch
 
     captured = {}
 
-    def fake_default_credential(**kwargs):
+    def fake_build_default_credential(**kwargs):
         captured.setdefault("calls", []).append(kwargs)
         return "dcred"
 
@@ -599,7 +603,7 @@ def test_default_credential_handler_passes_default_credential_kwargs(monkeypatch
     monkeypatch.setattr("cfa.cloudops.auth.d.set_env_vars", lambda: None)
     monkeypatch.setattr("cfa.cloudops.auth.get_keyvault_vars", lambda **kwargs: None)
     monkeypatch.setattr(
-        "cfa.cloudops.auth.DefaultAzureCredential", fake_default_credential
+        "cfa.cloudops.auth._build_default_credential", fake_build_default_credential
     )
     monkeypatch.setattr(
         "cfa.cloudops.auth.SubscriptionClient",
@@ -610,30 +614,32 @@ def test_default_credential_handler_passes_default_credential_kwargs(monkeypatch
 
     auth.DefaultCredentialHandler(
         dotenv_path=".env.test",
-        default_credential_kwargs={"exclude_interactive_browser_credential": True},
+        exclude_environment_credential=True,
+        exclude_azure_cli_credential=True,
     )
 
     assert captured["calls"]
-    assert captured["calls"][0] == {"exclude_interactive_browser_credential": True}
+    assert captured["calls"][0]["exclude_environment_credential"] is True
+    assert captured["calls"][0]["exclude_azure_cli_credential"] is True
 
 
 def test_credential_handler_default_credential_uses_custom_kwargs(monkeypatch):
     captured = {}
 
-    def fake_default_credential(**kwargs):
+    def fake_build_default_credential(**kwargs):
         captured.update(kwargs)
         return "dcred"
 
     monkeypatch.setattr(
-        "cfa.cloudops.auth.DefaultAzureCredential", fake_default_credential
+        "cfa.cloudops.auth._build_default_credential", fake_build_default_credential
     )
 
     ch = auth.CredentialHandler()
-    ch._default_credential_kwargs = {
+    ch._credential_chain_kwargs = {
         "exclude_environment_credential": True,
-        "exclude_interactive_browser_credential": True,
+        "exclude_azure_cli_credential": True,
     }
 
     assert ch.default_credential == "dcred"
     assert captured["exclude_environment_credential"] is True
-    assert captured["exclude_interactive_browser_credential"] is True
+    assert captured["exclude_azure_cli_credential"] is True

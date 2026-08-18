@@ -287,7 +287,7 @@ class CredentialHandler:
 
     @cached_property
     def default_credential(self):
-        credential_kwargs = getattr(self, "_default_credential_kwargs", {}) or {}
+        credential_kwargs = getattr(self, "_credential_chain_kwargs", {}) or {}
         logger.debug(
             "Creating DefaultAzureCredential for ARM/Key Vault/data-plane usage."
         )
@@ -532,7 +532,12 @@ class DefaultCredentialHandler(CredentialHandler):
         override_env: bool = False,
         keyvault: str = None,
         force_keyvault: bool = False,
-        default_credential_kwargs: dict | None = None,
+        exclude_environment_credential: bool = False,
+        exclude_managed_identity_credential: bool = False,
+        exclude_visual_studio_code_credential: bool = False,
+        exclude_azure_cli_credential: bool = False,
+        exclude_azure_developer_cli_credential: bool = False,
+        managed_identity_client_id: str | None = None,
         **kwargs,
     ) -> None:
         """Initialize a Default Credential Handler.
@@ -550,10 +555,12 @@ class DefaultCredentialHandler(CredentialHandler):
                 into process environment variables.
             keyvault: Name of the Azure Key Vault to use for secrets.
             force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
-            default_credential_kwargs: Optional keyword arguments passed directly to
-                ``DefaultAzureCredential`` to tune credential chain behavior in CI/
-                headless environments (for example
-                ``{"exclude_interactive_browser_credential": True}``).
+            exclude_environment_credential: Exclude EnvironmentCredential from the chain.
+            exclude_managed_identity_credential: Exclude ManagedIdentityCredential from the chain.
+            exclude_visual_studio_code_credential: Exclude VisualStudioCodeCredential from the chain.
+            exclude_azure_cli_credential: Exclude AzureCliCredential from the chain.
+            exclude_azure_developer_cli_credential: Exclude AzureDeveloperCliCredential from the chain.
+            managed_identity_client_id: Optional user-assigned managed identity client ID.
             **kwargs: Additional keyword arguments to override specific credential attributes.
 
         Raises:
@@ -572,12 +579,18 @@ class DefaultCredentialHandler(CredentialHandler):
         # load the .env values
         load_dotenv(dotenv_path=dotenv_path, override=override_env)
 
-        # gather any default_credential_kwargs for DefaultAzureCredential
-        self._default_credential_kwargs = default_credential_kwargs or {}
-        if self._default_credential_kwargs:
+        self._credential_chain_kwargs = {
+            "exclude_environment_credential": exclude_environment_credential,
+            "exclude_managed_identity_credential": exclude_managed_identity_credential,
+            "exclude_visual_studio_code_credential": exclude_visual_studio_code_credential,
+            "exclude_azure_cli_credential": exclude_azure_cli_credential,
+            "exclude_azure_developer_cli_credential": exclude_azure_developer_cli_credential,
+            "managed_identity_client_id": managed_identity_client_id,
+        }
+        if self._credential_chain_kwargs:
             logger.debug(
-                "DefaultCredentialHandler received DefaultAzureCredential options: %s",
-                sorted(self._default_credential_kwargs.keys()),
+                "DefaultCredentialHandler received credential chain options: %s",
+                sorted(self._credential_chain_kwargs.keys()),
             )
 
         # Explicit kwargs should override .env/env values for this handler instance
@@ -618,7 +631,7 @@ class DefaultCredentialHandler(CredentialHandler):
             logger.debug(
                 "Retrieving Azure subscription information using DefaultCredential."
             )
-            d_cred = _build_default_credential(**self._default_credential_kwargs)
+            d_cred = _build_default_credential(**self._credential_chain_kwargs)
 
             # Reuse the same credential object for downstream SDK clients.
             self.__dict__["default_credential"] = d_cred
