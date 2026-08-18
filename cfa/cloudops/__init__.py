@@ -9,6 +9,7 @@ warnings.filterwarnings(
     category=SyntaxWarning,
     module=r"azure\.mgmt\.(compute|web)\.models\._models",
 )
+logging.getLogger("azure.identity._credentials.environment").setLevel(logging.ERROR)
 
 
 __all__ = [

@@ -142,7 +142,7 @@ def configure_logging(
         level=get_log_level(log_level),
         format=FORMAT,
         datefmt="%Y-%m-%d_%H:%M:%S%z",
-        handlers=get_log_handlers(log_output),
+        handlers=get_log_handlers(resolved_output),
         force=force,
     )
     logger.info("Logging configuration complete.")
