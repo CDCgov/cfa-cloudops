@@ -11,9 +11,12 @@ from azure.core.pipeline import PipelineContext, PipelineRequest
 from azure.core.pipeline.policies import BearerTokenCredentialPolicy
 from azure.core.pipeline.transport import HttpRequest
 from azure.identity import (
+    AzureCliCredential,
+    AzureDeveloperCliCredential,
     ChainedTokenCredential,
-    DefaultAzureCredential,
+    EnvironmentCredential,
     ManagedIdentityCredential,
+    VisualStudioCodeCredential,
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models as batch_mgmt_models
@@ -32,6 +35,75 @@ from cfa.cloudops.endpoints import (
 from cfa.cloudops.util import ensure_listlike
 
 logger = logging.getLogger(__name__)
+
+
+def _build_default_credential(
+    *,
+    exclude_environment_credential: bool = False,
+    exclude_managed_identity_credential: bool = False,
+    exclude_visual_studio_code_credential: bool = False,
+    exclude_azure_cli_credential: bool = False,
+    exclude_azure_developer_cli_credential: bool = False,
+    managed_identity_client_id: str | None = None,
+) -> list:
+    """Build the ChainedTokenCredential.
+
+    Parameters mirror the ``exclude_*`` flags of ``DefaultAzureCredential``
+    so callers can opt out of specific credential types without constructing
+    the chain by hand.
+
+    Example
+    -------
+    cred = _build_default_credential(
+        exclude_managed_identity_credential=True,
+    )
+    """
+    credentials = []
+
+    if not exclude_environment_credential:
+        credentials.append(EnvironmentCredential())
+
+    if not exclude_managed_identity_credential:
+        mi_kwargs = {}
+        if managed_identity_client_id:
+            mi_kwargs["client_id"] = managed_identity_client_id
+        credentials.append(ManagedIdentityCredential(**mi_kwargs))
+
+    if not exclude_visual_studio_code_credential:
+        credentials.append(VisualStudioCodeCredential())
+
+    if not exclude_azure_cli_credential:
+        credentials.append(AzureCliCredential())
+
+    if not exclude_azure_developer_cli_credential:
+        credentials.append(AzureDeveloperCliCredential())
+
+    return ChainedTokenCredential(*credentials)
+
+
+def _resolve_subscription(credential, configured_sub_id: str | None = None):
+    sub_c = SubscriptionClient(credential)
+    subscriptions = list(sub_c.subscriptions.list())
+    if not subscriptions:
+        raise ValueError(
+            "No Azure subscriptions were found for the current credential."
+        )
+
+    if configured_sub_id is None:
+        logger.debug(
+            "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
+        )
+        return subscriptions[0]
+
+    subscription = next(
+        (sub for sub in subscriptions if sub.subscription_id == configured_sub_id),
+        None,
+    )
+    if subscription is None:
+        raise ValueError(
+            f"Subscription matching AZURE_SUBSCRIPTION_ID ({configured_sub_id}) not found."
+        )
+    return subscription
 
 
 @dataclass
@@ -212,10 +284,7 @@ class CredentialHandler:
                 "DefaultAzureCredential configured with options: %s",
                 sorted(credential_kwargs.keys()),
             )
-        return ChainedTokenCredential(
-            DefaultAzureCredential(**credential_kwargs),
-            ManagedIdentityCredential(**credential_kwargs),
-        )
+        return _build_default_credential(**credential_kwargs)
 
     @cached_property
     def batch_credential(self):
@@ -331,9 +400,7 @@ class DefaultCredential(BasicTokenAuthentication):
         super(DefaultCredential, self).__init__(None)
         if credential is None:
             logger.debug("No credential provided, using DefaultAzureCredential.")
-            credential = ChainedTokenCredential(
-                DefaultAzureCredential(), ManagedIdentityCredential()
-            )
+            credential = _build_default_credential()
         self.credential = credential
         self._policy = BearerTokenCredentialPolicy(credential, resource_id, **kwargs)
 
@@ -407,9 +474,7 @@ def load_env_vars(
         >>> load_env_vars("/path/to/.env")  # Load from specific file
     """
     # get DefaultAzureCredential
-    def_cred = ChainedTokenCredential(
-        DefaultAzureCredential(), ManagedIdentityCredential()
-    )
+    def_cred = _build_default_credential()
 
     logger.debug("Loading environment variables.")
     load_dotenv(dotenv_path=dotenv_path, override=override_env)
@@ -421,33 +486,14 @@ def load_env_vars(
     )
 
     if needs_subscriptions:
-        sub_c = SubscriptionClient(def_cred)
-        subscriptions = list(sub_c.subscriptions.list())
-        if not subscriptions:
-            raise ValueError(
-                "No Azure subscriptions were found for the current credential."
-            )
-
         configured_sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
+        account_info = _resolve_subscription(def_cred, configured_sub_id)
+
         if configured_sub_id is None:
-            account_info = subscriptions[0]
             os.environ["AZURE_SUBSCRIPTION_ID"] = account_info.subscription_id
             logger.debug(
                 "AZURE_SUBSCRIPTION_ID not found in environment; using first available subscription."
             )
-        else:
-            account_info = next(
-                (
-                    sub
-                    for sub in subscriptions
-                    if sub.subscription_id == configured_sub_id
-                ),
-                None,
-            )
-            if account_info is None:
-                raise ValueError(
-                    f"Subscription matching AZURE_SUBSCRIPTION_ID ({configured_sub_id}) not found."
-                )
 
         if "AZURE_TENANT_ID" not in os.environ:
             os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
@@ -560,10 +606,7 @@ class DefaultCredentialHandler(CredentialHandler):
             logger.debug(
                 "Retrieving Azure subscription information using DefaultCredential."
             )
-            d_cred = ChainedTokenCredential(
-                DefaultAzureCredential(**self._default_credential_kwargs),
-                ManagedIdentityCredential(**self._default_credential_kwargs),
-            )
+            d_cred = _build_default_credential(self._default_credential_kwargs)
 
             # Reuse the same credential object for downstream SDK clients.
             self.__dict__["default_credential"] = d_cred
@@ -583,33 +626,16 @@ class DefaultCredentialHandler(CredentialHandler):
                     force_keyvault=force_keyvault,
                 )
 
-            try:
-                # create SubscriptionClient to retrieve subscription info
-                sub_c = SubscriptionClient(d_cred)
-            except Exception as e:
-                logger.error(f"Failed to create SubscriptionClient: {e}")
-                raise
-            # get list of subscriptions
-            subscriptions = list(sub_c.subscriptions.list())
-            if not subscriptions:
-                raise ValueError(
-                    "No Azure subscriptions were found for the current credential."
-                )
             # try to get subscription ID from environment or .env
             sub_id = get_resolved("azure_subscription_id")
+            try:
+                subscription = _resolve_subscription(d_cred, sub_id)
+            except Exception as e:
+                logger.error(f"Failed to resolve Azure subscription: {e}")
+                raise
+
             if sub_id is None:
-                logger.debug(
-                    "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
-                )
-                # use first subscription if none specified
-                subscription = subscriptions[0]
                 azure_kwargs["azure_subscription_id"] = subscription.subscription_id
-            else:
-                # find the subscription matching the specified subscription ID
-                subscription = next(
-                    (sub for sub in subscriptions if sub.subscription_id == sub_id),
-                    None,
-                )
 
             # pull info if sub exists
             logger.debug("Pulling subscription information.")
