@@ -45,8 +45,8 @@ def _build_default_credential(
     exclude_azure_cli_credential: bool = False,
     exclude_azure_developer_cli_credential: bool = False,
     managed_identity_client_id: str | None = None,
-) -> list:
-    """Build the ChainedTokenCredential.
+) -> ChainedTokenCredential:
+    """Build and return a ``ChainedTokenCredential``.
 
     Parameters mirror the ``exclude_*`` flags of ``DefaultAzureCredential``
     so callers can opt out of specific credential types without constructing
