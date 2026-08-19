@@ -528,7 +528,7 @@ def load_env_vars(
         )
 
     # save default values
-    d.set_env_vars()
+    d.set_env_vars(override_env=override_env)
 
 
 class DefaultCredentialHandler(CredentialHandler):
