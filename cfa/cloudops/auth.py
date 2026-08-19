@@ -80,7 +80,13 @@ def _build_default_credential(
 
     credential = ChainedTokenCredential(*credentials)
 
-    _log_successful_cred(credential)
+    try:
+        _log_successful_cred(credential)
+    except Exception:
+        logger.debug(
+            "Skipping eager credential success logging during credential construction.",
+            exc_info=True,
+        )
 
     return credential
 
