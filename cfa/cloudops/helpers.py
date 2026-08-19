@@ -27,7 +27,7 @@ def get_log_handlers(log_output: str | None = None) -> list[logging.Handler]:
     """
     resolved_output = os.getenv("LOG_OUTPUT") if log_output is None else log_output
     run_time = datetime.now()
-    now_string = f"{run_time:%Y-%m-%d_%H:%M:%S%z}"
+    now_string = f"{run_time:%Y-%m-%d_%H-%M-%S%z}"
 
     if resolved_output is None:
         logger.info("Logging output set to stdout only.")
@@ -35,15 +35,13 @@ def get_log_handlers(log_output: str | None = None) -> list[logging.Handler]:
 
     lowered_output = resolved_output.lower()
     if lowered_output.startswith("both"):
-        if not os.path.exists("logs"):
-            os.mkdir("logs")
+        os.makedirs("logs", exist_ok=True)
         logfile = os.path.join("logs", f"{now_string}.log")
         logger.info("Logging output set to both stdout and file.")
         return [logging.StreamHandler(sys.stdout), logging.FileHandler(logfile)]
 
     if lowered_output.startswith("file"):
-        if not os.path.exists("logs"):
-            os.mkdir("logs")
+        os.makedirs("logs", exist_ok=True)
         logfile = os.path.join("logs", f"{now_string}.log")
         logger.info("Logging output set to file only.")
         return [logging.FileHandler(logfile)]
@@ -52,7 +50,7 @@ def get_log_handlers(log_output: str | None = None) -> list[logging.Handler]:
         logger.info("Logging output set to stdout only.")
         return [logging.StreamHandler(sys.stdout)]
 
-    print(f"Did not recognize {resolved_output}. Setting to stdout.")
+    logger.warning(f"Did not recognize {resolved_output}. Setting to stdout.")
     return [logging.StreamHandler(sys.stdout)]
 
 
