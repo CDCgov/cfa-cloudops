@@ -272,7 +272,7 @@ class FunctionAppClient:
 
     def _swap_deployment_slot(self, source_slot: str, target_slot: str):
         web_mgmt_client = WebSiteManagementClient(
-            self.cred.user_credential, self.cred.azure_subscription_id
+            self.cred.default_credential, self.cred.azure_subscription_id
         )
         if target_slot.lower() == "production":
             return web_mgmt_client.web_apps.begin_swap_slot_with_production(
