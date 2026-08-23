@@ -45,7 +45,7 @@ def run_plan(workflow: str):
     executor = WorkflowExecutor(
         client=client,
         dependency_yaml_path="config/operational_dependencies.yaml",
-        dry_run=False,
+        dry_run=True,
     )
     _, log_entries = executor.execute_plan(workflow)
     return "\n".join(log_entries)
@@ -61,8 +61,8 @@ async def home(request: Request):
 
 @app.post("/plan", response_class=HTMLResponse)
 async def plan(request: Request, text: str = Form(...)):
-    # workflow = create_plan(text)
-    workflow = load_plan(text)
+    workflow = create_plan(text)
+    # workflow = load_plan(text)
     return templates.TemplateResponse(
         "index.html",  # template name FIRST
         {"request": request, "workflow": workflow},
