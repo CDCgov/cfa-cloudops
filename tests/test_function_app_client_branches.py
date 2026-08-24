@@ -20,6 +20,7 @@ def base_client():
         azure_client_secret="secret",  # pragma: allowlist secret
         azure_blob_storage_account="blob",
         user_credential="cred",
+        default_credential="cred",
         client_secret_credential="cred",  # pragma: allowlist secret
     )
     c.update_function_database = True

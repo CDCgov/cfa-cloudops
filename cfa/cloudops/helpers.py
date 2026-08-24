@@ -4,6 +4,7 @@ import os
 import subprocess as sp
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import docker
 from docker.errors import DockerException
@@ -35,14 +36,16 @@ def get_log_handlers(log_output: str | None = None) -> list[logging.Handler]:
 
     lowered_output = resolved_output.lower()
     if lowered_output.startswith("both"):
-        os.makedirs("logs", exist_ok=True)
-        logfile = os.path.join("logs", f"{now_string}.log")
+        logs_dir = Path("logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        logfile = logs_dir / f"{now_string}.log"
         logger.info("Logging output set to both stdout and file.")
         return [logging.StreamHandler(sys.stdout), logging.FileHandler(logfile)]
 
     if lowered_output.startswith("file"):
-        os.makedirs("logs", exist_ok=True)
-        logfile = os.path.join("logs", f"{now_string}.log")
+        logs_dir = Path("logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        logfile = logs_dir / f"{now_string}.log"
         logger.info("Logging output set to file only.")
         return [logging.FileHandler(logfile)]
 

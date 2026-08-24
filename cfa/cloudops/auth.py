@@ -78,6 +78,13 @@ def _build_default_credential(
     if not exclude_azure_developer_cli_credential:
         credentials.append(AzureDeveloperCliCredential())
 
+    if not credentials:
+        raise ValueError(
+            "No credentials available to build ChainedTokenCredential. "
+            "At least one credential type must be included. "
+            "Disable exclude_* flags to include at least one credential type."
+        )
+
     credential = ChainedTokenCredential(*credentials)
 
     try:
@@ -467,68 +474,6 @@ class DefaultCredential(BasicTokenAuthentication):
         logger.debug("Creating signed session with updated token.")
         self.set_token()
         return super(DefaultCredential, self).signed_session(session)
-
-
-def load_env_vars(
-    dotenv_path=None,
-    override_env=False,
-    keyvault_name: str = None,
-    force_keyvault: bool = False,
-):
-    """Load environment variables and Azure subscription information.
-
-    Loads variables from a .env file (if specified), retrieves Azure subscription
-    and tenant information using DefaultAzureCredential, and sets default environment
-    variables.
-
-    Args:
-        dotenv_path: Path to .env file to load. If None, uses default .env file discovery.
-        override_env: If True, overrides existing environment variables with values from the .env file.
-        keyvault_name: Name of the Azure Key Vault to use for secrets.
-        force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
-
-    Example:
-        >>> load_env_vars()  # Load from default .env
-        >>> load_env_vars("/path/to/.env")  # Load from specific file
-    """
-    # get DefaultAzureCredential
-    def_cred = _build_default_credential()
-
-    logger.debug("Loading environment variables.")
-    load_dotenv(dotenv_path=dotenv_path, override=override_env)
-
-    needs_subscriptions = (
-        "AZURE_SUBSCRIPTION_ID" not in os.environ
-        or "AZURE_TENANT_ID" not in os.environ
-        or "AZURE_RESOURCE_GROUP_NAME" not in os.environ
-    )
-
-    if needs_subscriptions:
-        configured_sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
-        account_info = _resolve_subscription(def_cred, configured_sub_id)
-
-        if configured_sub_id is None:
-            os.environ["AZURE_SUBSCRIPTION_ID"] = account_info.subscription_id
-            logger.debug(
-                "AZURE_SUBSCRIPTION_ID not found in environment; using first available subscription."
-            )
-
-        if "AZURE_TENANT_ID" not in os.environ:
-            os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
-
-        if "AZURE_RESOURCE_GROUP_NAME" not in os.environ:
-            os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
-
-    # get Key Vault secrets
-    if keyvault_name is not None:
-        get_keyvault_vars(
-            keyvault_name=keyvault_name,
-            credential=def_cred,
-            force_keyvault=force_keyvault,
-        )
-
-    # save default values
-    d.set_env_vars(override_env=override_env)
 
 
 class DefaultCredentialHandler(CredentialHandler):
