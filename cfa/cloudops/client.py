@@ -51,7 +51,7 @@ def get_batch_management_client(
         )
         ch = DefaultCredentialHandler()
 
-    logger.debug("Using user credentials for BatchManagementClient")
+    logger.debug("Using default credentials for BatchManagementClient")
     client = BatchManagementClient(
         credential=ch.default_credential,
         subscription_id=ch.azure_subscription_id,
@@ -99,7 +99,7 @@ def get_compute_management_client(
         )
         ch = DefaultCredentialHandler()
 
-    logger.debug("Using user credentials for ComputeManagementClient")
+    logger.debug("Using default credentials for ComputeManagementClient")
     client = ComputeManagementClient(
         credential=ch.default_credential,
         subscription_id=ch.azure_subscription_id,
@@ -153,8 +153,8 @@ def get_batch_service_client(
 
     # BatchClient (15.0.0+) uses endpoint and credential parameters
 
-    logger.info("Using user credentials for BatchClient")
-    logger.debug("Creating BatchClient with user credentials")
+    logger.info("Using default credentials for BatchClient")
+    logger.debug("Creating BatchClient with default credentials")
     batch_credential = getattr(ch, "batch_credential", ch.default_credential)
     client = BatchClient(
         endpoint=ch.azure_batch_endpoint,
@@ -205,7 +205,7 @@ def get_blob_service_client(
 
     logger.debug(f"Using blob storage endpoint: {ch.azure_blob_storage_endpoint}")
 
-    logger.debug("Using user credentials for BlobServiceClient")
+    logger.debug("Using default credentials for BlobServiceClient")
     client = BlobServiceClient(
         account_url=ch.azure_blob_storage_endpoint,
         credential=ch.default_credential,
