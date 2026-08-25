@@ -157,12 +157,6 @@ class CloudClient:
             override_env=override_env,
             keyvault=keyvault,
             force_keyvault=force_keyvault,
-            exclude_environment_credential=exclude_environment_credential,
-            exclude_managed_identity_credential=exclude_managed_identity_credential,
-            exclude_visual_studio_code_credential=exclude_visual_studio_code_credential,
-            exclude_azure_cli_credential=exclude_azure_cli_credential,
-            exclude_azure_developer_cli_credential=exclude_azure_developer_cli_credential,
-            managed_identity_client_id=managed_identity_client_id,
             **kwargs,
         )
 

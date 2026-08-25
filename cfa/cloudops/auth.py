@@ -17,6 +17,7 @@ from azure.identity import (
     EnvironmentCredential,
     ManagedIdentityCredential,
     VisualStudioCodeCredential,
+    WorkloadIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models as batch_mgmt_models
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 def _build_default_credential(
     *,
     exclude_environment_credential: bool = False,
+    exclude_workload_identity_credential: bool = False,
     exclude_managed_identity_credential: bool = False,
     exclude_visual_studio_code_credential: bool = False,
     exclude_azure_cli_credential: bool = False,
@@ -62,6 +64,9 @@ def _build_default_credential(
 
     if not exclude_environment_credential:
         credentials.append(EnvironmentCredential())
+
+    if not exclude_workload_identity_credential:
+        credentials.append(WorkloadIdentityCredential())
 
     if not exclude_managed_identity_credential:
         mi_kwargs = {}
@@ -483,12 +488,6 @@ class DefaultCredentialHandler(CredentialHandler):
         override_env: bool = False,
         keyvault: str = None,
         force_keyvault: bool = False,
-        exclude_environment_credential: bool = False,
-        exclude_managed_identity_credential: bool = False,
-        exclude_visual_studio_code_credential: bool = False,
-        exclude_azure_cli_credential: bool = False,
-        exclude_azure_developer_cli_credential: bool = False,
-        managed_identity_client_id: str | None = None,
         **kwargs,
     ) -> None:
         """Initialize a Default Credential Handler.
@@ -531,12 +530,27 @@ class DefaultCredentialHandler(CredentialHandler):
         load_dotenv(dotenv_path=dotenv_path, override=override_env)
 
         self._credential_chain_kwargs = {
-            "exclude_environment_credential": exclude_environment_credential,
-            "exclude_managed_identity_credential": exclude_managed_identity_credential,
-            "exclude_visual_studio_code_credential": exclude_visual_studio_code_credential,
-            "exclude_azure_cli_credential": exclude_azure_cli_credential,
-            "exclude_azure_developer_cli_credential": exclude_azure_developer_cli_credential,
-            "managed_identity_client_id": managed_identity_client_id,
+            "exclude_environment_credential": kwargs.get(
+                "exclude_environment_credential", False
+            ),
+            "exclude_workload_identity_credential": kwargs.get(
+                "exclude_workload_identity_credential", False
+            ),
+            "exclude_managed_identity_credential": kwargs.get(
+                "exclude_managed_identity_credential", False
+            ),
+            "exclude_visual_studio_code_credential": kwargs.get(
+                "exclude_visual_studio_code_credential", False
+            ),
+            "exclude_azure_cli_credential": kwargs.get(
+                "exclude_azure_cli_credential", False
+            ),
+            "exclude_azure_developer_cli_credential": kwargs.get(
+                "exclude_azure_developer_cli_credential", False
+            ),
+            "managed_identity_client_id": kwargs.get(
+                "managed_identity_client_id", None
+            ),
         }
         if self._credential_chain_kwargs:
             logger.debug(
