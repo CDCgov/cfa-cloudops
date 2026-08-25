@@ -45,9 +45,10 @@ uv run test
 ```
 
 ## Repos that currently incorporate cloudops
-- cdcent/cfa-python-repo-template
-- cdcgov/cfa-dataops
-- cdcgov/cfa-stf-routine-forecasting
+- cdcent/cfa-python-repo-template: example set up
+- cdcgov/cfa-dataops: blob upload/download functionality
+- cdcgov/cfa-stf-routine-forecasting: create pools
+- cdcent/DynODE-Experiments: run tasks in the cloud
 
 ## Public Domain Standard Notice
 This repository constitutes a work of the United States Government and is not
