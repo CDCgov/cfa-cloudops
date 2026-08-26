@@ -1,8 +1,8 @@
 name: mkdocs-build
-description: Build mkdocs
+description: Build Zensical Site
 runs:
   using: composite
   steps:
     - uses: astral-sh/setup-uv@v8.2.0
-    - run: uv run mkdocs build
+    - run: uv run zensical build
       shell: bash

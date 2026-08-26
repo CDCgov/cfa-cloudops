@@ -4,14 +4,14 @@ Pools in Azure Batch form the compute component which jobs and tasks use to exec
 
 Pools can easily be created with a `CloudClient` object while maintaining the flexibility needed for each unique use case. To create a pool using an instantiated `CloudClient` object, simply use the `create_pool()` method. The following parameters are available:
 
-- pool_name: name to call the pool. Any spaces with be replaced with "_". Required.
-- container_image_name: full name of the container image to use. Can be from Azure Container Registry, GitHub, or DockerHub. Optional but pretty necessary.
+- pool_name: name to call the pool. Any spaces will be replaced with "_". Required.
+- container_image_name: full name of the container image to use. Can be from Azure Container Registry, GitHub, or DockerHub. Optional.
 - mounts: list of mounts to Blob Storage. Optional. There are two possible formats mounts can be passed as.
     - list of strings. These strings are the name of the Blob containers you would like to mount to the pool. For example, if you want to mount the Blob containers 'input-test' and 'output-test' and reference those directly in tasks, they can be passed as
     ```['input-test', 'output-test']```
     - list of dictionaries. The dictionaries are in the form {'source': *container name*, 'target': *mount name*}. The source is the name of the Blob container and the target is how you want to reference the path in your code. For example, if we want to mount the Blob containers 'input-test' and 'output-test' and reference them via 'input' and 'output' in your code, pass the following to the `mounts` parameter:
     ```[{'source': 'input-test', 'target': 'input'}, {'source': 'output-test', 'target': 'output'}]```
-- vm_size: the name of the VM size to use. Default is Standard_D4ds_v5. T-shirt sizing is also available, such as "xsmall", "small", "medium", etc. Sizes "xsmall_amd", "small_amd", ... are also available for AMD architecture VMs.
+- vm_size: the name of the VM size to use. Default is Standard_D4ads_v5. T-shirt sizing is also available, such as "xsmall", "small", "medium", etc.
 - autoscale: either True or False, depending on if autoscale or fixed number of nodes should be used. Default is True.
 - autoscale_formula: the full text of an autoscale formula. If not provided a default autoscale formula will be used if autoscale is set to True.
 - dedicated_nodes: the number of dedicated nodes to use if not autoscaling. Default is 0.
@@ -43,6 +43,25 @@ The `vm_size` parameter in `create_pool()` can take t-shirt sizes for easier cre
 
 For more customizability, the method `get_vm_name` can be used to construct the VM name depending on a variety of factors, such as series, cores, processor, temporary storage, SSD storage and version. If the provided attributes are not available in the current quota, the method raises a `ValueError` and includes similar available VMs (if any) in the error message.
 
+To inspect what your account can actually allocate, you can also use the following methods:
+
+- `get_all_vm_quotas`: returns VM quota entries for all available VM sizes in the account
+- `get_vm_series_quotas`: filters quota entries by VM series (for example, `"D"`, `"E"`, `"F"`)
+
+### Quota Examples
+
+```python
+client = CloudClient()
+
+# all available VM quota entries
+all_quotas = client.get_all_vm_quotas()
+
+# only D and E series
+series_quotas = client.get_vm_series_quotas(["D", "E"])
+
+print(len(all_quotas), len(series_quotas))
+```
+
 
 
 ## Autoscale Pool Example
@@ -53,7 +72,7 @@ For this example, suppose we want to create an autoscale pool with the following
 - use the Docker container python:3.10 as the base OS
 - connect to two Blob Storage containers
     - the first container is called "input-test" but we reference it as "/input" in our code
-    - the second container is called -output-test" but we reference it as "/results" in our code
+    - the second container is called "output-test" but we reference it as "/results" in our code
 - use the default autoscale formula
 - use up to 10 nodes when scaling
 - don't cache the blobfuse
@@ -125,8 +144,21 @@ client.upload_docker_image(
     image_name = "local_docker_registry/repo-name:latest",
     registry_name = "my_azure_registry",
     repo_name = "test-repo",
-    tag = "latest:
+    tag = "latest"
 )
+```
+
+### Listing Tags in Azure Container Registry
+
+After pushing images, you can list tags in a repository using `list_acr_tags`.
+
+```python
+client = CloudClient()
+tags = client.list_acr_tags(
+    registry_name="my_azure_registry",
+    repo_name="test-repo"
+)
+print(tags)
 ```
 
 ## Pool Deletion
@@ -141,11 +173,10 @@ client.delete_pool("my-pool")
 
 ## Get list of available Docker images
 
-The `CloudClient` class has a method called `list_available_images` which should be used for retrieving a list of availabe Docker images supported by Azure Batch service. It accepts an optional `operating_system` parameter for filtering the images by operating system (e.g. windows, linux).
-The following parameters can be passed to the method for customization of the job:
+The `CloudClient` class has a method called `list_available_images` which should be used for retrieving a list of available Docker images supported by Azure Batch service. It accepts an optional `operating_system` parameter for filtering images by operating system (for example, windows or linux).
 
 ### The Simplest Example
-For users just looking to get started with this job creation, the following can be run to create a job called 'test-job-1' on the existing pool 'test-pool-exists'.
+For users just looking to get started, the following can be run to list all available images and then list only Linux images.
 ```python
 client = CloudClient()
 images = client.list_available_images()

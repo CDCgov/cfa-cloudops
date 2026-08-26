@@ -3,6 +3,7 @@
 # Outline
 - [Description](#description)
 - [Getting Started](#getting-started)
+- [Components of `cfa-cloudops`](#components-of-cfa-cloudops)
 
 # Description
 The `cfa-cloudops` python module is intended to ease the challenge of working in the cloud (currently limited to Azure) for data scientists at CFA. Typically, it takes deep knowledge to authenticate and complex coding patterns to interact with the cloud via python, which takes away time and resources from data scientists doing predictions, modeling, and more impactful work. `cfa-cloudops` simplifies many repeated workflows when interacting with the cloud and unifies CFA's approach in developer interaction with the cloud. For example, creating a pool and running jobs in Azure may take several credentials and different clients  to complete, but with `cfa-cloudops`, this is reduced to a small number of functions with only a few user-provided parameters.
@@ -31,3 +32,5 @@ There are several components of this repo that provide benefits to developers in
 - CloudClient object for easy interaction with the cloud
   - more info found [here](./CloudClient/index.md)
 - automation component to run jobs/tasks from a configuration file
+- ContainerAppClient object for easy interaction with Container App Jobs
+  - more info found [here](./ContainerAppClient/index.md)
