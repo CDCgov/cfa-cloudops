@@ -505,13 +505,9 @@ class DefaultCredentialHandler(CredentialHandler):
                 into process environment variables.
             keyvault: Name of the Azure Key Vault to use for secrets.
             force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
-            exclude_environment_credential: Exclude EnvironmentCredential from the chain.
-            exclude_managed_identity_credential: Exclude ManagedIdentityCredential from the chain.
-            exclude_visual_studio_code_credential: Exclude VisualStudioCodeCredential from the chain.
-            exclude_azure_cli_credential: Exclude AzureCliCredential from the chain.
-            exclude_azure_developer_cli_credential: Exclude AzureDeveloperCliCredential from the chain.
-            managed_identity_client_id: Optional user-assigned managed identity client ID.
             **kwargs: Additional keyword arguments to override specific credential attributes.
+            For example, you can pass ``azure_subscription_id``, ``azure_tenant_id``, etc. to override
+            values from the environment or .env file. Or you can pass ``exclude_environment_credential=True`` to exclude the EnvironmentCredential from the DefaultAzureCredential chain.
 
         Raises:
             ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables.
@@ -522,7 +518,8 @@ class DefaultCredentialHandler(CredentialHandler):
             >>> handler = DefaultCredentialHandler()
 
             >>> # Using custom .env file
-            >>> handler = DefaultCredentialHandler(dotenv_path="/path/to/.env")
+            >>> handler = DefaultCredentialHandler(dotenv_path="/path/to/.env",
+                            exclude_environment_credential=True)
         """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
