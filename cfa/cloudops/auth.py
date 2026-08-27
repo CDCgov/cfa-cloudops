@@ -65,9 +65,6 @@ def _build_default_credential(
     if not exclude_environment_credential:
         credentials.append(EnvironmentCredential())
 
-    if not exclude_workload_identity_credential:
-        credentials.append(WorkloadIdentityCredential())
-
     if not exclude_managed_identity_credential:
         mi_kwargs = {}
         if managed_identity_client_id:
@@ -82,6 +79,9 @@ def _build_default_credential(
 
     if not exclude_azure_developer_cli_credential:
         credentials.append(AzureDeveloperCliCredential())
+
+    if not exclude_workload_identity_credential:
+        credentials.append(WorkloadIdentityCredential())
 
     if not credentials:
         raise ValueError(
