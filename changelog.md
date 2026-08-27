@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 0.9.1
+
+- updated `cfa.cloudops._container_app_client.get_command_info` to return empty collection if job name was not found
+
 ## 0.9.0
 
 - switch default authentication paths to use `DefaultAzureCredential` directly in client and cloud client flows
