@@ -65,6 +65,17 @@ def _build_default_credential(
     if not exclude_environment_credential:
         credentials.append(EnvironmentCredential())
 
+    if not exclude_workload_identity_credential:
+        try:
+            credentials.append(WorkloadIdentityCredential())
+        except Exception as e:
+            logger.debug(
+                "WorkloadIdentityCredential could not be initialized. "
+                "This may be due to missing environment variables or an unsupported environment. "
+                "Continuing without WorkloadIdentityCredential. Error: %s",
+                e,
+            )
+
     if not exclude_managed_identity_credential:
         mi_kwargs = {}
         if managed_identity_client_id:
@@ -79,17 +90,6 @@ def _build_default_credential(
 
     if not exclude_azure_developer_cli_credential:
         credentials.append(AzureDeveloperCliCredential())
-
-    if not exclude_workload_identity_credential:
-        try:
-            credentials.append(WorkloadIdentityCredential())
-        except Exception as e:
-            logger.debug(
-                "WorkloadIdentityCredential could not be initialized. "
-                "This may be due to missing environment variables or an unsupported environment. "
-                "Continuing without WorkloadIdentityCredential. Error: %s",
-                e,
-            )
 
     if not credentials:
         raise ValueError(
