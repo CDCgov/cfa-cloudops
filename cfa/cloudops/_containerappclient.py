@@ -131,6 +131,7 @@ class ContainerAppClient:
         Returns:
             list[dict]: List of container info dicts (name, image, command, args, env).
         """
+        job_info = None
         if job_name is None:
             logger.debug("Job name not provided, checking instance variable.")
             if self.job_name is None:
@@ -143,10 +144,12 @@ class ContainerAppClient:
         for i in self.client.jobs.list_by_resource_group(self.resource_group):
             if i.name == job_name:
                 job_info = i
+        container_dicts = []
+        if not job_info:
+            return container_dicts
         logger.info(f"Retrieved command info for job '{job_name}'.")
         logger.debug("Extracting container information.")
-        c_info = job_info.__dict__["template"].__dict__["containers"]
-        container_dicts = []
+        c_info = job_info.template.containers
         logger.debug("Building container info list.")
         for c in c_info:
             container_dict = {
@@ -263,7 +266,7 @@ class ContainerAppClient:
                         f"Job {job_name} found, preparing to start with overrides."
                     )
                     job_info = i
-            for c in job_info.__dict__["template"].__dict__["containers"]:
+            for c in job_info.template.containers:
                 image = c.image
                 name = c.name
                 resources = c.resources
