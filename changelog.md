@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 1.0.0
+
+- replace `DefaultAzureCredential` with a custom `ChainedTokenCredential` builder (`_build_default_credential`) that exposes `exclude_*` flags for granular control over which credential types are attempted
+- add `WorkloadIdentityCredential` to the default credential chain
+- log which credential type succeeded during authentication (at debug level)
+- pass `exclude_*` credential kwargs through `CloudClient` so callers can control the chain without subclassing
+- fix `_delete_deployment_slot` to use `default_credential` consistently
+- improve `set_env_vars` to validate Azure values and write Azure-specific parameters back to `.env`
+- fix subscription ID resolution logic and default value storage in config/env handling
+- add new Key Vault secret key names to the defaults
+- fix `helpers.py`: safe log directory creation, filename-safe timestamps, and upgrade logger calls to `warning` where appropriate
+- slim down `pyproject.toml` dependencies
+
 ## 0.9.1
 
 - updated `cfa.cloudops._container_app_client.get_command_info` to return empty collection if job name was not found

@@ -5,15 +5,19 @@ Helper functions for Azure authentication.
 import logging
 import os
 from dataclasses import dataclass
-from functools import cached_property, partial
+from functools import cached_property
 
 from azure.core.pipeline import PipelineContext, PipelineRequest
 from azure.core.pipeline.policies import BearerTokenCredentialPolicy
 from azure.core.pipeline.transport import HttpRequest
 from azure.identity import (
-    ClientSecretCredential,
-    DefaultAzureCredential,
+    AzureCliCredential,
+    AzureDeveloperCliCredential,
+    ChainedTokenCredential,
+    EnvironmentCredential,
     ManagedIdentityCredential,
+    VisualStudioCodeCredential,
+    WorkloadIdentityCredential,
 )
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models as batch_mgmt_models
@@ -34,6 +38,112 @@ from cfa.cloudops.util import ensure_listlike
 logger = logging.getLogger(__name__)
 
 
+def _build_default_credential(
+    *,
+    exclude_environment_credential: bool = False,
+    exclude_workload_identity_credential: bool = False,
+    exclude_managed_identity_credential: bool = False,
+    exclude_visual_studio_code_credential: bool = False,
+    exclude_azure_cli_credential: bool = False,
+    exclude_azure_developer_cli_credential: bool = False,
+    managed_identity_client_id: str | None = None,
+) -> ChainedTokenCredential:
+    """Build and return a ``ChainedTokenCredential``.
+
+    Parameters mirror the ``exclude_*`` flags of ``DefaultAzureCredential``
+    so callers can opt out of specific credential types without constructing
+    the chain by hand.
+
+    Example
+    -------
+    cred = _build_default_credential(
+        exclude_managed_identity_credential=True,
+    )
+    """
+    credentials = []
+
+    if not exclude_environment_credential:
+        credentials.append(EnvironmentCredential())
+
+    if not exclude_workload_identity_credential:
+        try:
+            credentials.append(WorkloadIdentityCredential())
+        except Exception as e:
+            logger.debug(
+                "WorkloadIdentityCredential could not be initialized. "
+                "This may be due to missing environment variables or an unsupported environment. "
+                "Continuing without WorkloadIdentityCredential. Error: %s",
+                e,
+            )
+
+    if not exclude_managed_identity_credential:
+        mi_kwargs = {}
+        if managed_identity_client_id:
+            mi_kwargs["client_id"] = managed_identity_client_id
+        credentials.append(ManagedIdentityCredential(**mi_kwargs))
+
+    if not exclude_visual_studio_code_credential:
+        credentials.append(VisualStudioCodeCredential())
+
+    if not exclude_azure_cli_credential:
+        credentials.append(AzureCliCredential())
+
+    if not exclude_azure_developer_cli_credential:
+        credentials.append(AzureDeveloperCliCredential())
+
+    if not credentials:
+        raise ValueError(
+            "No credentials available to build ChainedTokenCredential. "
+            "At least one credential type must be included. "
+            "Disable exclude_* flags to include at least one credential type."
+        )
+
+    credential = ChainedTokenCredential(*credentials)
+
+    try:
+        _log_successful_cred(credential)
+    except Exception:
+        logger.debug(
+            "Skipping eager credential success logging during credential construction.",
+            exc_info=True,
+        )
+
+    return credential
+
+
+def _resolve_subscription(credential, configured_sub_id: str | None = None):
+    sub_c = SubscriptionClient(credential)
+    subscriptions = list(sub_c.subscriptions.list())
+    if not subscriptions:
+        raise ValueError(
+            "No Azure subscriptions were found for the current credential."
+        )
+
+    if configured_sub_id is None:
+        logger.debug(
+            "AZURE_SUBSCRIPTION_ID not found; using first available subscription."
+        )
+        return subscriptions[0]
+
+    subscription = next(
+        (sub for sub in subscriptions if sub.subscription_id == configured_sub_id),
+        None,
+    )
+    if subscription is None:
+        raise ValueError(
+            f"Subscription matching AZURE_SUBSCRIPTION_ID ({configured_sub_id}) not found."
+        )
+    return subscription
+
+
+def _log_successful_cred(credential: ChainedTokenCredential):
+    credential.get_token("https://management.azure.com/.default")
+
+    if hasattr(credential, "_successful_credential"):
+        winning_cred_type = type(credential._successful_credential).__name__
+        logger.info(f"Successfully authenticated using {winning_cred_type}.")
+
+
 @dataclass
 class CredentialHandler:
     """Data structure for Azure credentials.
@@ -50,6 +160,7 @@ class CredentialHandler:
     azure_keyvault_endpoint: str = None
     azure_tenant_id: str = None
     azure_client_id: str = None
+    azure_client_secret: str = None
     azure_batch_endpoint_subdomain: str = d.default_azure_batch_endpoint_subdomain
     azure_batch_account: str = None
     azure_batch_location: str = d.default_azure_batch_location
@@ -61,7 +172,6 @@ class CredentialHandler:
 
     azure_container_registry_account: str = None
     azure_container_registry_domain: str = d.default_azure_container_registry_domain
-    method: str = None
 
     def require_attr(self, attributes: str | list[str], goal: str = None):
         """Check that attributes required for a given operation are defined.
@@ -202,57 +312,35 @@ class CredentialHandler:
         return registry_endpoint
 
     @cached_property
-    def user_credential(self) -> ManagedIdentityCredential:
-        """Azure user credential.
-
-        Returns:
-            ManagedIdentityCredential: The Azure user credential using ManagedIdentityCredential.
-
-        Example:
-            >>> handler = CredentialHandler()
-            >>> credential = handler.user_credential
-            >>> # Use credential with Azure SDK clients
-        """
-        logger.debug("Creating ManagedIdentityCredential for user.")
-        return ManagedIdentityCredential()
-
-    @cached_property
     def default_credential(self):
-        logger.debug("Creating DefaultCredential.")
-        return DefaultCredential()
+        credential_kwargs = getattr(self, "_credential_chain_kwargs", {}) or {}
+        logger.debug(
+            "Creating DefaultAzureCredential for ARM/Key Vault/data-plane usage."
+        )
+        if credential_kwargs:
+            logger.debug(
+                "DefaultAzureCredential configured with options: %s",
+                sorted(credential_kwargs.keys()),
+            )
+        return _build_default_credential(**credential_kwargs)
 
     @cached_property
-    def client_secret_credential(self):
-        """A client secret credential created using the azure_client_secret attribute.
+    def batch_credential(self):
+        """Credential wrapper for SDKs expecting BasicTokenAuthentication semantics.
 
-        Returns:
-            ClientSecretCredential: The credential configured with client secret details.
-
-        Example:
-            >>> handler = CredentialHandler()
-            >>> handler.azure_tenant_id = "tenant-id"
-            >>> handler.azure_client_id = "client-id"
-            >>> handler.azure_client_secret = "client-secret" #pragma: allowlist secret
-            >>> credential = handler.client_secret_credential
+        This wrapper should be used only where a legacy/msrest-style auth object is
+        required. For ARM/Key Vault and modern Azure SDK clients, use
+        ``default_credential`` directly.
         """
-        logger.debug("Creating ClientSecretCredential using azure_client_secret.")
-        self.require_attr(
-            [
-                "azure_tenant_id",
-                "azure_client_id",
-                "azure_client_secret",
-            ]
+        logger.debug("Creating batch-compatible DefaultCredential wrapper.")
+        resource_url = (
+            self.azure_batch_resource_url or d.default_azure_batch_resource_url
         )
-        logger.debug(
-            "All required attributes present for ClientSecretCredential. Creating..."
+        resource_scope = f"{resource_url.rstrip('/')}/.default"
+        return DefaultCredential(
+            credential=self.default_credential,
+            resource_id=resource_scope,
         )
-        client_sec_cred = ClientSecretCredential(
-            tenant_id=self.azure_tenant_id,
-            client_secret=self.azure_client_secret,
-            client_id=self.azure_client_id,
-        )
-        logger.debug("Created ClientSecretCredential using azure_client_secret.")
-        return client_sec_cred
 
     @cached_property
     def compute_node_identity_reference(self):
@@ -350,7 +438,7 @@ class DefaultCredential(BasicTokenAuthentication):
         super(DefaultCredential, self).__init__(None)
         if credential is None:
             logger.debug("No credential provided, using DefaultAzureCredential.")
-            credential = DefaultAzureCredential()
+            credential = _build_default_credential()
         self.credential = credential
         self._policy = BearerTokenCredentialPolicy(credential, resource_id, **kwargs)
 
@@ -401,241 +489,11 @@ class DefaultCredential(BasicTokenAuthentication):
         return super(DefaultCredential, self).signed_session(session)
 
 
-class EnvCredentialHandler(CredentialHandler):
-    """Azure Credentials populated from available environment variables.
-
-    Subclass of CredentialHandler that populates attributes from environment
-    variables at instantiation, with the opportunity to override those values
-    via keyword arguments passed to the constructor.
-
-    Args:
-        dotenv_path (str, optional): Path to .env file to load environment variables from.
-            If None, uses default .env file discovery.
-        **kwargs: Keyword arguments defining additional attributes or overriding
-            those set in the environment variables. Passed as the ``config_dict``
-            argument to ``config.get_config_val``.
-
-    Example:
-        >>> # Load from environment variables
-        >>> handler = EnvCredentialHandler()
-
-        >>> # Override specific values
-        >>> handler = EnvCredentialHandler(azure_tenant_id="custom-tenant-id")
-
-        >>> # Load from custom .env file
-        >>> handler = EnvCredentialHandler(dotenv_path="/path/to/.env")
-    """
-
-    def __init__(
-        self,
-        dotenv_path: str = ".env",
-        keyvault: str = None,
-        force_keyvault: bool = False,
-        **kwargs,
-    ) -> None:
-        """Initialize the EnvCredentialHandler.
-
-        Loads environment variables from .env file and populates credential attributes from them.
-
-        Args:
-            dotenv_path (str, optional): Path to .env file to load environment variables from.
-                If None, uses default .env file discovery.
-            keyvault (str, optional): Name of the Azure Key Vault to use for secrets.
-            force_keyvault (bool, optional): If True, forces loading of Key Vault secrets even if they are already set in the environment.
-            **kwargs: Additional keyword arguments to override specific credential attributes.
-        """
-        logger.debug("Initializing EnvCredentialHandler.")
-        load_env_vars(
-            dotenv_path=dotenv_path,
-            keyvault_name=keyvault,
-            force_keyvault=force_keyvault,
-        )
-
-        get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
-
-        for key in self.__dataclass_fields__.keys():
-            self.__setattr__(key, get_conf(key))
-        # set method to "env"
-        self.__setattr__("method", "env")
-        # check for azure batch location
-        if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
-
-
-def load_env_vars(
-    dotenv_path=None, keyvault_name: str = None, force_keyvault: bool = False
-):
-    """Load environment variables and Azure subscription information.
-
-    Loads variables from a .env file (if specified), retrieves Azure subscription
-    information using ManagedIdentityCredential, and sets default environment variables.
-
-    Args:
-        dotenv_path: Path to .env file to load. If None, uses default .env file discovery.
-        keyvault_name: Name of the Azure Key Vault to use for secrets.
-        force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
-
-    Example:
-        >>> load_env_vars()  # Load from default .env
-        >>> load_env_vars("/path/to/.env")  # Load from specific file
-    """
-    # get ManagedIdentityCredential
-    mid_cred = ManagedIdentityCredential()
-
-    logger.debug("Loading environment variables.")
-    load_dotenv(dotenv_path=dotenv_path, override=True)
-
-    sub_c = SubscriptionClient(mid_cred)
-    # pull in account info and save to environment vars
-    account_info = list(sub_c.subscriptions.list())[0]
-    os.environ["AZURE_SUBSCRIPTION_ID"] = account_info.subscription_id
-    os.environ["AZURE_TENANT_ID"] = account_info.tenant_id
-    os.environ["AZURE_RESOURCE_GROUP_NAME"] = account_info.display_name
-
-    # get Key Vault secrets
-    if keyvault_name is not None:
-        get_keyvault_vars(
-            keyvault_name=keyvault_name,
-            credential=mid_cred,
-            force_keyvault=force_keyvault,
-        )
-
-    # save default values
-    d.set_env_vars()
-
-
-class SPCredentialHandler(CredentialHandler):
-    def __init__(
-        self,
-        azure_tenant_id: str = None,
-        azure_subscription_id: str = None,
-        azure_client_id: str = None,
-        azure_client_secret: str = None,
-        dotenv_path: str = ".env",
-        keyvault: str = None,
-        force_keyvault: bool = False,
-        **kwargs,
-    ):
-        """Initialize a Service Principal Credential Handler.
-
-        Creates a credential handler that uses Azure Service Principal authentication
-        for accessing Azure resources. Credentials can be provided directly as parameters
-        or loaded from environment variables. If not provided directly, the handler will
-        attempt to load credentials from environment variables or a .env file.
-
-        Args:
-            azure_tenant_id: Azure Active Directory tenant ID. If None, will attempt
-                to load from AZURE_TENANT_ID environment variable.
-            azure_subscription_id: Azure subscription ID. If None, will attempt
-                to load from AZURE_SUBSCRIPTION_ID environment variable.
-            azure_client_id: Azure Service Principal client ID (application ID).
-                If None, will attempt to load from AZURE_CLIENT_ID environment variable.
-            azure_client_secret: Azure Service Principal client secret. If None, will
-                attempt to load from AZURE_CLIENT_SECRET environment variable.
-            dotenv_path: Path to .env file to load environment variables from.
-                If None, uses default .env file discovery.
-            keyvault: Name of the Azure Key Vault to use for secrets.
-            force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
-            **kwargs: Additional keyword arguments to override specific credential attributes.
-
-        Raises:
-            ValueError: If AZURE_TENANT_ID is not found in environment variables
-                and not provided as parameter.
-            ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables
-                and not provided as parameter.
-            ValueError: If AZURE_CLIENT_ID is not found in environment variables
-                and not provided as parameter.
-            ValueError: If AZURE_CLIENT_SECRET is not found in environment variables
-                and not provided as parameter.
-
-        Example:
-            >>> # Using direct parameters
-            >>> handler = SPCredentialHandler(
-            ...     azure_tenant_id="12345678-1234-1234-1234-123456789012",
-            ...     azure_subscription_id="87654321-4321-4321-4321-210987654321",
-            ...     azure_client_id="abcdef12-3456-7890-abcd-ef1234567890",
-            ...     azure_client_secret="your-secret-here" #pragma: allowlist secret
-            ... )
-
-            >>> # Using environment variables
-            >>> handler = SPCredentialHandler()  # Loads from env vars
-
-            >>> # Using custom .env file
-            >>> handler = SPCredentialHandler(dotenv_path="/path/to/.env")
-        """
-        logger.debug("Initializing SPCredentialHandler.")
-        # load env vars, including client secret if available
-        load_dotenv(dotenv_path=dotenv_path, override=True)
-
-        mandatory_environment_variables = [
-            "AZURE_TENANT_ID",
-            "AZURE_SUBSCRIPTION_ID",
-            "AZURE_CLIENT_ID",
-            "AZURE_CLIENT_SECRET",
-        ]
-        for mandatory in mandatory_environment_variables:
-            if mandatory not in os.environ:
-                logger.warning(f"Environment variable {mandatory} was not provided")
-
-        # check if tenant_id, client_id, subscription_id, and client_secret_id exist, else find in os env vars
-        logger.debug(
-            "Setting azure_tenant_id, azure_subscription_id, azure_client_id, and azure_client_secret."
-        )
-        self.azure_tenant_id = (
-            azure_tenant_id
-            if azure_tenant_id is not None
-            else os.getenv("AZURE_TENANT_ID", None)
-        )
-        self.azure_subscription_id = (
-            azure_subscription_id
-            if azure_subscription_id is not None
-            else os.getenv("AZURE_SUBSCRIPTION_ID", None)
-        )
-        self.azure_client_id = (
-            azure_client_id
-            if azure_client_id is not None
-            else os.getenv("AZURE_CLIENT_ID", None)
-        )
-        self.azure_client_secret = (
-            azure_client_secret
-            if azure_client_secret is not None
-            else os.getenv("AZURE_CLIENT_SECRET", None)
-        )
-
-        self.require_attr(
-            [x.lower() for x in mandatory_environment_variables],
-            goal="service principal credentials",
-        )
-        sp_cred = ClientSecretCredential(
-            tenant_id=self.azure_tenant_id,
-            client_id=self.azure_client_id,
-            client_secret=self.azure_client_secret,
-        )
-        # load keyvault secrets
-        if keyvault is not None:
-            get_keyvault_vars(
-                keyvault_name=keyvault,
-                credential=sp_cred,
-                force_keyvault=force_keyvault,
-            )
-
-        d.set_env_vars()
-
-        get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
-
-        for key in self.__dataclass_fields__.keys():
-            self.__setattr__(key, get_conf(key))
-        # set method to "sp"
-        self.__setattr__("method", "sp")
-        # check for azure batch location
-        if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
-
-
 class DefaultCredentialHandler(CredentialHandler):
     def __init__(
         self,
         dotenv_path: str | None = ".env",
+        override_env: bool = False,
         keyvault: str = None,
         force_keyvault: bool = False,
         **kwargs,
@@ -650,9 +508,14 @@ class DefaultCredentialHandler(CredentialHandler):
         Args:
             dotenv_path: Path to .env file to load environment variables from.
                 If None, uses default .env file discovery.
+            override_env: If True, overrides existing environment variables with values from the
+                .env file and persists resolved ``azure_*`` handler values and derived defaults
+                into process environment variables.
             keyvault: Name of the Azure Key Vault to use for secrets.
             force_keyvault: If True, forces loading of Key Vault secrets even if they are already set in the environment.
             **kwargs: Additional keyword arguments to override specific credential attributes.
+            For example, you can pass ``azure_subscription_id``, ``azure_tenant_id``, etc. to override
+            values from the environment or .env file. Or you can pass ``exclude_environment_credential=True`` to exclude the EnvironmentCredential from the DefaultAzureCredential chain.
 
         Raises:
             ValueError: If AZURE_SUBSCRIPTION_ID is not found in environment variables.
@@ -663,66 +526,180 @@ class DefaultCredentialHandler(CredentialHandler):
             >>> handler = DefaultCredentialHandler()
 
             >>> # Using custom .env file
-            >>> handler = DefaultCredentialHandler(dotenv_path="/path/to/.env")
+            >>> handler = DefaultCredentialHandler(dotenv_path="/path/to/.env",
+                            exclude_environment_credential=True)
         """
         logger.debug("Initializing DefaultCredentialHandler.")
         logger.debug("Loading environment variables.")
-        load_dotenv(dotenv_path=dotenv_path)
-        logger.debug(
-            "Retrieving Azure subscription information using DefaultCredential."
-        )
-        d_cred = DefaultCredential()
+        # load the .env values
+        load_dotenv(dotenv_path=dotenv_path, override=override_env)
 
-        # load keyvault secrets
-        if keyvault is None:
-            try:
-                keyvault = os.environ["AZURE_KEYVAULT_NAME"]
-            except KeyError:
-                keyvault = None
-        if keyvault is not None:
-            get_keyvault_vars(
-                keyvault_name=keyvault,
-                credential=d_cred,
-                force_keyvault=force_keyvault,
+        self._credential_chain_kwargs = {
+            "exclude_environment_credential": kwargs.get(
+                "exclude_environment_credential", False
+            ),
+            "exclude_workload_identity_credential": kwargs.get(
+                "exclude_workload_identity_credential", False
+            ),
+            "exclude_managed_identity_credential": kwargs.get(
+                "exclude_managed_identity_credential", False
+            ),
+            "exclude_visual_studio_code_credential": kwargs.get(
+                "exclude_visual_studio_code_credential", False
+            ),
+            "exclude_azure_cli_credential": kwargs.get(
+                "exclude_azure_cli_credential", False
+            ),
+            "exclude_azure_developer_cli_credential": kwargs.get(
+                "exclude_azure_developer_cli_credential", False
+            ),
+            "managed_identity_client_id": kwargs.get(
+                "managed_identity_client_id", None
+            ),
+        }
+        if self._credential_chain_kwargs:
+            logger.debug(
+                "DefaultCredentialHandler received credential chain options: %s",
+                sorted(self._credential_chain_kwargs.keys()),
             )
 
+        # Explicit kwargs should override .env/env values for this handler instance
+        # without mutating process-level environment by default.
+        azure_kwargs = {
+            key: val
+            for key, val in kwargs.items()
+            if key.startswith("azure_") and val is not None
+        }
+
+        credential_env_mapping = {
+            "azure_tenant_id": "AZURE_TENANT_ID",
+            "azure_client_id": "AZURE_CLIENT_ID",
+            "azure_client_secret": "AZURE_CLIENT_SECRET",  # pragma: allowlist secret
+        }
+        credential_env_overrides = {
+            env_key: str(azure_kwargs[key])
+            for key, env_key in credential_env_mapping.items()
+            if key in azure_kwargs
+        }
+        # stores original env values to restore after handler initialization if override_env is False
+        original_credential_env = {
+            env_key: os.environ.get(env_key) for env_key in credential_env_overrides
+        }
+
+        # override environment variables with explicit azure_kwargs
+        for env_key, env_val in credential_env_overrides.items():
+            os.environ[env_key] = env_val
+
+        # helper function to get resolved value for a key, checking azure_kwargs first, then falling back to environment or .env
+        def get_resolved(key: str):
+            if key in azure_kwargs:
+                return azure_kwargs[key]
+            return get_config_val(key, config_dict=kwargs, try_env=True)
+
+        # try to retrieve Azure subscription information using DefaultAzureCredential
         try:
-            sub_c = SubscriptionClient(d_cred)
-        except Exception as e:
-            logger.error(f"Failed to create SubscriptionClient: {e}")
-            raise
-        sub_id = os.getenv("AZURE_SUBSCRIPTION_ID", None)
-        if sub_id is None:
-            logger.error("AZURE_SUBSCRIPTION_ID not found in environment variables.")
-            raise ValueError("AZURE_SUBSCRIPTION_ID not found in env variables.")
-        subscription = [
-            sub for sub in sub_c.subscriptions.list() if sub.subscription_id == sub_id
-        ]
-        # pull info if sub exists
-        logger.debug("Pulling subscription information.")
-        if subscription:
-            subscription = subscription[0]
-            os.environ["AZURE_RESOURCE_GROUP_NAME"] = subscription.display_name
-            logger.debug("Set AZURE_RESOURCE_GROUP_NAME from subscription information.")
-        else:
-            logger.error(
-                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+            logger.debug(
+                "Retrieving Azure subscription information using DefaultCredential."
             )
-            raise ValueError(
-                f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
-            )
-        logger.debug("Setting environment variables.")
-        d.set_env_vars()
+            d_cred = _build_default_credential(**self._credential_chain_kwargs)
 
-        get_conf = partial(get_config_val, config_dict=kwargs, try_env=True)
+            # Reuse the same credential object for downstream SDK clients.
+            self.__dict__["default_credential"] = d_cred
 
-        for key in self.__dataclass_fields__.keys():
-            self.__setattr__(key, get_conf(key))
-        # set method to "default"
-        self.__setattr__("method", "default")
-        # check for azure batch location
-        if self.__getattribute__("azure_batch_location") is None:
-            self.__setattr__("azure_batch_location", d.default_azure_batch_location)
+            # load keyvault secrets
+            if keyvault is None:
+                try:
+                    # if missing from arg, get kv name from env
+                    keyvault = os.environ["AZURE_KEYVAULT_NAME"]
+                except KeyError:
+                    keyvault = None
+            if keyvault is not None:
+                # pull from kv if name provided or found in env
+                get_keyvault_vars(
+                    keyvault_name=keyvault,
+                    credential=d_cred,
+                    force_keyvault=force_keyvault,
+                )
+
+            # try to get subscription ID from environment or .env
+            sub_id = get_resolved("azure_subscription_id")
+            try:
+                subscription = _resolve_subscription(d_cred, sub_id)
+            except Exception as e:
+                logger.error(f"Failed to resolve Azure subscription: {e}")
+                raise
+
+            if sub_id is None:
+                azure_kwargs["azure_subscription_id"] = subscription.subscription_id
+
+            # pull info if sub exists
+            logger.debug("Pulling subscription information.")
+            if subscription is not None:
+                # use env resource group name if present, otherwise use subscription display name
+                if "AZURE_RESOURCE_GROUP_NAME" in os.environ:
+                    logger.debug(
+                        "Using AZURE_RESOURCE_GROUP_NAME from environment/.env/key vault."
+                    )
+                else:
+                    azure_kwargs["azure_resource_group_name"] = (
+                        subscription.display_name
+                    )
+                # use env tenant ID if present, otherwise use subscription tenant ID
+                if "AZURE_TENANT_ID" in os.environ:
+                    logger.debug(
+                        "Using AZURE_TENANT_ID from environment/.env/key vault."
+                    )
+                else:
+                    azure_kwargs["azure_tenant_id"] = subscription.tenant_id
+            else:
+                logger.error(
+                    f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+                )
+                raise ValueError(
+                    f"Subscription matching AZURE_SUBSCRIPTION_ID ({sub_id}) not found."
+                )
+
+            # iterate over dataclass fields and set azure kwargs
+            for key in self.__dataclass_fields__.keys():
+                resolved_val = get_resolved(key)
+                if resolved_val is not None:
+                    self.__setattr__(key, resolved_val)
+
+            # persist resolved values into environment variables if override_env is True
+            if override_env:
+                logger.debug(
+                    "Persisting resolved handler values into environment variables."
+                )
+                # iterate over dataclass fields and set environment variables
+                for key in self.__dataclass_fields__.keys():
+                    val = self.__getattribute__(key)
+                    if val is not None:
+                        os.environ[key.upper()] = str(val)
+                # set the environment variables for the defaults
+                d.set_env_vars()
+        finally:
+            if not override_env:
+                for env_key, original_val in original_credential_env.items():
+                    if original_val is None:
+                        os.environ.pop(env_key, None)
+                    else:
+                        os.environ[env_key] = original_val
+
+
+class EnvCredentialHandler(DefaultCredentialHandler):
+    """Backward-compatible alias for environment-based handler behavior.
+
+    The project now standardizes on ``DefaultCredentialHandler``. This class is
+    retained for compatibility with older imports and tests.
+    """
+
+
+class SPCredentialHandler(DefaultCredentialHandler):
+    """Backward-compatible alias for service-principal handler behavior.
+
+    The project now standardizes on ``DefaultCredentialHandler``. This class is
+    retained for compatibility with older imports and tests.
+    """
 
 
 def get_compute_node_identity_reference(
@@ -735,7 +712,7 @@ def get_compute_node_identity_reference(
 
     Args:
         credential_handler: Credential handler for connecting and authenticating to
-            Azure resources. If None, create a blank EnvCredentialHandler, which
+            Azure resources. If None, create a blank DefaultCredentialHandler, which
             attempts to obtain needed credentials using information available in
             local environment variables (see its documentation for details).
 
@@ -753,8 +730,8 @@ def get_compute_node_identity_reference(
     """
     logger.debug("Getting ComputeNodeIdentityReference from CredentialHandler.")
     if credential_handler is None:
-        logger.debug("No CredentialHandler provided, using EnvCredentialHandler.")
-        credential_handler = EnvCredentialHandler()
+        logger.debug("No CredentialHandler provided, using DefaultCredentialHandler.")
+        credential_handler = DefaultCredentialHandler()
     logger.debug("Retrieving compute_node_identity_reference from CredentialHandler.")
     return credential_handler.compute_node_identity_reference
 

@@ -10,17 +10,17 @@ from cfa.cloudops._cloudclient import CloudClient
 def cloud_client_more(monkeypatch):
     cred = SimpleNamespace(
         azure_resource_group_name="rg",
+        azure_subscription_id="sub-1",
         azure_batch_account="acct",
         azure_blob_storage_account="blobacct",
         azure_blob_storage_endpoint="https://blobacct.blob.core.windows.net/",
-        user_credential="user-cred",
-        client_secret_sp_credential="default-cred",  # pragma: allowlist secret
-        client_secret_credential="sp-cred",  # pragma: allowlist secret
+        default_credential="default-cred",
+        batch_credential="batch-cred",
         compute_node_identity_reference=SimpleNamespace(resource_id="rid"),
     )
 
     with (
-        patch("cfa.cloudops._cloudclient.EnvCredentialHandler", return_value=cred),
+        patch("cfa.cloudops._cloudclient.DefaultCredentialHandler", return_value=cred),
         patch(
             "cfa.cloudops._cloudclient.get_batch_management_client",
             return_value=MagicMock(),
@@ -43,9 +43,6 @@ def cloud_client_more(monkeypatch):
 
 def test_check_credentials_env_default_sp(cloud_client_more, monkeypatch):
     seen_creds = []
-    monkeypatch.setattr(
-        "cfa.cloudops._cloudclient.DefaultAzureCredential", lambda: "default-cred"
-    )
 
     class FakeSub:
         def __init__(self):
@@ -61,16 +58,11 @@ def test_check_credentials_env_default_sp(cloud_client_more, monkeypatch):
         "cfa.cloudops._cloudclient.SubscriptionClient", fake_subscription_client
     )
 
-    cloud_client_more.method = "env"
+    cloud_client_more.check_credentials()
+    cloud_client_more.check_credentials()
     cloud_client_more.check_credentials()
 
-    cloud_client_more.method = "default"
-    cloud_client_more.check_credentials()
-
-    cloud_client_more.method = "sp"
-    cloud_client_more.check_credentials()
-
-    assert seen_creds == ["user-cred", "default-cred", "sp-cred"]
+    assert seen_creds == ["default-cred", "default-cred", "default-cred"]
 
 
 def test_check_credentials_handles_exception(cloud_client_more, monkeypatch):
@@ -173,9 +165,6 @@ def test_download_file_download_folder_delegates(cloud_client_more, monkeypatch)
 
 def test_async_download_folder_uses_method_credential(cloud_client_more, monkeypatch):
     calls = []
-    monkeypatch.setattr(
-        "cfa.cloudops._cloudclient.DefaultAzureCredential", lambda: "default-cred"
-    )
 
     def fake_async_download_blob_folder(**kwargs):
         calls.append(kwargs)
@@ -185,18 +174,13 @@ def test_async_download_folder_uses_method_credential(cloud_client_more, monkeyp
         fake_async_download_blob_folder,
     )
 
-    cloud_client_more.method = "default"
     cloud_client_more.async_download_folder("src", "dest", "c")
-
-    cloud_client_more.method = "sp"
     cloud_client_more.async_download_folder("src", "dest", "c")
-
-    cloud_client_more.method = "env"
     cloud_client_more.async_download_folder("src", "dest", "c")
 
     assert calls[0]["credential"] == "default-cred"
-    assert calls[1]["credential"] == "sp-cred"
-    assert calls[2]["credential"] == "user-cred"
+    assert calls[1]["credential"] == "default-cred"
+    assert calls[2]["credential"] == "default-cred"
 
 
 def test_async_upload_folder_handles_str_and_list(cloud_client_more, monkeypatch):
@@ -207,7 +191,6 @@ def test_async_upload_folder_handles_str_and_list(cloud_client_more, monkeypatch
         lambda **kwargs: calls.append(kwargs),
     )
 
-    cloud_client_more.method = "env"
     cloud_client_more.async_upload_folder("folder-a", "container-a")
     cloud_client_more.async_upload_folder(["folder-b", "folder-c"], "container-a")
 
@@ -313,7 +296,6 @@ def test_get_kv_secret_success_and_failure(cloud_client_more, monkeypatch):
         ),
     )
 
-    cloud_client_more.method = "sp"
     assert cloud_client_more.get_kv_secret("s1", "kv") == "v-s1"
 
     monkeypatch.setattr(
