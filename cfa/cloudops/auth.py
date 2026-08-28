@@ -84,7 +84,7 @@ def _build_default_credential(
         try:
             credentials.append(WorkloadIdentityCredential())
         except Exception as e:
-            logger.warning(
+            logger.debug(
                 "WorkloadIdentityCredential could not be initialized. "
                 "This may be due to missing environment variables or an unsupported environment. "
                 "Continuing without WorkloadIdentityCredential. Error: %s",
