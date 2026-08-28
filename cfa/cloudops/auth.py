@@ -81,7 +81,15 @@ def _build_default_credential(
         credentials.append(AzureDeveloperCliCredential())
 
     if not exclude_workload_identity_credential:
-        credentials.append(WorkloadIdentityCredential())
+        try:
+            credentials.append(WorkloadIdentityCredential())
+        except Exception as e:
+            logger.warning(
+                "WorkloadIdentityCredential could not be initialized. "
+                "This may be due to missing environment variables or an unsupported environment. "
+                "Continuing without WorkloadIdentityCredential. Error: %s",
+                e,
+            )
 
     if not credentials:
         raise ValueError(
