@@ -289,7 +289,7 @@ class FunctionAppClient:
 
     def _delete_deployment_slot(self, deployment_slot_name: str):
         web_mgmt_client = WebSiteManagementClient(
-            self.cred.client_secret_credential, self.cred.azure_subscription_id
+            self.cred.default_credential, self.cred.azure_subscription_id
         )
         logger.info(
             f"FunctionAppClient._delete_deployment_slot: Deleting the {deployment_slot_name} slot"
