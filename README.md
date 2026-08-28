@@ -44,6 +44,13 @@ To run tests with `uv`, use the project test command:
 uv run test
 ```
 
+## Repos that currently incorporate cloudops
+- cdcent/cfa-python-repo-template: example set up
+- cdcgov/cfa-dataops: blob upload/download functionality
+- cdcgov/cfa-stf-routine-forecasting: create pools
+- cdcent/DynODE-Experiments: run tasks in the cloud
+- cdcent/cfa-cloudops-example: internal cloudops walkthrough
+- cdcent/cfa-kps-cloudops-demo: demo repo getting started with cloudops
 
 ## Public Domain Standard Notice
 This repository constitutes a work of the United States Government and is not
