@@ -110,12 +110,6 @@ class CloudClient:
         use_sp: bool = False,
         use_federated: bool = False,
         force_keyvault: bool = False,
-        exclude_environment_credential: bool = False,
-        exclude_managed_identity_credential: bool = False,
-        exclude_visual_studio_code_credential: bool = False,
-        exclude_azure_cli_credential: bool = False,
-        exclude_azure_developer_cli_credential: bool = False,
-        managed_identity_client_id: str | None = None,
         **kwargs,
     ):
         # set the logging level and output if provided
