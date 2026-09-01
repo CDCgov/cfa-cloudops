@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 1.0.1
+
+- enhanced troubleshooting documentation for cfa-cloudops
+
 ## 1.0.0
 
 - replace `DefaultAzureCredential` with a custom `ChainedTokenCredential` builder (`_build_default_credential`) that exposes `exclude_*` flags for granular control over which credential types are attempted
