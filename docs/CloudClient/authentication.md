@@ -24,13 +24,13 @@ If the Key Vault is setup with these keys/values (the correct CFA key vault is),
 The following way pulls values from our Key Vault called 'my-key-vault'.
 
 ```python3
-client = CloudClient(keyvault = "my-key-vault")
+client = CloudClient(keyvault="my-key-vault")
 ```
 
 If we want to force the use of Key Vault values, the following should be run:
 
 ```python3
-client = CloudClient(keyvault = "my-key-vault", force_keyvault = True)
+client = CloudClient(keyvault="my-key-vault", force_keyvault=True)
 ```
 
 ## Environment Variable Setup
@@ -40,12 +40,12 @@ When the `CloudClient` class gets instantiated, the other way it attempts to get
 The path to the .env file can be provided via the `dotenv_path` parameter when calling `CloudClient()`. By default, it looks for a file called `.env`. If the name of the file is anything else, it should be passed to `dotenv_path`. For example, instantiating the client in the following ways would be identical:
 ```python
 client = CloudClient()
-client = CloudClient(dotenv_path = ".env")
+client = CloudClient(dotenv_path=".env")
 ```
 
 If the .env file is called "my_azure.env" then the following should be run:
 ```python
-client = CloudClient(dotenv_path = "my_azure.env")
+client = CloudClient(dotenv_path="my_azure.env")
 ```
 
 During instantiation of the `CloudClient`, values from the .env file are loaded into the process environment.
@@ -121,10 +121,10 @@ Check [here](../files/sp_sample.env) for an example .env to be used with a servi
 The following is an example of including these variables as part of the instantiation:
 ```python
 client = CloudClient(
-    azure_tenant_id = "my_tenant_id",
-    azure_subscription_id = "my_subscription_id",
-    azure_client_id = "my_client_id",
-    azure_client_secret = "my_sp_secret" #pragma: allowlist secret
+    azure_tenant_id="my_tenant_id",
+    azure_subscription_id="my_subscription_id",
+    azure_client_id="my_client_id",
+    azure_client_secret="my_sp_secret",  # pragma: allowlist secret
 )
 ```
 

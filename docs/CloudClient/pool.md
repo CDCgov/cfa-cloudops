@@ -62,12 +62,15 @@ The pool can be setup in the following way:
 ```python
 client = CloudClient()
 client.create_pool(
-    pool_name = "sample-pool",
-    container_image_name = "python:3.10",
-    mounts = [{"source": "input-test", "target": "input"}, {"source": "output-test", "target": "results"}],
-    autoscale = True, # this line actually unnecessary
-    max_autoscale_nodes = 10,
-    cache_blobfuse = False
+    pool_name="sample-pool",
+    container_image_name="python:3.10",
+    mounts=[
+        {"source": "input-test", "target": "input"},
+        {"source": "output-test", "target": "results"},
+    ],
+    autoscale=True,  # this line actually unnecessary
+    max_autoscale_nodes=10,
+    cache_blobfuse=False,
 )
 ```
 
@@ -85,13 +88,13 @@ In this case we could run the following:
 ```python
 client = CloudClient()
 client.create_pool(
-    pool_name = "sample-pool-debug",
-    container_image_name = "my_azure_registry/azurecr.io/test_repo:latest",
-    mounts = ["input-files"],
-    vm_size = "medium",
-    autoscale = False,
-    low_priority_nodes = 3,
-    task_slots_per_node = 2
+    pool_name="sample-pool-debug",
+    container_image_name="my_azure_registry/azurecr.io/test_repo:latest",
+    mounts=["input-files"],
+    vm_size="medium",
+    autoscale=False,
+    low_priority_nodes=3,
+    task_slots_per_node=2,
 )
 ```
 
@@ -108,10 +111,10 @@ This method takes a Dockerfile at the specified path, builds the Docker image, t
 ```python
 client = CloudClient()
 client.package_and_upload_dockerfile(
-    registry_name = "my_azure_registry",
-    repo_name = "test-repo",
-    tag = "latest",
-    path_to_dockerfile = "./Dockerfile"
+    registry_name="my_azure_registry",
+    repo_name="test-repo",
+    tag="latest",
+    path_to_dockerfile="./Dockerfile",
 )
 ```
 
@@ -151,7 +154,7 @@ client = CloudClient()
 images = client.list_available_images()
 for image in images:
     print(image)
-linux_images = client.list_available_images(operating_system='linux')
+linux_images = client.list_available_images(operating_system="linux")
 for image in linux_images:
     print(image)
 ```

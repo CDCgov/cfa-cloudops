@@ -13,16 +13,11 @@ from cfa.cloudops import CloudClient
 cc = CloudClient()
 cc.create_pool(
     "example-pool",
-    container_image_name = "python:3.10-slim",
-    mounts = [("input-test", "data")]
-    )
-cc.create_job(
-    "example-job",
-    pool_name = "example-pool"
-    )
-cc.add_task(
-    "python3 /data/run-local.py"
-    )
+    container_image_name="python:3.10-slim",
+    mounts=[("input-test", "data")],
+)
+cc.create_job("example-job", pool_name="example-pool")
+cc.add_task("python3 /data/run-local.py")
 ```
 
 This same script can be run in a local environment by only switching the import line of the code. Note that the folder 'input-test' needs to exist locally, or you can include the line `cc.create_blob_container("input-test")` to mimic creating a Blob container. The following will now run the same code but in a terminal.
@@ -32,17 +27,11 @@ from cfa.cloudops.local import CloudClient
 cc = CloudClient()
 cc.create_pool(
     "example-pool",
-    container_image_name = "python:3.10-slim",
-    mounts = [("input-test", "data")]
-    )
-cc.create_job(
-    "example-job",
-    pool_name = "example-pool"
-    )
-cc.add_task(
-    "python3 /data/run-local.py",
-    job_name = "example-job"
-    )
+    container_image_name="python:3.10-slim",
+    mounts=[("input-test", "data")],
+)
+cc.create_job("example-job", pool_name="example-pool")
+cc.add_task("python3 /data/run-local.py", job_name="example-job")
 ```
 The above code will create a pool (which is essentially a text file containing various information), a job (another text file with information plus a Docker container), and a task that executes in the job's Docker container.
 
