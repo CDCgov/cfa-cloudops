@@ -7,6 +7,7 @@ To create a DAG using `cfa-cloudops`, the building blocks are Task objects from 
 **Example to create Task objects**
 ```python
 from cfa.cloudops import Task
+
 t1 = Task("python3 /main.py")
 t2 = Task("python3 /second_task.py")
 ```
@@ -29,7 +30,7 @@ t1.after(t2)
 
 Tasks can also be set to have multiple dependencies using multiple statements or a single list in one call. For example:
 ```python
-#multiple statements
+# multiple statements
 t1.after(t2)
 t1.after(t3)
 
@@ -42,7 +43,7 @@ Once all tasks have their task dependencies added, use the client method `genera
 For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
 ```python
 client = CloudClient()
-client.generate_dag(t1, t2, t3, t4, file_name = "dag_example.txt")
+client.generate_dag(t1, t2, t3, t4, file_name="dag_example.txt")
 ```
 This will generate a diagram similar to this example in `dag_example.txt` file:
 
@@ -61,7 +62,7 @@ After verifying the text diagram, use the client method `run_dag()` to execute t
 For example, if Tasks `t1`, `t2`, `t3`, and `t4` are to be run as a DAG from the CloudClient object, do the following:
 ```python
 client = CloudClient()
-client.run_dag(t1, t2, t3, t4, job_id = "dag_job_example")
+client.run_dag(t1, t2, t3, t4, job_id="dag_job_example")
 ```
 
 ## A Simple Example
@@ -82,8 +83,8 @@ t2.after(t1)
 t3.before(t4)
 t5.after([t3, t4])
 
-client.create_job("dag_job_example", pool_name = "example_pool")
-client.run_dag(t1, t2, t3, t4, t5, job_id = "dag_job_example")
+client.create_job("dag_job_example", pool_name="example_pool")
+client.run_dag(t1, t2, t3, t4, t5, job_id="dag_job_example")
 ```
 
 ## Alternative Methods for Setting Dependencies

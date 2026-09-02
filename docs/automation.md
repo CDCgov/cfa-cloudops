@@ -25,8 +25,8 @@ Here's a more concrete example of the first case. Suppose we have the following 
 [experiment]
 base_cmd = "python3 /input/data/vars.py --first {var1} --another {var2} --test {var3}"
 var1 = [1, 2, 4]
-var2 = [10,11,12]
-var3 = ['90', '99', '98']
+var2 = [10, 11, 12]
+var3 = ["90", "99", "98"]
 ```
 
 The base command indicates a python script vars.py will be run with three command line arguments with flags called first, another, and test. To show the flexibility here, we use the names var1, var2, var3 for setting the list of options to cycle through. The values for var1 will be placed into {var1} of the base_cmd one at a time, var2 in {var2}, and var3 in {var3}. Any number of variables can be used and the number of elements of each list do not need to be equal. It's important that the names defining the lists of values match the placeholders (bracketed values, here var1, var2, var3). They do not need to match the actual flag names in the base_cmd (here first, another, test).
@@ -58,7 +58,8 @@ python3 main.py --method brent --bounds [0.0, 1.0] --check
 You can use the `run_experiment` function in two lines of code, as shown below.
 ```python
 from cfa_azure.automation import run_experiment
-run_experiment(exp_config = "path/to/exp_config.toml")
+
+run_experiment(exp_config="path/to/exp_config.toml")
 ```
 
 ## `run_tasks()`
@@ -80,5 +81,6 @@ run_dependent_tasks_on_fail = true
 You can then run the tasks in two lines of code, as shown below.
 ```python
 from cfa_azure.automation import run_tasks
-run_experiment(task_config = "path/to/task_config.toml")
+
+run_experiment(task_config="path/to/task_config.toml")
 ```

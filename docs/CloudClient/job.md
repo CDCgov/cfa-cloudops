@@ -24,10 +24,7 @@ The `CloudClient` class has a method called `create_job` which should be used fo
 For users just looking to get started with this job creation, the following can be run to create a job called 'test-job-1' on the existing pool 'test-pool-exists'.
 ```python
 client = CloudClient()
-client.create_job(
-    job_name = "test-job-1",
-    pool_name = "test-pool-exists"
-)
+client.create_job(job_name="test-job-1", pool_name="test-pool-exists")
 ```
 
 ### A Complex Example
@@ -35,12 +32,12 @@ Suppose we want the same job name and pool name as above, but we want to save an
 ```python
 client = CloudClient()
 client.create_job(
-    job_name = "test-job-1",
-    pool_name = "test-pool-exists",
-    save_logs_to_blob = "output-test",
-    logs_folder = "logs",
-    mark_complete_after_tasks_run = True,
-    task_retries = 1
+    job_name="test-job-1",
+    pool_name="test-pool-exists",
+    save_logs_to_blob="output-test",
+    logs_folder="logs",
+    mark_complete_after_tasks_run=True,
+    task_retries=1,
 )
 ```
 
@@ -87,15 +84,12 @@ client.add_task(
 Suppose we want to run two python scripts where the second script depends on the first, but can be run even if the first task fails. The following code can be used:
 ```python
 client = CloudClient()
-task_id = client.add_task(
-    job_name = "first-job",
-    command_line = "python3 first_task.py"
-)
+task_id = client.add_task(job_name="first-job", command_line="python3 first_task.py")
 client.add_task(
-    job_name = "first-job",
-    command_line = "python3 second_task.py",
-    depends_on = [task_id],
-    run_dependent_tasks_on_fail = True
+    job_name="first-job",
+    command_line="python3 second_task.py",
+    depends_on=[task_id],
+    run_dependent_tasks_on_fail=True,
 )
 ```
 
@@ -158,9 +152,9 @@ client = CloudClient()
 # job / task creation here
 # monitor the job
 client.monitor_job(
-    job_name = "running-job-example",
-    timeout = 60,
-    )
+    job_name="running-job-example",
+    timeout=60,
+)
 ```
 
 To monitor the same job and locally save the task output, we can run the following. Let's say this job has three tasks included in the job.
@@ -203,10 +197,7 @@ In Azure Batch Explorer, there is a button to download the statistics related to
 To download the job statistics for the job "running-job-example" to the file "job-stas.csv", we could run the following:
 ```python
 client = CloudClient()
-client.download_job_stats(
-    job_name = "running-job-example",
-    file_name = "job-stats"
-)
+client.download_job_stats(job_name="running-job-example", file_name="job-stats")
 ```
 
 ## Deleting a Job
@@ -242,10 +233,10 @@ import datetime
 
 client = CloudClient()
 client.create_job_schedule(
-    job_schedule_name = 'test-schedule',
-    pool_name = 'test-pool',
-    command = "cmd /c echo Hello world from the job schedule!",
-    recurrence_interval = datetime.timedelta(minutes=15)
+    job_schedule_name="test-schedule",
+    pool_name="test-pool",
+    command="cmd /c echo Hello world from the job schedule!",
+    recurrence_interval=datetime.timedelta(minutes=15),
 )
 ```
 
@@ -257,13 +248,13 @@ import datetime
 
 client = CloudClient()
 client.create_job_schedule(
-    job_schedule_name = "test-schedule",
-    pool_name = 'test-pool',
-    command = "cmd /c echo Hello world from the job schedule!",
-    recurrence_interval = datetime.timedelta(hours=1),
-    start_window = datetime.timedelta(minutes=15),
-    do_not_run_until = "2026-03-23 00:00:00",
-    do_not_run_after = "2026-03-31 00:00:00",
+    job_schedule_name="test-schedule",
+    pool_name="test-pool",
+    command="cmd /c echo Hello world from the job schedule!",
+    recurrence_interval=datetime.timedelta(hours=1),
+    start_window=datetime.timedelta(minutes=15),
+    do_not_run_until="2026-03-23 00:00:00",
+    do_not_run_after="2026-03-31 00:00:00",
 )
 ```
 

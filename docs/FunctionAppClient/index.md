@@ -98,10 +98,11 @@ Then initialize the `FunctionAppClient` with `dotenv_path` set to environment fi
 
 ```python
 from cfa.cloudops import FunctionAppClient
+
 func_app_client = FunctionAppClient(
-    function_app_name='cfapredictafmprdfunc02',   # Omit this if you want first available function
-    dotenv_path='cfa_cloudops.env',
-    use_sp=True
+    function_app_name="cfapredictafmprdfunc02",  # Omit this if you want first available function
+    dotenv_path="cfa_cloudops.env",
+    use_sp=True,
 )
 ```
 
@@ -111,7 +112,8 @@ Use secrets stored in Azure Key Vault (e.g. `my-team-vault`).
 
 ```python
 from cfa.cloudops import FunctionAppClient
-func_app_client = FunctionAppClient(keyvault='my-team-vault')
+
+func_app_client = FunctionAppClient(keyvault="my-team-vault")
 ```
 
 ## 4. Design/Process Diagram
@@ -141,13 +143,18 @@ This script reads data from a specified blob in Azure Blob Storage and writes da
 # user_user_scriptpackage.py
 def main():
     from azure.storage.blob import BlobServiceClient
+
     try:
         connection_string = "your_blob_storage_connection_string"
         container_name = "your_container_name"
         blob_name = "your_blob_name"
 
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string
+        )
+        blob_client = blob_service_client.get_blob_client(
+            container=container_name, blob=blob_name
+        )
 
         # Write Blob
         data = "Hello, World!"
@@ -159,11 +166,10 @@ def main():
         content = download_stream.readall()
         print(f"Blob content: {content.decode('utf-8')}")
 
-        return content.decode('utf-8')
+        return content.decode("utf-8")
     except Exception as e:
         print(f"Error in main function: {str(e)}")
         return f"Error: {str(e)}"
-
 ```
 
 #### Testing Script (`test_user_script.py`)
@@ -175,13 +181,16 @@ import user_script as hw_bs
 from cfa.cloudops import FunctionAppClient
 
 func_app_client = FunctionAppClient(
-    function_app_name='cfapredictafmprdfunc02', dotenv_path='cfa_cloudops.env', use_sp=True
+    function_app_name="cfapredictafmprdfunc02",
+    dotenv_path="cfa_cloudops.env",
+    use_sp=True,
 )
 
 schedule = "* * * * *"  # Run this every minute
 
-func_app_client.deploy_function(schedule, hw_bs.main, dependencies=["azure-storage-blob"])
-
+func_app_client.deploy_function(
+    schedule, hw_bs.main, dependencies=["azure-storage-blob"]
+)
 ```
 ## Blob Storage (Read/Write)
 
@@ -199,13 +208,18 @@ This script includes functions to read from and write to Azure Blob Storage and 
 ```python
 def main():
     from azure.storage.blob import BlobServiceClient
+
     try:
         connection_string = "your_blob_storage_connection_string"
         container_name = "your_container_name"
         blob_name = "your_blob_name"
 
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string
+        )
+        blob_client = blob_service_client.get_blob_client(
+            container=container_name, blob=blob_name
+        )
 
         # Write Blob
         data = "Hello, World!"
@@ -217,11 +231,10 @@ def main():
         content = download_stream.readall()
         print(f"Blob content: {content.decode('utf-8')}")
 
-        return content.decode('utf-8')
+        return content.decode("utf-8")
     except Exception as e:
         print(f"Error in main function: {str(e)}")
         return f"Error: {str(e)}"
-
 ```
 #### Testing Script (`test_bs_read_write.py`)
 
@@ -233,15 +246,17 @@ import blob_storage_pkg as hw_bs
 from cfa.cloudops import FunctionAppClient
 
 func_app_client = FunctionAppClient(
-    function_app_name='cfapredictafmprdfunc02', dotenv_path='cfa_cloudops.env', use_sp=True
+    function_app_name="cfapredictafmprdfunc02",
+    dotenv_path="cfa_cloudops.env",
+    use_sp=True,
 )
 
 schedule = "* * * * *"  # Run this every minute
 
 # Ensure to pass in the dependencies
-func_app_client.deploy_function(schedule, hw_bs.main, dependencies=["azure-storage-blob"])
-
-
+func_app_client.deploy_function(
+    schedule, hw_bs.main, dependencies=["azure-storage-blob"]
+)
 ```
 
 ### Using Service Principal
@@ -255,14 +270,19 @@ This script demonstrates how to read from and write to Azure Blob Storage using 
 # sp_blob_storage_pkg.py
 def main():
     from azure.storage.blob import BlobServiceClient
+
     try:
         connection_string = "your_blob_storage_connection_string"
         container_name = "your_container_name"
         blob_name = "your_blob_name"
         data = "Hello, World!"
 
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string
+        )
+        blob_client = blob_service_client.get_blob_client(
+            container=container_name, blob=blob_name
+        )
 
         # Write Blob
         blob_client.upload_blob(data, overwrite=True)
@@ -273,11 +293,10 @@ def main():
         content = download_stream.readall()
         print(f"Blob content: {content.decode('utf-8')}")
 
-        return content.decode('utf-8')
+        return content.decode("utf-8")
     except Exception as e:
         print(f"Error in main function: {str(e)}")
         return f"Error: {str(e)}"
-
 ```
 #### Testing Script (`test_sp_blob_storage_pkg.py`):
 
@@ -291,11 +310,17 @@ from cfa.cloudops import FunctionAppClient
 schedule = "* * * * *"  # Run this every minute
 
 func_app_client = FunctionAppClient(
-    function_app_name='cfapredictafmprdfunc02', dotenv_path='cfa_cloudops.env', use_sp=True
+    function_app_name="cfapredictafmprdfunc02",
+    dotenv_path="cfa_cloudops.env",
+    use_sp=True,
 )
 
-func_app_client.deploy_function(schedule, sp_pkg.main, dependencies=["azure-storage-blob"], environment_variables=env_vars)
-
+func_app_client.deploy_function(
+    schedule,
+    sp_pkg.main,
+    dependencies=["azure-storage-blob"],
+    environment_variables=env_vars,
+)
 ```
 
 ### Additional Error Messages
@@ -377,7 +402,8 @@ Retrieves the configuration details an app, such as platform version, runtime en
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-FunctionAppClient.get_configuration(function_app_name='cfapredictafmprdfunc03')
+
+FunctionAppClient.get_configuration(function_app_name="cfapredictafmprdfunc03")
 ```
 
 _Response_:
@@ -393,7 +419,10 @@ Fetch details of specific function within a function app. You can invoke the `li
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-FunctionAppClient.get_function_details(function_app_name='cfapredictafmprdfunc03', function_name='cfatimer')
+
+FunctionAppClient.get_function_details(
+    function_app_name="cfapredictafmprdfunc03", function_name="cfatimer"
+)
 ```
 
 _Response_:
@@ -408,7 +437,8 @@ Retrieves the current status (True or False) of health check enabled on a functi
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-FunctionAppClient.get_health_check_flag(function_app_name='cfapredictafmprdfunc03')
+
+FunctionAppClient.get_health_check_flag(function_app_name="cfapredictafmprdfunc03")
 ```
 
 _Response_:
@@ -423,7 +453,8 @@ Retrieves the tags assigned to an app. This is a subset of the response returned
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-FunctionAppClient.get_tags(function_app_name='cfapredictafmprdfunc03')
+
+FunctionAppClient.get_tags(function_app_name="cfapredictafmprdfunc03")
 ```
 
 _Response_:
@@ -438,7 +469,8 @@ Retrieves list of all functions packaged and deployed to the specified function 
 _Example_:
 ```python
 from cfa.cloudops import FunctionAppClient
-FunctionAppClient.list_functions(function_app_name='cfapredictafmprdfunc03')
+
+FunctionAppClient.list_functions(function_app_name="cfapredictafmprdfunc03")
 ```
 
 _Response_:
