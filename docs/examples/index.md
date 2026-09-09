@@ -3,3 +3,4 @@
 - [Getting Started Example](./getting_started/index.md)
 - [Using Task Dependencies](./dependencies/index.md)
 - [Running DAGs](./dags/index.md)
+- [Running R Scripts with launch_job.py](./R/README.md)

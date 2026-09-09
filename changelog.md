@@ -22,6 +22,9 @@ The versioning pattern is `major.minor.patch`.
 
 ## 0.9.1
 
+- documentation updates
+- include R example
+- switch doc site to use Zensical
 - updated `cfa.cloudops._container_app_client.get_command_info` to return empty collection if job name was not found
 
 ## 0.9.0
