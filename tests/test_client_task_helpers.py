@@ -11,10 +11,8 @@ from cfa.cloudops import client, helpers, task
 @pytest.fixture
 def fake_credential_handler():
     return SimpleNamespace(
-        method="sp",
-        client_secret_credential="sp-cred",  # pragma: allowlist secret
-        client_secret_sp_credential="default-cred",  # pragma: allowlist secret
-        user_credential="user-cred",
+        default_credential="default-cred",
+        batch_credential="batch-cred",
         azure_subscription_id="sub-123",
         azure_batch_endpoint="https://batch.example",
         azure_blob_storage_endpoint="https://blob.example",
@@ -29,22 +27,9 @@ def test_get_batch_management_client_methods(monkeypatch, fake_credential_handle
         return SimpleNamespace(kind="batch_mgmt")
 
     monkeypatch.setattr("cfa.cloudops.client.BatchManagementClient", fake_constructor)
-    monkeypatch.setattr(
-        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
-    )
-
-    fake_credential_handler.method = "sp"
     client.get_batch_management_client(fake_credential_handler)
 
-    fake_credential_handler.method = "default"
-    client.get_batch_management_client(fake_credential_handler)
-
-    fake_credential_handler.method = "user"
-    client.get_batch_management_client(fake_credential_handler)
-
-    assert calls[0]["credential"] == "sp-cred"
-    assert calls[1]["credential"] == "default-cred"
-    assert calls[2]["credential"] == "user-cred"
+    assert calls[0]["credential"] == "default-cred"
     assert all(c["subscription_id"] == "sub-123" for c in calls)
 
 
@@ -56,22 +41,9 @@ def test_get_compute_management_client_methods(monkeypatch, fake_credential_hand
         return SimpleNamespace(kind="compute_mgmt")
 
     monkeypatch.setattr("cfa.cloudops.client.ComputeManagementClient", fake_constructor)
-    monkeypatch.setattr(
-        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
-    )
-
-    fake_credential_handler.method = "sp"
     client.get_compute_management_client(fake_credential_handler)
 
-    fake_credential_handler.method = "default"
-    client.get_compute_management_client(fake_credential_handler)
-
-    fake_credential_handler.method = "user"
-    client.get_compute_management_client(fake_credential_handler)
-
-    assert calls[0]["credential"] == "sp-cred"
-    assert calls[1]["credential"] == "default-cred"
-    assert calls[2]["credential"] == "user-cred"
+    assert calls[0]["credential"] == "default-cred"
 
 
 def test_get_batch_service_client_methods(monkeypatch, fake_credential_handler):
@@ -82,22 +54,9 @@ def test_get_batch_service_client_methods(monkeypatch, fake_credential_handler):
         return SimpleNamespace(kind="batch_service")
 
     monkeypatch.setattr("cfa.cloudops.client.BatchClient", fake_constructor)
-    monkeypatch.setattr(
-        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
-    )
-
-    fake_credential_handler.method = "sp"
     client.get_batch_service_client(fake_credential_handler)
 
-    fake_credential_handler.method = "default"
-    client.get_batch_service_client(fake_credential_handler)
-
-    fake_credential_handler.method = "user"
-    client.get_batch_service_client(fake_credential_handler)
-
-    assert calls[0]["credential"] == "sp-cred"
-    assert calls[1]["credential"] == "default-cred"
-    assert calls[2]["credential"] == "user-cred"
+    assert calls[0]["credential"] == "batch-cred"
     assert all(c["endpoint"] == "https://batch.example" for c in calls)
 
 
@@ -109,22 +68,9 @@ def test_get_blob_service_client_methods(monkeypatch, fake_credential_handler):
         return SimpleNamespace(kind="blob_service")
 
     monkeypatch.setattr("cfa.cloudops.client.BlobServiceClient", fake_constructor)
-    monkeypatch.setattr(
-        "cfa.cloudops.client.DefaultAzureCredential", lambda: "default-cred"
-    )
-
-    fake_credential_handler.method = "sp"
     client.get_blob_service_client(fake_credential_handler)
 
-    fake_credential_handler.method = "default"
-    client.get_blob_service_client(fake_credential_handler)
-
-    fake_credential_handler.method = "user"
-    client.get_blob_service_client(fake_credential_handler)
-
-    assert calls[0]["credential"] == "sp-cred"
-    assert calls[1]["credential"] == "default-cred"
-    assert calls[2]["credential"] == "user-cred"
+    assert calls[0]["credential"] == "default-cred"
     assert all(c["account_url"] == "https://blob.example" for c in calls)
 
 
@@ -132,7 +78,7 @@ def test_get_clients_build_default_handler_when_none(
     monkeypatch, fake_credential_handler
 ):
     monkeypatch.setattr(
-        "cfa.cloudops.client.EnvCredentialHandler", lambda: fake_credential_handler
+        "cfa.cloudops.client.DefaultCredentialHandler", lambda: fake_credential_handler
     )
     monkeypatch.setattr(
         "cfa.cloudops.client.BatchManagementClient", lambda **kwargs: kwargs

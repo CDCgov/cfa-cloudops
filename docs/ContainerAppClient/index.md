@@ -37,7 +37,12 @@ from cfa.cloudops import ContainerAppClient
 client = ContainerAppClient()
 
 # Initialize the client (dotenv_path is optional)
-client = ContainerAppClient(dotenv_path=".env", resource_group="my-rg", subscription_id="xxxx-xxxx", job_name="my-job")
+client = ContainerAppClient(
+    dotenv_path=".env",
+    resource_group="my-rg",
+    subscription_id="xxxx-xxxx",
+    job_name="my-job",
+)
 
 # List all jobs in the resource group
 jobs = client.list_jobs()
@@ -60,14 +65,11 @@ client.start_job(
     job_name="my-job",
     command=["python", "main.py"],
     args=["--input", "data.csv"],
-    env={"ENV_VAR": "value"}
+    env={"ENV_VAR": "value"},
 )
 
 # Stop a job
-client.stop_job(
-    job_name="my-job",
-    job_execution_name="my-job-xxxxxxx"
-)
+client.stop_job(job_name="my-job", job_execution_name="my-job-xxxxxxx")
 ```
 
 ## Method Reference

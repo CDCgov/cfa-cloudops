@@ -81,7 +81,9 @@ def cloud_client(
     mock_blob_service_client,
     mock_compute_management_client,
 ):
-    with patch("cfa.cloudops._cloudclient.EnvCredentialHandler") as mock_cred_handler:
+    with patch(
+        "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+    ) as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         return CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
 
@@ -94,7 +96,9 @@ def cloud_client_with_service_principal(
     mock_blob_service_client,
     mock_compute_management_client,
 ):
-    with patch("cfa.cloudops._cloudclient.SPCredentialHandler") as mock_cred_handler:
+    with patch(
+        "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+    ) as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         return CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
 
@@ -135,6 +139,58 @@ def test_create_pool_success(
             autoscale=False,
         )
         assert result is None
+
+
+def test_cloudclient_configures_logging_when_overrides_are_provided(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+):
+    with (
+        patch(
+            "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+        ) as mock_cred_handler,
+        patch(
+            "cfa.cloudops._cloudclient.helpers.configure_logging"
+        ) as mock_configure_logging,
+    ):
+        mock_cred_handler.return_value = MagicMock()
+
+        CloudClient(
+            dotenv_path=None,
+            use_sp=False,
+            use_federated=False,
+            log_level="debug",
+            log_output="stdout",
+        )
+
+    mock_configure_logging.assert_called_once_with(
+        log_level="debug", log_output="stdout", force=True
+    )
+
+
+def test_cloudclient_does_not_reconfigure_logging_without_overrides(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+):
+    with (
+        patch(
+            "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+        ) as mock_cred_handler,
+        patch(
+            "cfa.cloudops._cloudclient.helpers.configure_logging"
+        ) as mock_configure_logging,
+    ):
+        mock_cred_handler.return_value = MagicMock()
+
+        CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
+
+    mock_configure_logging.assert_not_called()
 
 
 def test_create_job_success(
@@ -364,10 +420,12 @@ def test_cloudclient_init_with_env_credentials(
     mock_blob_service_client,
     mock_compute_management_client,
 ):
-    with patch("cfa.cloudops._cloudclient.EnvCredentialHandler") as mock_cred_handler:
+    with patch(
+        "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+    ) as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         client = CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
-        assert client.method == "env"
+        assert hasattr(client, "cred")
         mock_cred_handler.assert_called_once()
         mock_batch_service_client.assert_called_once()
         mock_batch_management_client.assert_called_once()
@@ -387,7 +445,7 @@ def test_cloudclient_init_with_default_credentials(
     ) as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         client = CloudClient(dotenv_path=None, use_sp=False, use_federated=True)
-        assert client.method == "default"
+        assert hasattr(client, "cred")
         mock_cred_handler.assert_called_once()
         mock_batch_service_client.assert_called_once()
         mock_batch_management_client.assert_called_once()
@@ -402,10 +460,12 @@ def test_cloudclient_init_with_sp_credentials(
     mock_blob_service_client,
     mock_compute_management_client,
 ):
-    with patch("cfa.cloudops._cloudclient.SPCredentialHandler") as mock_cred_handler:
+    with patch(
+        "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+    ) as mock_cred_handler:
         mock_cred_handler.return_value = MagicMock()
         client = CloudClient(dotenv_path=None, use_sp=True, use_federated=False)
-        assert client.method == "sp"
+        assert hasattr(client, "cred")
         mock_cred_handler.assert_called_once()
         mock_batch_service_client.assert_called_once()
         mock_batch_management_client.assert_called_once()

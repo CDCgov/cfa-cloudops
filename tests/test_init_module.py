@@ -82,8 +82,10 @@ def test_cloudops_getattr_unknown_symbol(monkeypatch):
 def test_cloudops_log_output_variants(monkeypatch, log_output):
     made_dirs = []
 
-    monkeypatch.setattr("os.path.exists", lambda path: False)
-    monkeypatch.setattr("os.mkdir", lambda path: made_dirs.append(path))
+    def fake_mkdir(path, mode=0o777):
+        made_dirs.append(str(path))
+
+    monkeypatch.setattr("os.mkdir", fake_mkdir)
 
     cloudops = _reload_cloudops(monkeypatch, log_output)
 
@@ -92,10 +94,8 @@ def test_cloudops_log_output_variants(monkeypatch, log_output):
         assert "logs" in made_dirs
 
 
-def test_cloudops_log_output_unrecognized(monkeypatch, capsys):
-    monkeypatch.setattr("os.path.exists", lambda path: True)
+def test_cloudops_log_output_unrecognized(monkeypatch, caplog):
     cloudops = _reload_cloudops(monkeypatch, "weird-output")
 
     assert cloudops is not None
-    captured = capsys.readouterr()
-    assert "Did not recognize weird-output" in captured.out
+    assert "Did not recognize weird-output" in caplog.text

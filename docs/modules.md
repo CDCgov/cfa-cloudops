@@ -48,12 +48,9 @@ The following code creates a pool using the CloudClient and dev_autoscale_formul
 ```python
 from cfa.cloudops.autoscale import dev_autoscale_formula
 from cfa.cloudops import CloudClient
-cc = CloudClient()
-cc.create_pool(
-    "test_pool",
-    autoscale_formula = dev_autoscale_formula
-)
 
+cc = CloudClient()
+cc.create_pool("test_pool", autoscale_formula=dev_autoscale_formula)
 ```
 
 ## blob

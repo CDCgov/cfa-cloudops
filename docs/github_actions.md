@@ -9,7 +9,7 @@ Existing code from a local workflow can easily be transferred to run in GitHub A
 ### Example
 
 ```python
-cc = CloudClient(use_federated = True)
+cc = CloudClient(use_federated=True)
 ```
 
 ## Secrets
