@@ -445,7 +445,7 @@ def download_job_stats(
         logger.debug(f"Using custom filename: {file_name}")
 
     logger.debug("Retrieving task list from batch service")
-    r = list(batch_service_client.list_tasks(job_name))
+    r = batch_service_client.list_tasks(job_name)
     logger.debug("Task list retrieved successfully")
 
     fields = [
