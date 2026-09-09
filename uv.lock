@@ -635,6 +635,7 @@ dev = [
     { name = "azure-mgmt-authorization", specifier = ">=4.0.0" },
     { name = "coverage-badge", specifier = ">=1.1.2" },
     { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "ipykernel", specifier = ">=7.3.0" },
     { name = "ipywidgets", specifier = ">=8.1.9" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "mdx-truly-sane-lists", specifier = ">=1.3" },
