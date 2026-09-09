@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 1.0.1
+
+- add notebook-friendly progress bars for task-stat writing and blob download, deletion, and protection operations
+- add `jupyter` and `ipywidgets` runtime dependencies for progress-bar support in notebook environments
+
 ## 1.0.0
 
 - replace `DefaultAzureCredential` with a custom `ChainedTokenCredential` builder (`_build_default_credential`) that exposes `exclude_*` flags for granular control over which credential types are attempted
