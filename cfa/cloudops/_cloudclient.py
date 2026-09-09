@@ -159,7 +159,10 @@ class CloudClient:
         self.batch_mgmt_client = get_batch_management_client(self.cred)
         self.compute_mgmt_client = get_compute_management_client(self.cred)
         self.batch_service_client = get_batch_service_client(self.cred)
-        self.blob_service_client = get_blob_service_client(self.cred)
+        self.__blob_service_client = get_blob_service_client(self.cred)
+
+        # maintain list of container clients
+        self.__container_clients = {}
 
         # set other defaults
         self.full_container_name = None
@@ -167,6 +170,13 @@ class CloudClient:
         self.logs_folder = "stdout_stderr"
         self.task_id_ints = False
         self.task_id_max = 0
+
+    def get_container_client(self, container_name: str):
+        if container_name not in self.__container_clients:
+            self.__container_clients[container_name] = (
+                self.__blob_service_client.get_container_client(container_name)
+            )
+        return self.__container_clients[container_name]
 
     def check_credentials(self):
         logger.debug("Checking credentials by listing subscriptions.")
@@ -1095,7 +1105,7 @@ class CloudClient:
         """
         # create_container and save the container client
         logger.debug(f"Creating blob container: {name}")
-        create_storage_container_if_not_exists(name, self.blob_service_client)
+        create_storage_container_if_not_exists(name, self.__blob_service_client)
         logger.info(f"Blob container '{name}' created or already exists.")
 
     def update_blob_protection(
@@ -1121,7 +1131,7 @@ class CloudClient:
         status = blob.update_blob_protection(
             file_paths=files,
             blob_storage_container_name=container_name,
-            blob_service_client=self.blob_service_client,
+            blob_service_client=self.__blob_service_client,
             legal_hold=legal_hold,
             read_only=read_only,
         )
@@ -1187,7 +1197,7 @@ class CloudClient:
         blob.upload_to_storage_container(
             file_paths=files,
             blob_storage_container_name=container_name,
-            blob_service_client=self.blob_service_client,
+            blob_service_client=self.__blob_service_client,
             local_root_dir=local_root_dir,
             remote_root_dir=location_in_blob,
             legal_hold=legal_hold,
@@ -1281,7 +1291,10 @@ class CloudClient:
                 exclude_extensions=exclude_extensions,
                 exclude_patterns=exclude_patterns,
                 location_in_blob=location_in_blob,
-                blob_service_client=self.blob_service_client,
+                blob_service_client=self.__blob_service_client,
+                container_client=self.get_container_client(
+                    container_name=container_name
+                ),
                 force_upload=force_upload,
                 create_new_folder=create_new_folder,
                 legal_hold=legal_hold,
@@ -1726,9 +1739,7 @@ class CloudClient:
         """
         # use the output container client by default for downloading files
         logger.debug(f"Creating container client for {container_name}.")
-        c_client = self.blob_service_client.get_container_client(
-            container=container_name
-        )
+        c_client = self.get_container_client(container_name=container_name)
 
         logger.debug("Attempting to download file.")
         blob_helpers.download_file(c_client, src_path, dest_path, do_check, check_size)
@@ -1796,7 +1807,7 @@ class CloudClient:
             container_name,
             src_path,
             dest_path,
-            self.blob_service_client,
+            self.__blob_service_client,
             include_extensions,
             exclude_extensions,
             verbose,
@@ -2036,7 +2047,7 @@ class CloudClient:
             logger.debug(f"Listing blobs in {blob_container}")
             filenames = blob_helpers.list_blobs_flat(
                 container_name=blob_container,
-                blob_service_client=self.blob_service_client,
+                blob_service_client=self.__blob_service_client,
                 verbose=False,
             )
         elif self.mounts:
@@ -2045,7 +2056,7 @@ class CloudClient:
             for mount in self.mounts:
                 _files = blob_helpers.list_blobs_flat(
                     container_name=mount[0],
-                    blob_service_client=self.blob_service_client,
+                    blob_service_client=self.__blob_service_client,
                     verbose=False,
                 )
                 filenames += _files
@@ -2084,7 +2095,7 @@ class CloudClient:
         """
         logger.debug(f"Deleting blob {blob_name} from {container_name}.")
         blob_helpers.delete_blob_snapshots(
-            blob_name, container_name, self.blob_service_client
+            blob_name, container_name, self.__blob_service_client
         )
         logger.info(f"Deleted blob '{blob_name}' from '{container_name}'.")
 
@@ -2124,7 +2135,7 @@ class CloudClient:
         """
         logger.debug(f"Deleting files in {folder_path} folder.")
         blob_helpers.delete_blob_folder(
-            folder_path, container_name, self.blob_service_client
+            folder_path, container_name, self.__blob_service_client
         )
         logger.info(f"Deleted folder '{folder_path}' from '{container_name}'.")
 

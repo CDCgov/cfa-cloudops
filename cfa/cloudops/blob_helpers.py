@@ -63,6 +63,7 @@ def upload_files_in_folder(
     exclude_patterns: str | list | None = None,
     location_in_blob: str = ".",
     blob_service_client=None,
+    container_client=None,
     force_upload: bool = True,
     create_new_folder: bool = False,
     tags: dict = None,
@@ -90,6 +91,7 @@ def upload_files_in_folder(
         location_in_blob (str, optional): Remote directory path within the blob container
             where files should be uploaded. Default is "." (container root).
         blob_service_client: Azure Blob service client instance for API calls.
+        container_client: Azure Container client instance for API calls.
         force_upload (bool, optional): Whether to force upload without user confirmation
             for large numbers of files (>50). Default is True.
         create_new_folder (bool, optional): If True, allow creating a new virtual
@@ -114,7 +116,7 @@ def upload_files_in_folder(
                 folder="./src",
                 container_name="code-repo",
                 include_extensions=[".py", ".yaml"],
-                blob_service_client=client
+                container_client=client
             )
 
         Upload all files except temporary ones:
@@ -125,7 +127,7 @@ def upload_files_in_folder(
                 exclude_extensions=[".tmp", ".log"],
                 exclude_patterns=["__pycache__", ".git"],
                 location_in_blob="project-data",
-                blob_service_client=client
+                container_client=client
             )
 
     Note:
@@ -157,10 +159,11 @@ def upload_files_in_folder(
         logger.debug(f"Exclude patterns configured: {exclude_patterns}")
     # check container exists
     logger.debug(f"Checking Blob container {container_name} exists.")
-    # create container client
-    container_client = blob_service_client.get_container_client(
-        container=container_name
-    )
+    # instantiate continer client if missing
+    if blob_service_client and not container_client:
+        container_client = blob_service_client.get_container_client(
+            container_name=container_name
+        )
     # check if container client exists
     if not container_client.exists():
         logger.error(
@@ -844,7 +847,7 @@ def download_folder(
     container_name: str,
     src_path: str,
     dest_path: str,
-    blob_service_client,
+    container_client,
     include_extensions: str | list | None = None,
     exclude_extensions: str | list | None = None,
     verbose=True,
@@ -862,7 +865,7 @@ def download_folder(
             Will be treated as a prefix for blob names.
         dest_path (str): Local filesystem path where the directory should be saved.
             Directory structure will be recreated under this path.
-        blob_service_client: Azure Blob service client instance for API calls.
+        container_client: Azure Container client instance for API calls.
         include_extensions (str | list, optional): File extensions to include in the
             download. Can be a single extension string or list of extensions. Cannot
             be used together with exclude_extensions.
@@ -886,7 +889,7 @@ def download_folder(
                 container_name="job-outputs",
                 src_path="job-123/results",
                 dest_path="./local_results",
-                blob_service_client=client
+                container_client=client
             )
 
         Download only CSV files from a directory:
@@ -895,7 +898,7 @@ def download_folder(
                 container_name="data",
                 src_path="datasets/",
                 dest_path="./data",
-                blob_service_client=client,
+                container_client=client,
                 include_extensions=[".csv", ".json"]
             )
 
@@ -918,15 +921,14 @@ def download_folder(
     # check container exists
     logger.debug(f"Checking Blob container {container_name} exists.")
     # create container client
-    c_client = blob_service_client.get_container_client(container=container_name)
-    if not check_virtual_directory_existence(c_client, src_path):
+    if not check_virtual_directory_existence(container_client, src_path):
         raise ValueError(f"Source virtual directory: {src_path} does not exist.")
 
     blob_list = []
     if not src_path.endswith("/"):
         src_path += "/"
     for blob in list_blobs_in_container(
-        name_starts_with=src_path, container_client=c_client
+        name_starts_with=src_path, container_client=container_client
     ):
         b = blob.name
         if b.split(src_path)[0] == "" and "." in b:
@@ -948,7 +950,7 @@ def download_folder(
                 flist.append(_file)
     # input check on file size here
     if check_size:
-        lblobs = c_client.list_blobs(name_starts_with=src_path)
+        lblobs = container_client.list_blobs(name_starts_with=src_path)
         t_size = 0
         gb = 1e9
         for blob in lblobs:
@@ -963,7 +965,7 @@ def download_folder(
                 return None
     for blob in flist:
         download_file(
-            c_client,
+            container_client,
             blob,
             os.path.join(dest_path, blob),
             False,
