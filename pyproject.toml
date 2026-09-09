@@ -30,7 +30,6 @@ dependencies = [
     "networkx>=3.4.2",
     "anyio>=4.10.0",
     "duckdb>=1.4.4",
-    "jupyter>=1.1.1",
     "ipywidgets>=8.1.9"
 ]
 
