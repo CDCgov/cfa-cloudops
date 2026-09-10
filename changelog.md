@@ -10,7 +10,7 @@ The versioning pattern is `major.minor.patch`.
 ## 1.0.1
 
 - add notebook-friendly progress bars for task-stat writing and blob download, deletion, and protection operations
-- add `jupyter` and `ipywidgets` runtime dependencies for progress-bar support in notebook environments
+- add `jupyter` and `ipywidgets` as development dependencies for notebook-friendly progress-bar testing
 
 ## 1.0.0
 
