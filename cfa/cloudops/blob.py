@@ -17,15 +17,10 @@ from azure.storage.blob import (
     ImmutabilityPolicy,
     aio,
 )
+from tqdm.auto import tqdm
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
-
-try:
-    get_ipython()
-    from tqdm.notebook import tqdm
-except NameError:
-    from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
