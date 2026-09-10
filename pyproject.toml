@@ -91,7 +91,7 @@ dev = [
     "aiohttp>=3.14.3",
     "azure-mgmt-authorization>=4.0.0",
     "coverage-badge>=1.1.2",
-    "ipykernel>=7.1.0",
+    "ipykernel>=7.3.0",
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.16",
     "mkdocstrings[python]>=0.30.0",
@@ -104,6 +104,5 @@ dev = [
     "ruff>=0.9.9",
     "tomli>=2.2.1",
     "jupyter>=1.1.1",
-    "ipywidgets>=8.1.9",
-    "ipykernel>=7.3.0"
+    "ipywidgets>=8.1.9"
 ]
