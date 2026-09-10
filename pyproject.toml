@@ -29,7 +29,15 @@ dependencies = [
     "toml>=0.10.2",
     "networkx>=3.4.2",
     "anyio>=4.10.0",
-    "duckdb>=1.4.4"
+    "duckdb>=1.4.4",
+    "numpy>=2.5.3"
+]
+
+[project.optional-dependencies]
+notebook = [
+    "jupyter>=1.1.1",
+    "ipywidgets>=8.1.9",
+    "ipykernel>=7.3.0",
 ]
 
 [build-system]
@@ -101,8 +109,5 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-mock>=3.14.0",
     "pytest-cov>=6.1.1",
-    "ruff>=0.9.9",
-    "tomli>=2.2.1",
-    "jupyter>=1.1.1",
-    "ipywidgets>=8.1.9"
+    "ruff>=0.9.9"
 ]

@@ -589,6 +589,13 @@ dependencies = [
     { name = "tqdm" },
 ]
 
+[package.optional-dependencies]
+notebook = [
+    { name = "ipykernel" },
+    { name = "ipywidgets" },
+    { name = "jupyter" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "aiohttp" },
@@ -627,6 +634,9 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.4.4" },
     { name = "griddler", git = "https://github.com/CDCgov/pygriddler.git" },
     { name = "humanize", specifier = ">=4.13.0" },
+    { name = "ipykernel", marker = "extra == 'notebook'", specifier = ">=7.3.0" },
+    { name = "ipywidgets", marker = "extra == 'notebook'", specifier = ">=8.1.9" },
+    { name = "jupyter", marker = "extra == 'notebook'", specifier = ">=1.1.1" },
     { name = "msrest", specifier = ">=0.7.1" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "pandas", specifier = ">=2.3.2" },
@@ -635,6 +645,7 @@ requires-dist = [
     { name = "toml", specifier = ">=0.10.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
+provides-extras = ["notebook"]
 
 [package.metadata.requires-dev]
 dev = [
