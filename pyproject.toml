@@ -1,6 +1,6 @@
 [project]
 name = "cfa.cloudops"
-version = "1.0.0"
+version = "1.0.1"
 description = "Cloud storage, batch, functions, MLOps assistance"
 authors = [
     {name = "Ryan Raasch", email = "xng3@cdc.gov"}
@@ -29,7 +29,15 @@ dependencies = [
     "toml>=0.10.2",
     "networkx>=3.4.2",
     "anyio>=4.10.0",
-    "duckdb>=1.4.4"
+    "duckdb>=1.4.4",
+    "numpy>=2.5.3"
+]
+
+[project.optional-dependencies]
+notebook = [
+    "jupyter>=1.1.1",
+    "ipywidgets>=8.1.9",
+    "ipykernel>=7.3.0",
 ]
 
 [build-system]
@@ -91,7 +99,7 @@ dev = [
     "aiohttp>=3.14.3",
     "azure-mgmt-authorization>=4.0.0",
     "coverage-badge>=1.1.2",
-    "ipykernel>=7.1.0",
+    "ipykernel>=7.3.0",
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.16",
     "mkdocstrings[python]>=0.30.0",
@@ -101,6 +109,5 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-mock>=3.14.0",
     "pytest-cov>=6.1.1",
-    "ruff>=0.9.9",
-    "tomli>=2.2.1",
+    "ruff>=0.9.9"
 ]

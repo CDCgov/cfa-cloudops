@@ -12,6 +12,7 @@ from azure.storage.blob import (
     StorageStreamDownloader,
 )
 from humanize import naturalsize as ns
+from tqdm.auto import tqdm
 
 from .blob import format_extensions, upload_to_storage_container
 
@@ -961,7 +962,7 @@ def download_folder(
             if cont.lower() != "y":
                 print("Download aborted.")
                 return None
-    for blob in flist:
+    for blob in tqdm(flist, desc="Downloading files", unit="file"):
         download_file(
             c_client,
             blob,
@@ -1062,7 +1063,7 @@ def delete_blob_folder(
     logger.debug(f"Found {len(_files)} blobs to delete in folder '{folder_path}'")
 
     # call delete_blob_snapshots for each file
-    for i, file in enumerate(_files, 1):
+    for i, file in enumerate(tqdm(_files, desc="Deleting blobs", unit="blob"), 1):
         logger.debug(f"Deleting blob {i}/{len(_files)}: '{file}'")
         delete_blob_snapshots(
             blob_name=file,

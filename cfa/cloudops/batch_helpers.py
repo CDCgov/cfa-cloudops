@@ -26,6 +26,7 @@ from azure.batch.models import (
     UserIdentity,
 )
 from azure.mgmt.batch import BatchManagementClient
+from tqdm.auto import tqdm
 
 from cfa.cloudops.task import (
     get_container_settings,
@@ -462,7 +463,7 @@ def download_job_stats(
         logger.debug(f"initializing {file_name}.csv.")
         writer = csv.writer(f, delimiter="|")
         writer.writerow(fields)
-    for item in r:
+    for item in tqdm(r, desc="Writing task statistics", unit="task"):
         st = item.execution_info.start_time
         et = item.execution_info.end_time
         rt = et - st
