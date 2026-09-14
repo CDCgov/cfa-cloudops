@@ -396,7 +396,9 @@ def monitor_tasks(
 
 
 def download_job_stats(
-    job_name: str, batch_service_client: object, file_name: str | None = None
+    job_name: str,
+    batch_service_client: object,
+    file_name: str | None = None,
 ) -> None:
     """Download comprehensive statistics for all tasks in a job to a CSV file.
 
@@ -437,18 +439,15 @@ def download_job_stats(
         The file is created in the current working directory. Tasks that haven't
         completed may not have all timing information available.
     """
+
     logger.debug(f"Downloading job statistics for job: {job_name}")
+
     if file_name is None:
         file_name = f"{job_name}-stats"
-        logger.debug(f"Using default filename: {file_name}")
-    else:
-        logger.debug(f"Using custom filename: {file_name}")
 
-    logger.debug("Retrieving task list from batch service")
-    r = batch_service_client.list_tasks(job_name)
-    logger.debug("Task list retrieved successfully")
+    tasks = batch_service_client.list_tasks(job_name)
 
-    fields = [
+    headers = [
         "task_id",
         "command",
         "creation",
@@ -459,29 +458,46 @@ def download_job_stats(
         "pool",
         "node_id",
     ]
-    with open(rf"{file_name}.csv", "w") as f:
-        logger.debug(f"initializing {file_name}.csv.")
-        writer = csv.writer(f, delimiter="|")
-        writer.writerow(fields)
-    for item in tqdm(r, desc="Writing task statistics", unit="task"):
-        st = item.execution_info.start_time
-        et = item.execution_info.end_time
-        rt = et - st
-        id = item.id
-        creation = item.creation_time
-        start = item.execution_info.start_time.strftime("%Y-%m-%d %H:%M:%S")
-        end = item.execution_info.end_time.strftime("%Y-%m-%d %H:%M:%S")
-        exit_code = item.execution_info.exit_code
-        node_id = item.node_info.node_id
-        cli = item.command_line.split(" -")[0]
-        pool = item.node_info.pool_id
-        fields = [id, cli, creation, start, end, rt, exit_code, pool, node_id]
-        with open(rf"{file_name}.csv", "a") as f:
-            writer = csv.writer(f, delimiter="|")
-            writer.writerow(fields)
-            logger.debug(f"Wrote task {item.id} statistics to CSV")
 
-    logger.info(f"Job statistics download completed. File saved as: {file_name}.csv")
+    with open(f"{file_name}.csv", "w", newline="") as f:
+        writer = csv.writer(f, delimiter="|")
+        writer.writerow(headers)
+
+        for item in tqdm(tasks, desc="Writing task statistics", unit="task"):
+            execution_info = getattr(item, "execution_info", None)
+            node_info = getattr(item, "node_info", None)
+
+            start_time = (
+                execution_info.start_time if execution_info is not None else None
+            )
+
+            end_time = execution_info.end_time if execution_info is not None else None
+
+            creation_time = getattr(item, "creation_time", None)
+
+            runtime = (
+                end_time - start_time
+                if start_time is not None and end_time is not None
+                else None
+            )
+
+            row = [
+                item.id,
+                item.command_line.split(" -")[0] if item.command_line else "",
+                creation_time.strftime("%Y-%m-%d %H:%M:%S") if creation_time else "",
+                start_time.strftime("%Y-%m-%d %H:%M:%S") if start_time else "",
+                end_time.strftime("%Y-%m-%d %H:%M:%S") if end_time else "",
+                runtime,
+                execution_info.exit_code if execution_info else None,
+                node_info.pool_id if node_info else "",
+                node_info.node_id if node_info else "",
+            ]
+
+            writer.writerow(row)
+
+            logger.debug(f"Wrote task {item.id} statistics")
+
+    logger.info(f"Job statistics written to {file_name}.csv")
 
 
 def check_job_exists(job_name: str, batch_client: object):
