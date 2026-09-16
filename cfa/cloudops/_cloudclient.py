@@ -408,12 +408,12 @@ class CloudClient:
 
             if enable_node_monitoring in {"monitor", "both"}:
                 start_task_command += rf"""
-                                        ./start-metrics.sh benchmark 0 {benchmark_runtime_seconds} output {node_metric_subfolder}
+                                        ./start-metrics.sh benchmark 0 {benchmark_runtime_seconds} output "{node_metric_subfolder}"
                                         """
 
             if enable_node_monitoring in {"benchmark", "both"}:
                 start_task_command += rf"""
-                                        nohup ./start-metrics.sh monitor {monitoring_interval_seconds} 0 output {node_metric_subfolder} \
+                                        nohup ./start-metrics.sh monitor {monitoring_interval_seconds} 0 output "{node_metric_subfolder}" \
                                             >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
                                             2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
                                         """
