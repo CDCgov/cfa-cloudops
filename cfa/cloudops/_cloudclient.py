@@ -205,6 +205,7 @@ class CloudClient:
         monitoring_script_url: str | None = None,
         monitoring_interval_seconds: int = 15,
         benchmark_runtime_seconds: int = 60,
+        node_metric_subfolder: str | None = None,
     ):
         """Create a pool in Azure Batch with the specified configuration.
 
@@ -262,6 +263,8 @@ class CloudClient:
             monitoring_script_url (str): sas token blob url to profiler script
             monitoring_interval_seconds (int): Interval at which monitoring script gathers profiling data on node
             benchmark_runtime_seconds (int): Total seconds cpu benchmark will run for on node
+            node_metric_subfolder (str): Sub-folder to save node metric output. Folder will be created under mounted output named output
+                using the following pattern "output/node-metrics/${pool_name}/${node_metric_subfolder}/"
 
         Raises:
             RuntimeError: If the pool creation fails due to Azure Batch service errors,
@@ -405,12 +408,12 @@ class CloudClient:
 
             if enable_node_monitoring in {"monitor", "both"}:
                 start_task_command += rf"""
-                                        ./start-metrics.sh benchmark 0 {benchmark_runtime_seconds} output
+                                        ./start-metrics.sh benchmark 0 {benchmark_runtime_seconds} output {node_metric_subfolder}
                                         """
 
             if enable_node_monitoring in {"benchmark", "both"}:
                 start_task_command += rf"""
-                                        nohup ./start-metrics.sh monitor {monitoring_interval_seconds} 0 output \
+                                        nohup ./start-metrics.sh monitor {monitoring_interval_seconds} 0 output {node_metric_subfolder} \
                                             >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
                                             2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
                                         """
