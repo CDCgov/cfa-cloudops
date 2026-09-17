@@ -41,7 +41,7 @@ def cloud_client_more(monkeypatch):
         return CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
 
 
-def test_check_credentials_env_default_sp(cloud_client_more, monkeypatch):
+def test_check_credentials_returns_dataframe(cloud_client_more, monkeypatch):
     seen_creds = []
 
     class FakeSub:
@@ -58,11 +58,25 @@ def test_check_credentials_env_default_sp(cloud_client_more, monkeypatch):
         "cfa.cloudops._cloudclient.SubscriptionClient", fake_subscription_client
     )
 
-    cloud_client_more.check_credentials()
-    cloud_client_more.check_credentials()
-    cloud_client_more.check_credentials()
+    result = cloud_client_more.check_credentials()
 
-    assert seen_creds == ["default-cred", "default-cred", "default-cred"]
+    assert seen_creds == ["default-cred"]
+    assert list(result.columns) == [
+        "subscription_id",
+        "subscription_name",
+        "state",
+        "batch_account",
+        "storage_account",
+    ]
+    assert result.to_dict(orient="records") == [
+        {
+            "subscription_id": "sub-1",
+            "subscription_name": "sub-name",
+            "state": "Enabled",
+            "batch_account": "acct",
+            "storage_account": "blobacct",
+        }
+    ]
 
 
 def test_check_credentials_handles_exception(cloud_client_more, monkeypatch):
@@ -71,7 +85,16 @@ def test_check_credentials_handles_exception(cloud_client_more, monkeypatch):
         lambda cred: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 
-    cloud_client_more.check_credentials()
+    result = cloud_client_more.check_credentials()
+
+    assert result.empty
+    assert list(result.columns) == [
+        "subscription_id",
+        "subscription_name",
+        "state",
+        "batch_account",
+        "storage_account",
+    ]
 
 
 def test_delete_job_and_schedule_methods(cloud_client_more):
