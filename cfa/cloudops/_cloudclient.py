@@ -4,6 +4,7 @@ import logging
 import os
 import warnings
 from graphlib import CycleError, TopologicalSorter
+from pathlib import Path
 from typing import Literal, Optional
 
 import networkx as nx
@@ -1733,6 +1734,54 @@ class CloudClient:
         logger.debug("Attempting to download file.")
         blob_helpers.download_file(c_client, src_path, dest_path, do_check, check_size)
         logger.info(f"Downloaded file '{src_path}' to '{dest_path}'.")
+
+    def download_files(
+        self,
+        file_paths: str | list[str],
+        container_name: str,
+        dest_path: str = ".",
+    ) -> None:
+        """Download a list of files from Azure Blob Storage to the local filesystem.
+
+        Downloads a file from a blob storage container to a local destination path.
+        Supports verification of the download to ensure data integrity.
+
+        Args:
+            file_paths (list[str]): List of file paths within the blob container to download.
+                Each path should be the full blob path including any directory structure.
+            container_name (str): Name of the blob storage container containing the file.
+            dest_path (str): Local filesystem path where the file should be saved.
+                Can be relative or absolute. Parent directories will be created if needed.
+
+        Example:
+
+            client = CloudClient()
+            client.download_files(
+                file_paths=["data/results_1.csv", "data/results_2.csv"],
+                container_name="job-outputs"
+                dest_path="./my_folder",
+            )
+
+        Note:
+            If the destination directory doesn't exist, it will be created automatically.
+            The download will overwrite any existing file at the destination path.
+        """
+        logger.debug(f"Downloading files from container {container_name}.")
+
+        for file_path in file_paths:
+            parent_path = Path(file_path).parent
+            root_path = dest_path if dest_path.endswith("/") else f"{dest_path}/"
+            Path(f"{root_path}{parent_path}").mkdir(parents=True, exist_ok=True)
+        blob.download_from_storage_container(
+            file_paths=file_paths,
+            blob_storage_container_name=container_name,
+            blob_service_client=self.blob_service_client,
+            local_root_dir=dest_path,
+            remote_root_dir=".",
+        )
+        logger.info(
+            f"Downloaded files from container '{container_name}' to path {dest_path}."
+        )
 
     def download_folder(
         self,

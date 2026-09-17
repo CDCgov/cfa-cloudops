@@ -17,7 +17,7 @@ from azure.storage.blob import (
     ImmutabilityPolicy,
     aio,
 )
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from .client import get_blob_service_client
 from .util import ensure_listlike
@@ -258,7 +258,9 @@ def download_from_storage_container(
         blob_service_client = get_blob_service_client(**kwargs)
         logger.debug("Blob service client created successfully")
 
-    for i_file, file_path in enumerate(file_paths):
+    for i_file, file_path in enumerate(
+        tqdm(file_paths, desc="Downloading files", unit="file")
+    ):
         if i_file % (1 + int(n_total_files / 10)) == 0:
             logger.debug(f"Download progress: {i_file}/{n_total_files} files completed")
 
@@ -1049,7 +1051,9 @@ def update_blob_protection(
     logger.debug(f"Processing {n_total_files} files for legal hold toggle")
 
     try:
-        for i_file, file_path in enumerate(files):
+        for i_file, file_path in enumerate(
+            tqdm(files, desc="Updating blob protection", unit="file")
+        ):
             if i_file % (1 + int(n_total_files / 10)) == 0:
                 logger.debug(f"Progress: {i_file}/{n_total_files} files processed")
 
