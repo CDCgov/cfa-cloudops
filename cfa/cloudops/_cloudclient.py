@@ -1741,7 +1741,7 @@ class CloudClient:
         container_name: str,
         dest_path: str = ".",
     ) -> None:
-        """Download a single file from Azure Blob Storage to the local filesystem.
+        """Download a list of files from Azure Blob Storage to the local filesystem.
 
         Downloads a file from a blob storage container to a local destination path.
         Supports verification of the download to ensure data integrity.
