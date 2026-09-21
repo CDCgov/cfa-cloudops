@@ -168,23 +168,51 @@ class CloudClient:
         self.task_id_ints = False
         self.task_id_max = 0
 
-    def check_credentials(self):
+    def check_credentials(self) -> pd.DataFrame:
+        """Check credentials and return accessible Azure resource information.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing subscription information and the
+            configured Batch and Storage account names.
+        """
         logger.debug("Checking credentials by listing subscriptions.")
         cred = self.cred.default_credential
 
+        columns = [
+            "subscription_id",
+            "subscription_name",
+            "state",
+            "batch_account",
+            "storage_account",
+        ]
+
         try:
             subscription_client = SubscriptionClient(cred)
-            # List subscriptions
-            sub_list = [sub for sub in subscription_client.subscriptions.list()]
+            sub_list = list(subscription_client.subscriptions.list())
+
+            rows = []
             for subscription in sub_list:
                 logger.info("Found subscription via credential.")
                 logger.info(f"Subscription ID: {subscription.subscription_id}")
                 logger.info(f"Subscription Name: {subscription.display_name}")
                 logger.info(f"State: {subscription.state}")
                 logger.info("-" * 30)
+
+                rows.append(
+                    {
+                        "subscription_id": subscription.subscription_id,
+                        "subscription_name": subscription.display_name,
+                        "state": subscription.state,
+                        "batch_account": self.cred.azure_batch_account,
+                        "storage_account": self.cred.azure_blob_storage_account,
+                    }
+                )
+
             logger.debug("Successfully found subscriptions.")
+            return pd.DataFrame(rows, columns=columns)
         except Exception as e:
             logger.exception(f"Error checking credentials: {e}")
+            return pd.DataFrame(columns=columns)
 
     def create_pool(
         self,
