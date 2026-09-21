@@ -38,6 +38,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 packages = ["cfa"]
+include = [
+    "cfa/cloudops/py.typed",
+    "cfa/cloudops/__init__.pyi",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
