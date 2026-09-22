@@ -14,6 +14,7 @@ from azure.batch.models import (
     BatchJobConstraints,
     BatchMetadataItem,
 )
+from azure.core.pipeline.transport import RequestsTransport
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.batch import models
 from azure.mgmt.resource.subscriptions import SubscriptionClient
@@ -154,12 +155,30 @@ class CloudClient:
             **kwargs,
         )
 
+        # Create a shared Azure HTTP transport so SDK clients can reuse connections.
+        self._http_transport = RequestsTransport()
+        self._http_transport.open()
+
+        def _transport() -> RequestsTransport:
+            return RequestsTransport(
+                session=self._http_transport.session,
+                session_owner=False,
+            )
+
         # get clients
         logger.debug("Getting Azure clients and setting other attributes.")
-        self.batch_mgmt_client = get_batch_management_client(self.cred)
-        self.compute_mgmt_client = get_compute_management_client(self.cred)
-        self.batch_service_client = get_batch_service_client(self.cred)
-        self.blob_service_client = get_blob_service_client(self.cred)
+        self.batch_mgmt_client = get_batch_management_client(
+            self.cred, transport=_transport()
+        )
+        self.compute_mgmt_client = get_compute_management_client(
+            self.cred, transport=_transport()
+        )
+        self.batch_service_client = get_batch_service_client(
+            self.cred, transport=_transport()
+        )
+        self.blob_service_client = get_blob_service_client(
+            self.cred, transport=_transport()
+        )
 
         # set other defaults
         self.full_container_name = None
@@ -167,6 +186,10 @@ class CloudClient:
         self.logs_folder = "stdout_stderr"
         self.task_id_ints = False
         self.task_id_max = 0
+
+    def close(self) -> None:
+        """Close the shared HTTP transport used by Azure SDK clients."""
+        self._http_transport.close()
 
     def check_credentials(self) -> pd.DataFrame:
         """Check credentials and return accessible Azure resource information.

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 1.2.0
+
+- reuse HTTP connections across the core Azure SDK clients created by `CloudClient`
+- add explicit cleanup for the shared HTTP transport
+
 ## 1.1.0
 
 - add type hint support for the public `cfa.cloudops` API
