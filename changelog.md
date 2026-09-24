@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 1.1.1
+
+- add notebook-friendly progress bars for task-stat writing and blob download, deletion, and protection operations
+- add `jupyter` and `ipywidgets` as development dependencies for notebook-friendly progress-bar testing
+
+
 ## 1.1.0
 
 - add type hint support for the public `cfa.cloudops` API
 - include `py.typed` and `__init__.pyi` typing resources in package builds
+
+## 1.0.1
+
+- update credential checks to return subscription, Batch account, and Storage account information in a DataFrame, including an empty result with stable columns when credential checks fail
+- update the Ruff pre-commit hook to 0.16.7
 
 ## 1.0.0
 
