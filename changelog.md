@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
-## 1.0.2
+## 1.1.1
 
 - add notebook-friendly progress bars for task-stat writing and blob download, deletion, and protection operations
 - add `jupyter` and `ipywidgets` as development dependencies for notebook-friendly progress-bar testing
 
+
+## 1.1.0
+
+- add type hint support for the public `cfa.cloudops` API
+- include `py.typed` and `__init__.pyi` typing resources in package builds
 
 ## 1.0.1
 
