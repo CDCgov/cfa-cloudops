@@ -4,7 +4,8 @@ import os
 import subprocess as sp
 import sys
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlparse
 
 import docker
 from docker.errors import DockerException
@@ -13,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 FORMAT = "[%(levelname)s] %(asctime)s: %(message)s"
+
+
+def script_name_from_url(script_url: str) -> str:
+    """Return the blob/file basename from a URL, excluding a SAS query string."""
+    name = PurePosixPath(urlparse(script_url).path).name
+    if not name:
+        raise ValueError(f"Could not determine script filename from URL: {script_url}")
+    return name
 
 
 def get_log_handlers(log_output: str | None = None) -> list[logging.Handler]:

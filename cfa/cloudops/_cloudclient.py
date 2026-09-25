@@ -2,9 +2,10 @@ import datetime
 import inspect
 import logging
 import os
+import shlex
 import warnings
 from graphlib import CycleError, TopologicalSorter
-from typing import Literal, Optional
+from typing import Optional
 
 import networkx as nx
 import pandas as pd
@@ -39,6 +40,15 @@ from .client import (
     get_compute_management_client,
 )
 from .job import create_job, create_job_schedule
+from .metrics import (
+    CloudMetrics,
+    NodeMonitoringMode,
+    TaskMonitoringConfig,
+    TaskMonitoringMode,
+    build_metadata_items,
+    normalize_node_monitoring_mode,
+    normalize_task_monitoring_mode,
+)
 from .util import get_date_time, get_user
 
 logger = logging.getLogger(__name__)
@@ -168,6 +178,43 @@ class CloudClient:
         self.task_id_ints = False
         self.task_id_max = 0
 
+    def _wrap_task_command(
+        self,
+        command_line: str,
+        monitoring: TaskMonitoringConfig,
+        script_name: str,
+    ) -> str:
+        """Wrap the real task command with task-monitor.sh."""
+        mode = normalize_task_monitoring_mode(monitoring.mode)
+        if mode == TaskMonitoringMode.NONE:
+            return command_line
+
+        if monitoring.interval_seconds <= 0:
+            raise ValueError("monitoring.interval_seconds must be greater than zero.")
+        if not monitoring.output_mount:
+            raise ValueError("monitoring.output_mount must not be empty.")
+        if not monitoring.output_folder:
+            raise ValueError("monitoring.output_folder must not be empty.")
+
+        monitor_cmd = " ".join(
+            [
+                shlex.quote(f"./{script_name}"),
+                shlex.quote(mode.value),
+                str(int(monitoring.interval_seconds)),
+                shlex.quote(monitoring.output_mount),
+                shlex.quote(monitoring.output_folder),
+                "--",
+                # Keep the original command as a single bash command because the existing
+                # CloudClient API accepts command_line as one string.
+                "/bin/bash",
+                "-c",
+                shlex.quote(command_line),
+            ]
+        )
+
+        wrapped = f"set -euo pipefail; chmod +x {shlex.quote(f'./{script_name}')}; exec {monitor_cmd}"
+        return "/bin/bash -c " + shlex.quote(wrapped)
+
     def check_credentials(self) -> pd.DataFrame:
         """Check credentials and return accessible Azure resource information.
 
@@ -219,7 +266,7 @@ class CloudClient:
         pool_name: str,
         mounts: list[str] | list[dict] | None = None,
         container_image_name: str | None = None,
-        vm_size: str = d.default_vm_size,  # do some validation on size if too large
+        vm_size: str = d.default_vm_size,
         autoscale: bool = True,
         autoscale_formula: str = "default",
         dedicated_nodes: int = 0,
@@ -229,12 +276,12 @@ class CloudClient:
         availability_zones: str = "regional",
         cache_blobfuse: bool = True,
         replace_existing_pool: bool = False,
-        enable_node_monitoring: Literal["monitor", "benchmark", "both"] | None = None,
+        enable_node_monitoring: NodeMonitoringMode | str | None = None,
         monitoring_script_url: str | None = None,
         monitoring_interval_seconds: int = 15,
         benchmark_runtime_seconds: int = 60,
     ):
-        """Create a pool in Azure Batch with the specified configuration.
+        """Create an Azure Batch pool with optional node monitoring/benchmarking.
 
         A pool is a collection of compute nodes (virtual machines) on which your tasks run.
         This function creates a new pool with configurable scaling, container support,
@@ -281,7 +328,7 @@ class CloudClient:
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
             replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
-            enable_node_monitoring (str, optional): Controls node-level monitoring behavior.
+            enable_node_monitoring (str, NodeMonitoringMode): Controls node-level monitoring behavior.
                 Allowed values:
                     - "monitor": run continuous resource monitoring only
                     - "benchmark": run CPU benchmark only (no monitoring loop)
@@ -324,7 +371,8 @@ class CloudClient:
             the specified VM size is available in your Azure region and that any
             container images are accessible from the compute nodes.
         """
-        # check pool exists
+        enable_node_monitoring = normalize_node_monitoring_mode(enable_node_monitoring)
+
         existing_pools = self.batch_mgmt_client.pool.list_by_batch_account(
             resource_group_name=self.cred.azure_resource_group_name,
             account_name=self.cred.azure_batch_account,
@@ -336,27 +384,22 @@ class CloudClient:
             if not replace_existing_pool:
                 logger.info("Skipping pool creation.")
                 return
-            elif replace_existing_pool:
-                logger.info("Replacing existing pool.")
+            logger.info("Replacing existing pool.")
             self.pool_name = pool_name
 
         logger.debug(f"Creating new pool: {pool_name}")
 
-        # Configure storage mounts if provided
         if mounts:
             logger.debug("Configuring storage mounts for pool.")
             if isinstance(mounts[0], str):
-                logger.debug("Mounts provided as list of strings.")
                 mounts = [check_mount_format(mount) for mount in mounts]
                 mount_config = get_node_mount_config(
                     storage_containers=mounts,
                     account_names=self.cred.azure_blob_storage_account,
                     identity_references=self.cred.compute_node_identity_reference,
-                    cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                    cache_blobfuse=cache_blobfuse,
                 )
-                logger.debug("Generated mount configuration from string list.")
             elif isinstance(mounts[0], dict):
-                logger.debug("Mounts provided as list of dicts.")
                 mounts = [
                     {
                         "source": check_mount_format(mount["source"]),
@@ -368,10 +411,9 @@ class CloudClient:
                     storage_containers=[mount["source"] for mount in mounts],
                     account_names=self.cred.azure_blob_storage_account,
                     identity_references=self.cred.compute_node_identity_reference,
-                    cache_blobfuse=cache_blobfuse,  # Pass cache setting to mount config
+                    cache_blobfuse=cache_blobfuse,
                     mount_names=[mount["target"] for mount in mounts],
                 )
-                logger.debug("Generated mount configuration from dict list.")
             else:
                 logger.debug(
                     "Invalid mounts format provided. Will not configure mounts."
@@ -381,11 +423,8 @@ class CloudClient:
             logger.debug("No mounts provided. Skipping mount configuration.")
             mount_config = None
 
-        # validate pool name
         pool_name = pool_name.replace(" ", "_")
-        logger.debug(f"Validated pool name: {pool_name}")
 
-        # validate vm size
         valid_vm_sizes = [
             "xsmall",
             "small",
@@ -402,8 +441,6 @@ class CloudClient:
             vm_size = get_vm_size(vm_size)
         logger.info(f"Using VM size: {vm_size}")
 
-        # Get base pool configuration
-        logger.debug("Getting default pool configuration.")
         pool_config = d.get_default_pool_config(
             pool_name=pool_name,
             subnet_id=self.cred.azure_subnet_id,
@@ -412,37 +449,44 @@ class CloudClient:
             vm_size=vm_size,
         )
 
-        # Attach node monitoring Start Task
-        if enable_node_monitoring:
-            if enable_node_monitoring not in {"monitor", "benchmark", "both"}:
-                raise ValueError(
-                    "enable_node_monitoring's value must be either monitor, benchmark, or both"
-                )
-
+        # Existing Nick node monitor remains unchanged; only the local filename is
+        # derived from monitoring_script_url rather than hard coded.
+        if enable_node_monitoring is not None:
             if not monitoring_script_url:
                 raise ValueError(
                     "monitoring_script_url is required when enabling node monitoring"
                 )
 
-            start_task_command = r"""/bin/bash -c '
-                                    set -euo pipefail &&
-                                    mkdir -p /mnt/batch/tasks/startup/wd/node-metrics
-                                    chmod +x ./start-metrics.sh
+            monitoring_script_name = helpers.script_name_from_url(monitoring_script_url)
+            script = shlex.quote(f"./{monitoring_script_name}")
 
-                                   """
+            start_task_lines = [
+                "set -euo pipefail",
+                "mkdir -p /mnt/batch/tasks/startup/wd/node-metrics",
+                f"chmod +x {script}",
+            ]
 
-            if enable_node_monitoring in {"monitor", "both"}:
-                start_task_command += rf"""
-                                        ./start-metrics.sh benchmark 0 {benchmark_runtime_seconds} output
-                                        """
+            if enable_node_monitoring in {
+                NodeMonitoringMode.BENCHMARK,
+                NodeMonitoringMode.BOTH,
+            }:
+                start_task_lines.append(
+                    f"{script} benchmark 0 {int(benchmark_runtime_seconds)} output"
+                )
 
-            if enable_node_monitoring in {"benchmark", "both"}:
-                start_task_command += rf"""
-                                        nohup ./start-metrics.sh monitor {monitoring_interval_seconds} 0 output \
-                                            >/mnt/batch/tasks/startup/wd/node-metrics/collector.out \
-                                            2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &
-                                        """
-            start_task_command += "'"
+            if enable_node_monitoring in {
+                NodeMonitoringMode.MONITOR,
+                NodeMonitoringMode.BOTH,
+            }:
+                start_task_lines.append(
+                    f"nohup {script} monitor {int(monitoring_interval_seconds)} 0 output "
+                    ">/mnt/batch/tasks/startup/wd/node-metrics/collector.out "
+                    "2>/mnt/batch/tasks/startup/wd/node-metrics/collector.err &"
+                )
+
+            start_task_command = "/bin/bash -c " + shlex.quote(
+                " && ".join(start_task_lines)
+            )
 
             pool_config.start_task = models.StartTask(
                 command_line=start_task_command,
@@ -450,7 +494,7 @@ class CloudClient:
                 resource_files=[
                     models.ResourceFile(
                         http_url=monitoring_script_url,
-                        file_path="start-metrics.sh",
+                        file_path=monitoring_script_name,
                     )
                 ],
                 user_identity=models.UserIdentity(
@@ -461,12 +505,8 @@ class CloudClient:
                 ),
             )
 
-        # Configure scaling settings
         if autoscale:
-            # Set up autoscaling
-            logger.debug("Configuring autoscaling settings.")
             if autoscale_formula == "default":
-                # Default formula: scale based on pending tasks with max limit
                 formula = d.remaining_task_autoscale_formula(
                     task_sample_interval_minutes=15,
                     max_number_vms=max_autoscale_nodes,
@@ -477,12 +517,10 @@ class CloudClient:
             pool_config.scale_settings = models.ScaleSettings(
                 auto_scale=models.AutoScaleSettings(
                     formula=formula,
-                    evaluation_interval="PT5M",  # Evaluate every 5 minutes
+                    evaluation_interval="PT5M",
                 )
             )
         else:
-            # Set up fixed scaling
-            logger.debug("Configuring fixed scaling settings.")
             pool_config.scale_settings = models.ScaleSettings(
                 fixed_scale=models.FixedScaleSettings(
                     target_dedicated_nodes=dedicated_nodes,
@@ -490,66 +528,46 @@ class CloudClient:
                 )
             )
 
-        # Configure task slots per node
-        logger.debug(f"Setting task slots per node: {task_slots_per_node}")
         pool_config.task_slots_per_node = task_slots_per_node
 
-        # Configure container if image is provided
-        logger.debug("Configuring container settings.")
         if container_image_name:
             container_config = models.ContainerConfiguration(
                 type="dockerCompatible",
                 container_image_names=[container_image_name],
             )
-            logger.debug(f"Set container image: {container_image_name}")
         else:
             container_config = models.ContainerConfiguration(
-                type="dockerCompatible", container_image_names=[]
+                type="dockerCompatible",
+                container_image_names=[],
             )
 
-        # Add container registry if available
         if hasattr(self.cred, "azure_container_registry"):
             container_config.container_registries = [self.cred.azure_container_registry]
-            logger.debug("Added azure container registry to client configuration.")
 
         d.assign_container_config(pool_config, container_config)
 
-        # Configure availability zones in the virtual machine configuration
-        # Set node placement configuration for zonal deployment
         if availability_zones.lower() == "regional":
             pool_config.deployment_configuration.virtual_machine_configuration.node_placement_configuration = models.NodePlacementConfiguration(
                 policy=models.NodePlacementPolicyType.regional
             )
-            logger.debug("Set availability zone policy to regional.")
         elif availability_zones.lower() == "zonal":
             pool_config.deployment_configuration.virtual_machine_configuration.node_placement_configuration = models.NodePlacementConfiguration(
                 policy=models.NodePlacementPolicyType.zonal
             )
-            logger.debug("Set availability zone policy to zonal.")
         else:
-            logger.error("Invalid availability_zones value provided.")
             raise ValueError("Availability zone needs to be 'zonal' or 'regional'.")
 
         try:
-            # Create the pool using the batch management client
-            logger.debug("Attempting to create the pool in Azure Batch.")
             self.batch_mgmt_client.pool.create(
                 resource_group_name=self.cred.azure_resource_group_name,
                 account_name=self.cred.azure_batch_account,
                 pool_name=pool_name,
                 parameters=pool_config,
             )
-            logger.debug(f"Pool {pool_name} created successfully.")
             self.pool_name = pool_name
-            if pool_exists:
-                logger.info(f"Replaced existing pool: {pool_name}")
-            else:
-                logger.info(f"Created pool: {pool_name}")
-
             logger.info(f"Pool '{pool_name}' created successfully.")
         except Exception as e:
-            error_msg = f"Failed to create pool '{pool_name}': {str(e)}"
-            raise RuntimeError(error_msg)
+            raise RuntimeError(f"Failed to create pool '{pool_name}': {e}") from e
 
     def create_job(
         self,
@@ -564,8 +582,11 @@ class CloudClient:
         exist_ok: bool = False,
         verify_pool: bool = True,
         verbose: bool = False,
+        code_version: str | None = None,
+        model_version: str | None = None,
+        workload_metadata: dict | None = None,
     ):
-        """Create a job in Azure Batch to run tasks on a specified pool.
+        """Create a Batch job and attach run-level code/model/workload metadata.
 
         A job is a collection of tasks that run on compute nodes in a pool. Jobs provide
         a way to organize and manage related tasks, handle dependencies, and control task
@@ -601,6 +622,9 @@ class CloudClient:
                 before creating the job. Default is True.
             verbose (bool, optional): Whether to print verbose output during job creation.
                 Default is False.
+            code_version (str, optional): Version of code to be included in report
+            model_version (str, optional): Version of model fto be included in report
+            workload_metadata (dict, optional): Additioanl metadata to be stored about the workload to be included in report.
 
         Raises:
             RuntimeError: If the job creation fails due to Azure Batch service errors,
@@ -646,21 +670,16 @@ class CloudClient:
             - Jobs are created with task dependencies enabled (`uses_task_dependencies=True`)
             - Jobs are configured with `task_failure_mode=PERFORM_EXIT_OPTIONS_JOB_ACTION`
         """
-        # save job information that will be used with tasks
         job_name = job_name.replace(" ", "")
         logger.debug(f"Attempting to create job: {job_name}")
 
         if pool_name:
             self.pool_name = pool_name
-            logger.debug(f"Using specified pool for job: {pool_name}")
         elif self.pool_name:
             pool_name = self.pool_name
-            logger.debug(f"Using specified pool for job: {pool_name}")
         else:
-            logger.error("Please specify a pool for the job and try again.")
-            raise Exception("Please specify a pool for the job and try again.")
+            raise ValueError("Please specify a pool for the job and try again.")
 
-        # check if VM deprecated
         deprecated = batch_helpers.check_if_pool_vm_deprecated(
             pool_name=pool_name,
             batch_mgmt_client=self.batch_mgmt_client,
@@ -669,52 +688,49 @@ class CloudClient:
         )
         if deprecated:
             print(
-                f"Pool {pool_name} is using a deprecated VM series. Consider updating the pool to a supported VM series."
+                f"Pool {pool_name} is using a deprecated VM series. "
+                "Consider updating the pool to a supported VM series."
             )
 
         self.save_logs_to_blob = save_logs_to_blob
-
         if save_logs_to_blob:
-            logger.debug(
-                f"Configuring log saving to blob container: {save_logs_to_blob}"
-            )
             if logs_folder is None:
                 self.logs_folder = "stdout_stderr"
             else:
-                if logs_folder.startswith("/"):
-                    logs_folder = logs_folder[1:]
-                if logs_folder.endswith("/"):
-                    logs_folder = logs_folder[:-1]
-                self.logs_folder = logs_folder
-            logger.debug(f"Logs folder for job set to: {self.logs_folder}")
-        if timeout is None:
-            _to = None
-            logger.debug("No timeout set for job.")
-        else:
-            _to = datetime.timedelta(minutes=timeout)
-            logger.debug(f"Timeout for job set to: {_to}")
+                self.logs_folder = logs_folder.strip("/")
+
+        _to = None if timeout is None else datetime.timedelta(minutes=timeout)
 
         on_all_tasks_complete = (
             BatchAllTasksCompleteMode.TERMINATE_JOB
             if mark_complete_after_tasks_run
             else BatchAllTasksCompleteMode.NO_ACTION
         )
-        logger.debug(f"On all tasks complete action set to: {on_all_tasks_complete}")
-        logger.debug("Configuring job constraints.")
+
         job_constraints = BatchJobConstraints(
             max_task_retry_count=task_retries,
             max_wall_clock_time=_to,
         )
-        if task_id_ints:
-            self.task_id_ints = True
-            self.task_id_max = 0
-            logger.debug("Using integer task IDs for job.")
-        else:
-            self.task_id_ints = False
-            logger.debug("Using string task IDs for job.")
 
-        # add the job
-        logger.debug("Creating job add parameters.")
+        self.task_id_ints = bool(task_id_ints)
+        self.task_id_max = 0
+
+        metadata = [
+            BatchMetadataItem(
+                name="mark_complete",
+                value=str(mark_complete_after_tasks_run),
+            ),
+            BatchMetadataItem(name="owner", value=get_user()),
+            BatchMetadataItem(name="datetime_created", value=get_date_time()),
+        ]
+        metadata.extend(
+            build_metadata_items(
+                code_version=code_version,
+                model_version=model_version,
+                workload_metadata=workload_metadata,
+            )
+        )
+
         job = batch_models.BatchJobCreateOptions(
             id=job_name,
             pool_info=batch_models.BatchPoolInfo(pool_id=pool_name),
@@ -722,23 +738,13 @@ class CloudClient:
             all_tasks_complete_mode=on_all_tasks_complete,
             task_failure_mode=batch_models.BatchTaskFailureMode.PERFORM_EXIT_OPTIONS_JOB_ACTION,
             constraints=job_constraints,
-            metadata=[
-                BatchMetadataItem(
-                    name="mark_complete", value=str(mark_complete_after_tasks_run)
-                ),
-                BatchMetadataItem(name="owner", value=get_user()),
-                BatchMetadataItem(name="datetime_created", value=get_date_time()),
-            ],
+            metadata=metadata,
         )
 
-        # Configure task retry settings
-        logger.debug("Configuring task retry settings.")
         if task_retries > 0:
             job.constraints = job.constraints or batch_models.BatchJobConstraints()
             job.constraints.max_task_retry_count = task_retries
 
-        # Create the job
-        logger.debug("Calling create_job function.")
         create_job(
             self.batch_service_client,
             job,
@@ -878,9 +884,13 @@ class CloudClient:
         run_dependent_tasks_on_fail: bool = False,
         container_image_name: str | None = None,
         timeout: int | None = None,
+        code_version: str | None = None,
+        model_version: str | None = None,
+        workload_metadata: dict | None = None,
+        monitoring: TaskMonitoringConfig | None = None,
     ):
         """
-        Add a task to an Azure Batch job.
+        Add a Batch task/component with optional task-level monitoring metadata.
 
         Args:
             job_name (str): Name of the job to add the task to.
@@ -898,9 +908,14 @@ class CloudClient:
             run_dependent_tasks_on_fail (bool, optional): Whether to run dependent tasks if this task fails. Default is False.
             container_image_name (str | None, optional): Container image to use for the task. Default is None.
             timeout (int | None, optional): Maximum time in minutes for the task to run. Default is None.
+            code_version (str, optional): Version of code to be included in report
+            model_version (str, optional): Version of model fto be included in report
+            workload_metadata (dict, optional): Additioanl metadata to be stored about the workload to be included in report.
+            monitoring (TaskMonitoringConfig, optional): Configuration for task-level resource monitoring.
+                Contains mode, interval_seconds, output_mount, output_folder and script_url
         """
         logger.debug(f"Adding task to job: {job_name}")
-        # get pool info for related job
+
         job_info = self.batch_service_client.get_job(job_name)
         pool_name = None
         execution_info = getattr(job_info, "execution_info", None)
@@ -931,40 +946,31 @@ class CloudClient:
 
         if pool_name is None:
             raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
-        logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
         if container_image_name is None:
-            logger.debug("No container image name provided, retrieving from pool info.")
             if self.full_container_name is None:
-                logger.debug("Gettting full pool info")
                 pool_info = batch_helpers.get_pool_full_info(
                     self.cred.azure_resource_group_name,
                     self.cred.azure_batch_account,
                     pool_name,
                     self.batch_mgmt_client,
                 )
-                logger.debug("Generated full pool info.")
                 vm_config = (
                     pool_info.deployment_configuration.virtual_machine_configuration
                 )
-                logger.debug("Generated VM config.")
-
                 pool_container = vm_config.container_configuration.container_image_names
                 if pool_container is not None and len(pool_container) > 0:
                     container_name = pool_container[0].split("://")[-1]
-                    logger.debug(f"Container name set to {container_name}.")
                 else:
                     raise ValueError(
-                        "No container image found in pool configuration and no container image name provided."
+                        "No container image found in pool configuration and no "
+                        "container image name provided."
                     )
             else:
                 container_name = self.full_container_name
-                logger.debug(f"Container name set to {container_name}.")
         else:
             container_name = container_image_name
-            logger.debug(f"Using provided container name: {container_name}.")
 
-        # get all mounts from pool info
         if mount_pairs is None:
             self.mounts = batch_helpers.get_pool_mounts(
                 pool_name,
@@ -981,7 +987,45 @@ class CloudClient:
                 for mount in mount_pairs
             ]
 
-        logger.debug("Adding tasks to job.")
+        resource_files = []
+        monitoring_metadata: dict[str, str] = {}
+
+        if monitoring is not None:
+            mode = normalize_task_monitoring_mode(monitoring.mode)
+            monitoring.mode = mode
+
+            if mode != TaskMonitoringMode.NONE:
+                if not monitoring.script_url:
+                    raise ValueError(
+                        "monitoring.script_url is required when task monitoring is enabled."
+                    )
+
+                task_monitor_script_name = helpers.script_name_from_url(
+                    monitoring.script_url
+                )
+                resource_files.append(
+                    batch_models.ResourceFile(
+                        http_url=monitoring.script_url,
+                        file_path=task_monitor_script_name,
+                    )
+                )
+                command_line = self._wrap_task_command(
+                    command_line=command_line,
+                    monitoring=monitoring,
+                    script_name=task_monitor_script_name,
+                )
+                monitoring_metadata = {
+                    "monitoring_mode": mode.value,
+                    "metrics_output_mount": monitoring.output_mount,
+                    "metrics_output_folder": monitoring.output_folder,
+                }
+
+        metadata = build_metadata_items(
+            code_version=code_version,
+            model_version=model_version,
+            workload_metadata=workload_metadata,
+            extra_metadata=monitoring_metadata,
+        )
 
         tid = batch_helpers.add_task(
             job_name=job_name,
@@ -1000,16 +1044,23 @@ class CloudClient:
             task_id_max=self.task_id_max,
             task_id_ints=self.task_id_ints,
             timeout=timeout,
+            metadata=metadata or None,
+            resource_files=resource_files or None,
         )
+
         self.task_id_max += 1
         logger.info(f"Task '{tid}' added to job '{job_name}'.")
         return tid
 
     def add_task_collection(
-        self, job_name: str, tasks: list[dict], name_suffix: str = ""
+        self,
+        job_name: str,
+        tasks: list[dict],
+        name_suffix: str = "",
+        monitoring: TaskMonitoringConfig | None = None,
     ):
         """
-        Add a list of tasks to an Azure Batch job.
+        Add a collection of tasks/components, optionally applying common monitoring.
 
         Args:
             job_name (str): Name of the job to add the task to.
@@ -1028,9 +1079,11 @@ class CloudClient:
                 - full_container_name (str, optional): Container image to use for the task. Default is None.
                 - timeout (int, optional): Maximum time in minutes for the task to run. Default is None.
             name_suffix (str, optional): Suffix to append to the task ID. Default is "".
+            monitoring (TaskMonitoringConfig, optional): Configuration for task-level resource monitoring.
+                Contains mode, interval_seconds, output_mount, output_folder and script_url
         """
-        logger.debug(f"Adding task to job: {job_name}")
-        # get pool info for related job
+        logger.debug(f"Adding task collection to job: {job_name}")
+
         job_info = self.batch_service_client.get_job(job_name)
         pool_name = None
         execution_info = getattr(job_info, "execution_info", None)
@@ -1063,36 +1116,84 @@ class CloudClient:
 
         if pool_name is None:
             raise RuntimeError(f"Could not determine pool_id for job '{job_name}'.")
-        logger.debug(f"Task will run on pool {pool_name} as part of job {job_name}.")
 
-        for task in tasks:
+        prepared_tasks: list[dict] = []
+
+        for original_task in tasks:
+            task = dict(original_task)
+
             if task.get("mounts") is None:
-                self.mounts = batch_helpers.get_pool_mounts(
+                task["mounts"] = batch_helpers.get_pool_mounts(
                     pool_name,
                     self.cred.azure_resource_group_name,
                     self.cred.azure_batch_account,
                     self.batch_mgmt_client,
                 )
-                task["mounts"] = self.mounts
             if task.get("logs_folder") is None:
                 task["logs_folder"] = self.logs_folder
 
-        logger.debug("Adding tasks to job.")
+            task_monitoring = task.pop("monitoring", monitoring)
+            resource_files = list(task.get("resource_files") or [])
+            monitoring_metadata: dict[str, str] = {}
+
+            if task_monitoring is not None:
+                mode = normalize_task_monitoring_mode(task_monitoring.mode)
+                task_monitoring.mode = mode
+
+                if mode != TaskMonitoringMode.NONE:
+                    if not task_monitoring.script_url:
+                        raise ValueError(
+                            "monitoring.script_url is required when task monitoring is enabled."
+                        )
+                    script_name = helpers.script_name_from_url(
+                        task_monitoring.script_url
+                    )
+                    resource_files.append(
+                        batch_models.ResourceFile(
+                            http_url=task_monitoring.script_url,
+                            file_path=script_name,
+                        )
+                    )
+                    task["command_line"] = self._wrap_task_command(
+                        command_line=task["command_line"],
+                        monitoring=task_monitoring,
+                        script_name=script_name,
+                    )
+                    monitoring_metadata = {
+                        "monitoring_mode": mode.value,
+                        "metrics_output_mount": task_monitoring.output_mount,
+                        "metrics_output_folder": task_monitoring.output_folder,
+                    }
+
+            metadata = build_metadata_items(
+                code_version=task.pop("code_version", None),
+                model_version=task.pop("model_version", None),
+                workload_metadata=task.pop("workload_metadata", None),
+                extra_metadata=monitoring_metadata,
+            )
+
+            if resource_files:
+                task["resource_files"] = resource_files
+            if metadata:
+                task["metadata"] = metadata
+
+            prepared_tasks.append(task)
+
         try:
             result = batch_helpers.add_task_collection(
                 job_name=job_name,
                 task_id_base=job_name,
-                tasks=tasks,
+                tasks=prepared_tasks,
                 name_suffix=name_suffix,
                 batch_client=self.batch_service_client,
                 task_id_max=self.task_id_max,
                 task_id_ints=self.task_id_ints,
             )
-            self.task_id_max += len(tasks)
-            logger.info(f"Added {len(tasks)} tasks to job {job_name}.")
+            self.task_id_max += len(prepared_tasks)
+            logger.info(f"Added {len(prepared_tasks)} tasks to job {job_name}.")
             return result
         except Exception as ce:
-            logger.error(f"Failed to add task collection to job: {str(ce)}")
+            logger.error(f"Failed to add task collection to job: {ce}")
             return False
 
     def create_blob_container(self, name: str) -> None:
@@ -1326,8 +1427,11 @@ class CloudClient:
         timeout: int | None = None,
         download_job_stats: bool = False,
         download_task_output: bool = False,
-    ) -> None:
-        """Monitor the execution of tasks in an Azure Batch job.
+        generate_report: bool = False,
+        report_container: str | None = None,
+        metrics_container: str | None = None,
+    ) -> dict | None:
+        """Monitor a Batch job and optionally generate/upload its run-level report.
 
         Continuously monitors the progress of all tasks in a job until they complete
         or a timeout is reached. Provides real-time status updates and optionally
@@ -1343,6 +1447,10 @@ class CloudClient:
                 times, resource usage, and success/failure rates. Default is False.
             download_task_output (bool, optional): Whether to download the stdout and stderr of
                 each task when the task completes. Default is False.
+            generate_report (bool, optional): Whether to generate performance report when the task completes.
+                Default is False.
+            report_container (str, optional): Blob storage container where performance report shall be uploaded.
+            metrics_container (str, optional): Blob storage container where raw metrics shall be uploaded.
 
         Example:
             Monitor a job with default settings:
@@ -1363,8 +1471,8 @@ class CloudClient:
             job status checks, use check_job_status() instead. Job statistics are
             saved to the current working directory when downloaded.
         """
-        # monitor the tasks
-        logger.debug(f"starting to monitor job {job_name}.")
+        logger.debug(f"Starting to monitor job {job_name}.")
+
         monitor = batch_helpers.monitor_tasks(
             job_name,
             timeout,
@@ -1372,14 +1480,38 @@ class CloudClient:
             download_task_output=download_task_output,
         )
         print(monitor)
+
         if download_job_stats:
             batch_helpers.download_job_stats(
                 job_name=job_name,
                 batch_service_client=self.batch_service_client,
                 file_name=None,
             )
+
+        report = None
+        if generate_report:
+            if not report_container:
+                raise ValueError(
+                    "report_container is required when generate_report=True."
+                )
+            if not metrics_container:
+                raise ValueError(
+                    "metrics_container is required when generate_report=True."
+                )
+
+            report = CloudMetrics(
+                batch_service_client=self.batch_service_client,
+                blob_service_client=self.blob_service_client,
+                credentials=self.cred,
+            ).generate_run_report(
+                job_name=job_name,
+                report_container=report_container,
+                metrics_container=metrics_container,
+            )
+
         logger.info("Job complete.")
         logger.info(f"Monitoring of job '{job_name}' complete.")
+        return report
 
     def check_job_status(self, job_name: str) -> str:
         """Check the current status and progress of an Azure Batch job.
