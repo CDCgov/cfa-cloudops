@@ -328,7 +328,7 @@ class CloudClient:
             cache_blobfuse (bool): Whether to enable blobfuse caching for mounted storage.
                 Improves performance for read-heavy workloads. Default is True.
             replace_existing_pool (bool): Whether to replace the existing pool if it already exists. Default is False.
-            enable_node_monitoring (str, NodeMonitoringMode): Controls node-level monitoring behavior.
+            enable_node_monitoring (NodeMonitoringMode, optional): Controls node-level monitoring behavior.
                 Allowed values:
                     - "monitor": run continuous resource monitoring only
                     - "benchmark": run CPU benchmark only (no monitoring loop)
