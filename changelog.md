@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 The versioning pattern is `major.minor.patch`.
 
 ---
+## 1.2.0
+
+- reuse HTTP connections across the core Azure SDK clients created by `CloudClient`
+- add explicit cleanup for the shared HTTP transport
 ## 1.1.1
 
 - add notebook-friendly progress bars for task-stat writing and blob download, deletion, and protection operations

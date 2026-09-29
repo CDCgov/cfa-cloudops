@@ -433,6 +433,63 @@ def test_cloudclient_init_with_env_credentials(
         mock_compute_management_client.assert_called_once()
 
 
+def test_cloudclient_reuses_http_session_across_azure_clients(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+):
+    with patch(
+        "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+    ) as mock_cred_handler:
+        mock_cred_handler.return_value = MagicMock()
+
+        client = CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
+
+        client_factories = [
+            mock_batch_management_client,
+            mock_compute_management_client,
+            mock_batch_service_client,
+            mock_blob_service_client,
+        ]
+
+        transports = [
+            factory.call_args.kwargs["transport"] for factory in client_factories
+        ]
+
+        sessions = [transport.session for transport in transports]
+
+        assert all(session is client._http_transport.session for session in sessions)
+
+        shared_session = client._http_transport.session
+
+        with patch.object(shared_session, "close") as mock_close:
+            transports[0].close()
+
+        mock_close.assert_not_called()
+
+
+def test_cloudclient_close_closes_shared_http_session(
+    mock_env_vars,
+    mock_batch_service_client,
+    mock_batch_management_client,
+    mock_blob_service_client,
+    mock_compute_management_client,
+):
+    with patch(
+        "cfa.cloudops._cloudclient.DefaultCredentialHandler"
+    ) as mock_cred_handler:
+        mock_cred_handler.return_value = MagicMock()
+
+        client = CloudClient(dotenv_path=None, use_sp=False, use_federated=False)
+
+        with patch.object(client._http_transport, "close") as mock_close:
+            client.close()
+
+        mock_close.assert_called_once_with()
+
+
 def test_cloudclient_init_with_default_credentials(
     mock_env_vars,
     mock_batch_service_client,
