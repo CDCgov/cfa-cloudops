@@ -185,8 +185,8 @@ def monitor_tasks(
             - success (int): Number of tasks that completed successfully
             - fail (int): Number of tasks that failed
 
-    Raises:
-        RuntimeError: If the job does not complete within the specified timeout period.
+        On timeout the dictionary is returned with completed set to False and the
+        counts from the last poll.
 
     Example:
         Monitor a job with default timeout:
@@ -338,6 +338,7 @@ def monitor_tasks(
             logger.debug(
                 f"Final status: {completions} completed, {incompletions} remaining"
             )
+            break
 
     end_time = datetime.datetime.now().replace(microsecond=0)
 

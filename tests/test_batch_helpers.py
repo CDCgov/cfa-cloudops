@@ -1,3 +1,4 @@
+import datetime
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
@@ -84,6 +85,38 @@ def test_monitor_tasks_missing_job_execution_info():
 
     assert result["completed"] is True
     assert result["terminate_reason"] is None
+
+
+def test_monitor_tasks_returns_when_timeout_expires():
+    start = datetime.datetime(2026, 1, 1, 12, 0, 0)
+    clock = [
+        start,
+        start + datetime.timedelta(seconds=5),
+        start + datetime.timedelta(seconds=5),
+        start + datetime.timedelta(minutes=2),
+        start + datetime.timedelta(minutes=2),
+    ]
+    mock_batch_client = MagicMock()
+    mock_batch_client.get_job.return_value = MagicMock(
+        state=models.BatchJobState.ACTIVE
+    )
+    mock_batch_client.list_tasks.return_value = [
+        MagicMock(state=models.BatchTaskState.RUNNING)
+    ]
+
+    with (
+        patch("time.sleep", return_value=None),
+        patch("cfa.cloudops.batch_helpers.datetime") as mock_datetime,
+    ):
+        mock_datetime.timedelta = datetime.timedelta
+        mock_datetime.datetime.now.side_effect = clock
+        result = monitor_tasks(
+            job_name="my-job", timeout=1, batch_client=mock_batch_client
+        )
+
+    assert result["completed"] is False
+    assert result["tasks complete"] == 0
+    assert result["tasks remaining"] == 1
 
 
 def test_add_task():
